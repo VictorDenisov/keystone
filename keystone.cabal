@@ -22,5 +22,8 @@ executable keystone
   build-depends:       base >=4.7 && <4.8
                      , scotty == 0.9.1
                      , aeson  == 0.7.0.4
+                     , mongoDB == 2.0.3
+                     , http-types == 0.8.6
+                     , text == 1.1.0.0
   hs-source-dirs:      src
   default-language:    Haskell2010
