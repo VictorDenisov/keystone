@@ -19,7 +19,7 @@ executable keystone
   main-is:             Main.hs
   other-modules:       Version
   -- other-extensions:    
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base >=4.6 && <4.8
                      , scotty == 0.9.1
                      , aeson  == 0.7.0.4
                      , mongoDB == 2.0.3
