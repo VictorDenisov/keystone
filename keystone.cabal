@@ -20,10 +20,12 @@ executable keystone
   other-modules:       Version
   -- other-extensions:    
   build-depends:       base >=4.6 && <4.8
-                     , scotty == 0.9.1
                      , aeson  == 0.7.0.4
-                     , mongoDB == 2.0.3
+                     , bson == 0.3.1
                      , http-types == 0.8.6
+                     , mongoDB == 2.0.3
+                     --, mtl == 2.2.1
+                     , scotty == 0.9.1
                      , text == 1.1.0.0
                      , transformers == 0.3.0.0
   hs-source-dirs:      src
