@@ -1,0 +1,14 @@
+{
+    "user": {
+        "default_project_id": "--default-project-id--",
+        "description": "a user",
+        "domain_id": "1789d1",
+        "email": "user@mail.ru",
+        "enabled": true,
+        "id": "rsiten",
+        "links": {
+            "self": "http://identity:35357/v3/users/--user-id--"
+        },
+        "name": "admin"
+    }
+}
