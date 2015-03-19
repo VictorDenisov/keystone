@@ -3,9 +3,11 @@
 module Main
 where
 
+import Config (readConfig, KeystoneConfig(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Bson ((=:))
+import Data.ByteString.Char8 (pack)
 import Data.List (lookup)
 import Data.Maybe (isNothing)
 import qualified Database.MongoDB as M
@@ -22,12 +24,14 @@ import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 main = do
-  app <- S.scottyApp application
+  Just config <- readConfig
+  app <- S.scottyApp (application config)
   let settings = tlsSettings "server.crt" "server.key"
   runTLS settings defaultSettings app
 
-application = do
-  S.middleware withAuth
+application :: KeystoneConfig -> S.ScottyM ()
+application config = do
+  S.middleware (withAuth $ adminToken config)
   S.get "/" $ do
     S.json $ apiV3 "http://localhost" -- TODO It should be taken from the web server
   S.get "/v3" $ do
@@ -35,25 +39,22 @@ application = do
   S.post "/v3/users" $ do
     pipe <- liftIO $ M.connect (M.host "127.0.0.1")
     (d :: U.UserCreateRequest) <- S.jsonData
-    liftIO $ putStrLn $ show d
     let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (U.password d)
     e <- M.access pipe M.master "keystone" (MU.createUser u)
-    liftIO $ print e
-    S.text $ "Hello"
     S.status status201
     liftIO $ M.close pipe
 
 hXAuthToken :: HeaderName
 hXAuthToken = "X-Auth-Token"
 
-withAuth :: Middleware
-withAuth app req respond = do
+withAuth :: String -> Middleware
+withAuth adminToken app req respond = do
   let
     rh = requestHeaders req
     mToken = lookup hXAuthToken rh
   case mToken of
     Nothing -> respond $ responseLBS status401 [] "Token is required"
     Just m ->
-      if m /= "ADMIN_TOKEN"
+      if m /= (pack adminToken)
         then respond $ responseLBS status401 [] "Wrong token"
         else app req respond
