@@ -7,12 +7,21 @@ import Data.ByteString (ByteString)
 import Data.Yaml (decodeFile)
 
 data KeystoneConfig = KeystoneConfig
-                    { adminToken :: String
+                    { adminToken      :: String
+                    , certificateFile :: String
+                    , keyFile         :: String
                     }
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
 
 
-readConfig :: IO (Maybe KeystoneConfig)
+readConfig :: IO KeystoneConfig
 readConfig = do
-  decodeFile "keystone.yml"
+  mConf <- decodeFile "keystone.yml"
+  case mConf of
+    Just conf -> return conf
+    Nothing   -> return $ KeystoneConfig
+                               { adminToken      = "ADMIN_TOKEN"
+                               , certificateFile = "server.crt"
+                               , keyFile         = "server.key"
+                               }

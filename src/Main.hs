@@ -24,9 +24,11 @@ import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 main = do
-  Just config <- readConfig
+  config <- readConfig
   app <- S.scottyApp (application config)
-  let settings = tlsSettings "server.crt" "server.key"
+  let settings = tlsSettings
+                      (certificateFile config)
+                      (keyFile config)
   runTLS settings defaultSettings app
 
 application :: KeystoneConfig -> S.ScottyM ()
