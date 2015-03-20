@@ -10,6 +10,8 @@ data KeystoneConfig = KeystoneConfig
                     { adminToken      :: String
                     , certificateFile :: String
                     , keyFile         :: String
+                    , port            :: Int
+                    , endpoint        :: String
                     }
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
@@ -20,8 +22,13 @@ readConfig = do
   mConf <- decodeFile "keystone.yml"
   case mConf of
     Just conf -> return conf
-    Nothing   -> return $ KeystoneConfig
-                               { adminToken      = "ADMIN_TOKEN"
-                               , certificateFile = "server.crt"
-                               , keyFile         = "server.key"
-                               }
+    Nothing   -> do
+      putStrLn $ "Failed to parse config file. Using default values."
+      return $ KeystoneConfig
+                   { adminToken      = "ADMIN_TOKEN"
+                   , certificateFile = "server.crt"
+                   , keyFile         = "server.key"
+                   , port            = defaultPort
+                   , endpoint        = "https://localhost:" ++ (show defaultPort)
+                   }
+  where defaultPort = 35357

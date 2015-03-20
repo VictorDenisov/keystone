@@ -7,7 +7,7 @@ import Config (readConfig, KeystoneConfig(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Bson ((=:))
-import Data.ByteString.Char8 (pack)
+import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup)
 import Data.Maybe (isNothing)
 import qualified Database.MongoDB as M
@@ -16,7 +16,7 @@ import qualified Web.Scotty as S
 import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Status (status201, status401)
 import Network.Wai (Middleware, requestHeaders, responseLBS)
-import Network.Wai.Handler.Warp (defaultSettings)
+import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import qualified User as U
 import qualified Model.User as MU
@@ -29,7 +29,8 @@ main = do
   let settings = tlsSettings
                       (certificateFile config)
                       (keyFile config)
-  runTLS settings defaultSettings app
+  let serverSettings = setPort (port config) defaultSettings
+  runTLS settings serverSettings app
 
 application :: KeystoneConfig -> S.ScottyM ()
 application config = do

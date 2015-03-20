@@ -1,1 +1,5 @@
-adminToken: ADIN_TOKEN
+adminToken: ADMIN_TOKEN
+certificateFile: server.crt
+keyFile: server.key
+port: 35357
+endpoint: https://localhost:35357
