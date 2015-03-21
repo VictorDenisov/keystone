@@ -33,21 +33,6 @@ main = do
   let serverSettings = setPort (port config) defaultSettings
   runTLS settings serverSettings app
 
-host_url :: S.ActionM (Maybe String)
-host_url = do
-  mh <- S.header "host"
-  return $ fmap (\h -> "https://" ++ (T.unpack h)) mh
-
-with_host_url :: KeystoneConfig -> (String -> Value) -> S.ActionM ()
-with_host_url config v = do
-  case endpoint config of
-    Just e -> S.json $ v e
-    Nothing -> do
-      mh <- host_url
-      case mh of
-        Just h -> S.json $ v h
-        Nothing -> S.raise "Host header is required or endpoint should be set"
-
 application :: KeystoneConfig -> S.ScottyM ()
 application config = do
   S.middleware (withAuth $ adminToken config)
@@ -63,9 +48,6 @@ application config = do
     S.status status201
     liftIO $ M.close pipe
 
-hXAuthToken :: HeaderName
-hXAuthToken = "X-Auth-Token"
-
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do
   let
@@ -77,3 +59,21 @@ withAuth adminToken app req respond = do
       if m /= (pack adminToken)
         then respond $ responseLBS status401 [] "Wrong token"
         else app req respond
+
+hXAuthToken :: HeaderName
+hXAuthToken = "X-Auth-Token"
+
+host_url :: S.ActionM (Maybe String)
+host_url = do
+  mh <- S.header "host"
+  return $ fmap (\h -> "https://" ++ (T.unpack h)) mh
+
+with_host_url :: KeystoneConfig -> (String -> Value) -> S.ActionM ()
+with_host_url config v = do
+  case endpoint config of
+    Just e -> S.json $ v e
+    Nothing -> do
+      mh <- host_url
+      case mh of
+        Just h -> S.json $ v h
+        Nothing -> S.raise "Host header is required or endpoint should be set"
