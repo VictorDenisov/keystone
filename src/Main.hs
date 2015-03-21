@@ -3,7 +3,7 @@
 module Main
 where
 
-import Config (readConfig, KeystoneConfig(..))
+import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson.Types (Value)
@@ -41,7 +41,7 @@ application config = do
   S.get "/v3" $ do
     with_host_url config apiV3
   S.post "/v3/users" $ do
-    pipe <- liftIO $ M.connect (M.host "127.0.0.1")
+    pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     (d :: U.UserCreateRequest) <- S.jsonData
     let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (U.password d)
     e <- M.access pipe M.master "keystone" (MU.createUser u)

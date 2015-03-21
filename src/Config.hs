@@ -12,10 +12,17 @@ data KeystoneConfig = KeystoneConfig
                     , keyFile         :: String
                     , port            :: Int
                     , endpoint        :: Maybe String
+                    , database        :: Database
                     }
+
+data Database = Database
+              { dbHost :: String
+              , dbPort :: Int
+              }
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
 
+$(deriveJSON defaultOptions ''Database)
 
 readConfig :: IO KeystoneConfig
 readConfig = do
@@ -30,5 +37,9 @@ readConfig = do
                    , keyFile         = "server.key"
                    , port            = defaultPort
                    , endpoint        = Nothing
+                   , database        = Database
+                                     { dbHost = "localhost"
+                                     , dbPort = 27017
+                                     }
                    }
   where defaultPort = 35357
