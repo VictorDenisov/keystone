@@ -11,7 +11,7 @@ data KeystoneConfig = KeystoneConfig
                     , certificateFile :: String
                     , keyFile         :: String
                     , port            :: Int
-                    , endpoint        :: String
+                    , endpoint        :: Maybe String
                     }
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
@@ -29,6 +29,6 @@ readConfig = do
                    , certificateFile = "server.crt"
                    , keyFile         = "server.key"
                    , port            = defaultPort
-                   , endpoint        = "https://localhost:" ++ (show defaultPort)
+                   , endpoint        = Nothing
                    }
   where defaultPort = 35357
