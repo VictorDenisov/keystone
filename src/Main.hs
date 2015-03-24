@@ -3,6 +3,7 @@
 module Main
 where
 
+import qualified Auth as A
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -44,9 +45,17 @@ application config = do
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     (d :: U.UserCreateRequest) <- S.jsonData
     let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (U.password d)
-    e <- M.access pipe M.master "keystone" (MU.createUser u)
+    e <- M.access pipe M.master dbName (MU.createUser u)
     S.status status201
     liftIO $ M.close pipe
+  S.post "/v3/auth/tokens" $ do
+    pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
+    (d :: A.AuthRequest) <- S.jsonData
+    --e <- M.access pipe M.master dbName (MU.createUser u)
+    S.status status201
+    liftIO $ M.close pipe
+
+dbName = "keystone"
 
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do

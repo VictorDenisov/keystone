@@ -6,9 +6,11 @@
 module Model.User
 where
 
-import Control.Monad (mapM)
+import Control.Applicative ((<$>))
+import Control.Monad (mapM, liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import qualified Database.MongoDB as M
@@ -36,3 +38,11 @@ listUsers = do
   cursor <- M.find (M.select [] collectionName)
   docs <- M.rest cursor
   mapM fromBson docs
+
+getUserById :: (MonadIO m) => String -> M.Action m (Maybe User)
+getUserById uid = do
+  let oid = (read uid) :: ObjectId
+  mUser <- M.findOne (M.select ["_id" =: oid] collectionName)
+  case mUser of
+    Nothing -> return Nothing
+    Just v -> Just `liftM` (fromBson v)
