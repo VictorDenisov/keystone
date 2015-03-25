@@ -39,8 +39,8 @@ listUsers = do
   docs <- M.rest cursor
   mapM fromBson docs
 
-getUserById :: (MonadIO m) => String -> M.Action m (Maybe User)
-getUserById uid = do
+findUserById :: (MonadIO m) => String -> M.Action m (Maybe User)
+findUserById uid = do
   let oid = (read uid) :: ObjectId
   mUser <- M.findOne (M.select ["_id" =: oid] collectionName)
   case mUser of

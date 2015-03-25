@@ -9,6 +9,7 @@
         "links": {
             "self": "http://identity:35357/v3/users/--user-id--"
         },
-        "name": "admin"
+        "name": "admin",
+        "password": "mypassword"
     }
 }

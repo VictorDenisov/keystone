@@ -7,6 +7,7 @@ import qualified Auth as A
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
+import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value)
 import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
@@ -15,13 +16,13 @@ import Data.Maybe (isNothing, maybe)
 import qualified Database.MongoDB as M
 import qualified Data.Text.Lazy as T
 import qualified Web.Scotty as S
+import qualified Model.User as MU
 import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Status (status201, status401)
 import Network.Wai (Middleware, requestHeaders, responseLBS, rawQueryString)
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import qualified User as U
-import qualified Model.User as MU
 import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
@@ -44,14 +45,19 @@ application config = do
   S.post "/v3/users" $ do
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     (d :: U.UserCreateRequest) <- S.jsonData
-    let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (U.password d)
+    cryptedPassword <- case U.password d of
+      Nothing -> return Nothing
+      Just p  -> do
+        p1 <- liftIO $ makePassword (pack p) 17
+        return $ Just $ unpack p1
+    let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (cryptedPassword)
     e <- M.access pipe M.master dbName (MU.createUser u)
     S.status status201
     liftIO $ M.close pipe
   S.post "/v3/auth/tokens" $ do
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
-    (d :: A.AuthRequest) <- S.jsonData
-    --e <- M.access pipe M.master dbName (MU.createUser u)
+    (au :: A.AuthRequest) <- S.jsonData
+    res <- mapM (A.authenticate pipe) (A.methods au)
     S.status status201
     liftIO $ M.close pipe
 
