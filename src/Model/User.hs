@@ -13,6 +13,7 @@ import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
+import Text.Read (readMaybe)
 import qualified Database.MongoDB as M
 
 collectionName :: M.Collection
@@ -39,10 +40,11 @@ listUsers = do
   docs <- M.rest cursor
   mapM fromBson docs
 
+maybeNothing :: Monad m => Maybe a -> (a -> m (Maybe b)) -> m (Maybe b)
+maybeNothing v f = maybe (return Nothing) f v
+
 findUserById :: (MonadIO m) => String -> M.Action m (Maybe User)
 findUserById uid = do
-  let oid = (read uid) :: ObjectId
-  mUser <- M.findOne (M.select ["_id" =: oid] collectionName)
-  case mUser of
-    Nothing -> return Nothing
-    Just v -> Just `liftM` (fromBson v)
+  maybeNothing (readMaybe uid :: Maybe ObjectId) $ \oid -> do
+    mUser <- M.findOne (M.select ["_id" =: oid] collectionName)
+    maybeNothing mUser $ \v -> Just `liftM` (fromBson v)

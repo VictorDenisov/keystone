@@ -14,14 +14,15 @@ import qualified Model.User as MU
 data AuthRequest = AuthRequest
                  { methods  :: [AuthMethod]
                  , scope    :: Maybe AuthScope
-                 }
+                 } deriving Show
 
 data AuthMethod = PasswordMethod
                 { userId     :: String
                 , password   :: String
-                }
+                } deriving Show
 
 data AuthScope = AuthScope
+                 deriving Show
 
 instance FromJSON AuthRequest where
   parseJSON (Object v) = do

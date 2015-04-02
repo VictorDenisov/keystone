@@ -11,15 +11,17 @@ import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value)
 import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
-import Data.List (lookup)
+import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe)
 import qualified Database.MongoDB as M
 import qualified Data.Text.Lazy as T
 import qualified Web.Scotty as S
 import qualified Model.User as MU
 import Network.HTTP.Types.Header (HeaderName)
-import Network.HTTP.Types.Status (status201, status401)
-import Network.Wai (Middleware, requestHeaders, responseLBS, rawQueryString)
+import Network.HTTP.Types.Status (status200, status201, status401)
+import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
+                   , rawPathInfo
+                   )
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import qualified User as U
@@ -55,25 +57,35 @@ application config = do
     S.status status201
     liftIO $ M.close pipe
   S.post "/v3/auth/tokens" $ do
-    pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     (au :: A.AuthRequest) <- S.jsonData
+    liftIO $ putStrLn $ show au
+    pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
+    liftIO $ putStrLn "connected"
     res <- mapM (A.authenticate pipe) (A.methods au)
-    S.status status201
+    liftIO $ putStrLn "ran auth"
+    if or res
+      then S.status status200
+      else S.status status401
     liftIO $ M.close pipe
 
 dbName = "keystone"
 
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do
-  let
-    rh = requestHeaders req
-    mToken = lookup hXAuthToken rh
-  case mToken of
-    Nothing -> respond $ responseLBS status401 [] "Token is required"
-    Just m ->
-      if m /= (pack adminToken)
-        then respond $ responseLBS status401 [] "Wrong token"
-        else app req respond
+  liftIO $ putStrLn $ unpack $ rawPathInfo req
+  if rawPathInfo req == "v3/auth/tokens"
+    then
+      app req respond
+    else do
+      let
+        rh = requestHeaders req
+        mToken = lookup hXAuthToken rh
+      case mToken of
+        Nothing -> respond $ responseLBS status401 [] "Token is required"
+        Just m ->
+          if m /= (pack adminToken)
+            then respond $ responseLBS status401 [] "Wrong token"
+            else app req respond
 
 hXAuthToken :: HeaderName
 hXAuthToken = "X-Auth-Token"
