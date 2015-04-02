@@ -28,8 +28,6 @@ data User = User { description :: Maybe String
 
 $(deriveBson ''User)
 
--- User should implement a class document convertable
-
 createUser :: MonadIO m => User -> M.Action m M.Value
 createUser u =
   M.insert collectionName $ toBson u

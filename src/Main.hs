@@ -60,9 +60,7 @@ application config = do
     (au :: A.AuthRequest) <- S.jsonData
     liftIO $ putStrLn $ show au
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
-    liftIO $ putStrLn "connected"
     res <- mapM (A.authenticate pipe) (A.methods au)
-    liftIO $ putStrLn "ran auth"
     if or res
       then S.status status200
       else S.status status401
