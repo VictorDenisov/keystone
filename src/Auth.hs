@@ -7,9 +7,11 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), Value(..))
 import Data.ByteString.Char8 (pack)
+import Data.Time.Clock (getCurrentTime, addUTCTime)
 
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
+import qualified Model.Token as MT
 
 data AuthRequest = AuthRequest
                  { methods  :: [AuthMethod]
@@ -37,12 +39,18 @@ instance FromJSON AuthRequest where
           PasswordMethod <$> (userSpec .: "id") <*> (userSpec .: "password")
     return $ AuthRequest ms Nothing
 
-authenticate :: (MonadIO m) => M.Pipe -> AuthMethod -> m Bool
-authenticate pipe am = do
-    mu <- M.access pipe M.master "keystone" (MU.findUserById $ userId am)
+authenticate :: (MonadIO m) => M.Pipe -> AuthMethod -> m (Maybe MT.Token)
+authenticate pipe (PasswordMethod userId password) = do
+    mu <- M.access pipe M.master "keystone" (MU.findUserById userId)
     case mu of
-      Nothing -> return $ False
+      Nothing -> return Nothing
       Just u  ->
         case MU.password u of
-          Just p -> return $ verifyPassword (pack $ password am) (pack p)
-          Nothing -> return $ False
+          Just p ->
+            if verifyPassword (pack password) (pack p)
+              then do
+                currentTime <- liftIO getCurrentTime
+                return $ Just $ MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60 * 1000000000000) currentTime) userId
+              else return Nothing
+          Nothing -> return Nothing
+authenticate _ _ = return Nothing

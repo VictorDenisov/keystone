@@ -3,7 +3,6 @@
 module Main
 where
 
-import qualified Auth as A
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -13,10 +12,7 @@ import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe)
-import qualified Database.MongoDB as M
-import qualified Data.Text.Lazy as T
-import qualified Web.Scotty as S
-import qualified Model.User as MU
+import Data.Time.Clock (getCurrentTime)
 import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Status (status200, status201, status401)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
@@ -24,9 +20,16 @@ import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    )
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
-import qualified User as U
 import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
+
+import qualified Auth as A
+import qualified Database.MongoDB as M
+import qualified Data.Text.Lazy as T
+import qualified Web.Scotty as S
+import qualified Model.Token as MT
+import qualified Model.User as MU
+import qualified User as U
 
 main = do
   config <- readConfig
@@ -61,9 +64,12 @@ application config = do
     liftIO $ putStrLn $ show au
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     res <- mapM (A.authenticate pipe) (A.methods au)
-    if or res
-      then S.status status200
-      else S.status status401
+    case head res of
+      Just t -> do
+        resp <- M.access pipe M.master dbName (MT.produceTokenResponse t)
+        S.json resp
+        S.status status200
+      Nothing -> S.status status401
     liftIO $ M.close pipe
 
 dbName = "keystone"
