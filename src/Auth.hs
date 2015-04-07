@@ -50,7 +50,7 @@ authenticate pipe (PasswordMethod userId password) = do
             if verifyPassword (pack password) (pack p)
               then do
                 currentTime <- liftIO getCurrentTime
-                return $ Just $ MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60 * 1000000000000) currentTime) userId
+                return $ Just $ MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId
               else return Nothing
           Nothing -> return Nothing
 authenticate _ _ = return Nothing
