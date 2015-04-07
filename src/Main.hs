@@ -65,9 +65,10 @@ application config = do
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     res <- mapM (A.authenticate pipe) (A.methods au)
     case head res of
-      Just t -> do
+      Just (tokenId, t) -> do
         resp <- M.access pipe M.master dbName (MT.produceTokenResponse t)
         S.json resp
+        S.addHeader "X-Subject-Token" (T.pack tokenId)
         S.status status200
       Nothing -> S.status status401
     liftIO $ M.close pipe

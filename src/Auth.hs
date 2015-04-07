@@ -12,6 +12,7 @@ import Data.Time.Clock (getCurrentTime, addUTCTime)
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
 import qualified Model.Token as MT
+import qualified Data.Text as T
 
 data AuthRequest = AuthRequest
                  { methods  :: [AuthMethod]
@@ -39,7 +40,7 @@ instance FromJSON AuthRequest where
           PasswordMethod <$> (userSpec .: "id") <*> (userSpec .: "password")
     return $ AuthRequest ms Nothing
 
-authenticate :: (MonadIO m) => M.Pipe -> AuthMethod -> m (Maybe MT.Token)
+authenticate :: (MonadIO m) => M.Pipe -> AuthMethod -> m (Maybe (String, MT.Token))
 authenticate pipe (PasswordMethod userId password) = do
     mu <- M.access pipe M.master "keystone" (MU.findUserById userId)
     case mu of
@@ -50,7 +51,9 @@ authenticate pipe (PasswordMethod userId password) = do
             if verifyPassword (pack password) (pack p)
               then do
                 currentTime <- liftIO getCurrentTime
-                return $ Just $ MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId
+                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId
+                mt <- M.access pipe M.master "keystone" (MT.createToken token)
+                return $ Just (show mt, token)
               else return Nothing
           Nothing -> return Nothing
 authenticate _ _ = return Nothing
