@@ -8,10 +8,13 @@ import Control.Monad (liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 
 import Data.Aeson.Types (Value, (.=), object)
+import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.Maybe (fromJust)
 import Data.Time.Clock (UTCTime)
+
+import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
@@ -44,3 +47,12 @@ produceTokenResponse (Token issued expires user) = do
 createToken :: MonadIO m => Token -> M.Action  m M.Value
 createToken t =
   M.insert collectionName $ toBson t
+
+maybeNothing :: Monad m => Maybe a -> (a -> m (Maybe b)) -> m (Maybe b)
+maybeNothing v f = maybe (return Nothing) f v
+
+findTokenById :: MonadIO m => String -> M.Action m (Maybe Token)
+findTokenById tid = do
+  maybeNothing (readMaybe tid :: Maybe ObjectId) $ \oid -> do
+    mToken <- M.findOne (M.select ["_id" =: oid] collectionName)
+    maybeNothing mToken $ \v -> Just `liftM` (fromBson v)

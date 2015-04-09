@@ -14,7 +14,7 @@ import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe)
 import Data.Time.Clock (getCurrentTime)
 import Network.HTTP.Types.Header (HeaderName)
-import Network.HTTP.Types.Status (status200, status201, status401)
+import Network.HTTP.Types.Status (status200, status201, status401, status404)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    , rawPathInfo
                    )
@@ -72,6 +72,20 @@ application config = do
         S.status status200
       Nothing -> S.status status401
     liftIO $ M.close pipe
+  S.get "/v3/auth/tokens" $ do
+    mSubjectToken <- S.header hXSubjectToken
+    case mSubjectToken of
+      Nothing -> S.status status404
+      Just subjectToken -> do
+        pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
+        mToken <- M.access pipe M.master dbName (MT.findTokenById $ T.unpack subjectToken)
+        case mToken of
+          Nothing -> S.status status404
+          Just token -> do
+            resp <- M.access pipe M.master dbName (MT.produceTokenResponse token)
+            S.status status200
+            S.json resp
+        liftIO $ M.close pipe
 
 dbName = "keystone"
 
@@ -94,6 +108,9 @@ withAuth adminToken app req respond = do
 
 hXAuthToken :: HeaderName
 hXAuthToken = "X-Auth-Token"
+
+hXSubjectToken :: T.Text
+hXSubjectToken = "X-Subject-Token"
 
 host_url :: S.ActionM (Maybe String)
 host_url = do
