@@ -4,6 +4,7 @@
 module Model.Token
 where
 
+import Common (maybeNothing)
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 
@@ -47,9 +48,6 @@ produceTokenResponse (Token issued expires user) = do
 createToken :: MonadIO m => Token -> M.Action  m M.Value
 createToken t =
   M.insert collectionName $ toBson t
-
-maybeNothing :: Monad m => Maybe a -> (a -> m (Maybe b)) -> m (Maybe b)
-maybeNothing v f = maybe (return Nothing) f v
 
 findTokenById :: MonadIO m => String -> M.Action m (Maybe Token)
 findTokenById tid = do

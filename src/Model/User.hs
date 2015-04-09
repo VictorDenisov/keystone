@@ -6,6 +6,7 @@
 module Model.User
 where
 
+import Common (maybeNothing)
 import Control.Applicative ((<$>))
 import Control.Monad (mapM, liftM)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -37,9 +38,6 @@ listUsers = do
   cursor <- M.find (M.select [] collectionName)
   docs <- M.rest cursor
   mapM fromBson docs
-
-maybeNothing :: Monad m => Maybe a -> (a -> m (Maybe b)) -> m (Maybe b)
-maybeNothing v f = maybe (return Nothing) f v
 
 findUserById :: (MonadIO m) => String -> M.Action m (Maybe User)
 findUserById uid = do
