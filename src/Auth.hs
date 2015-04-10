@@ -40,11 +40,12 @@ instance FromJSON AuthRequest where
           PasswordMethod <$> (userSpec .: "id") <*> (userSpec .: "password")
     return $ AuthRequest ms Nothing
 
-authenticate :: (MonadIO m) => M.Pipe -> AuthMethod -> m (Maybe (String, MT.Token))
+authenticate :: (MonadIO m)
+             => M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
 authenticate pipe (PasswordMethod userId password) = do
     mu <- M.access pipe M.master "keystone" (MU.findUserById userId)
     case mu of
-      Nothing -> return Nothing
+      Nothing -> return $ Left "User is not found."
       Just u  ->
         case MU.password u of
           Just p ->
@@ -53,7 +54,7 @@ authenticate pipe (PasswordMethod userId password) = do
                 currentTime <- liftIO getCurrentTime
                 let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId
                 mt <- M.access pipe M.master "keystone" (MT.createToken token)
-                return $ Just (show mt, token)
-              else return Nothing
-          Nothing -> return Nothing
-authenticate _ _ = return Nothing
+                return $ Right (show mt, token)
+              else return $ Left "Passwords don't match."
+          Nothing -> return $ Left "User exists, but doesn't have any password."
+authenticate _ _ = return $ Left "Method is not supported."

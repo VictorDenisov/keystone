@@ -25,6 +25,7 @@ import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
+import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Data.Text.Lazy as T
 import qualified Web.Scotty as S
@@ -66,26 +67,34 @@ application config = do
     pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
     res <- mapM (A.authenticate pipe) (A.methods au)
     case head res of
-      Just (tokenId, t) -> do
+      Right (tokenId, t) -> do
         resp <- M.access pipe M.master dbName (MT.produceTokenResponse t)
         S.json resp
         S.addHeader "X-Subject-Token" (T.pack tokenId)
         S.status status200
-      Nothing -> S.status status401
+      Left errorMessage -> do
+        S.json $ E.unauthorized errorMessage
+        S.status status401
     liftIO $ M.close pipe
   S.get "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
     case mSubjectToken of
-      Nothing -> S.status status404
+      Nothing -> do
+        S.json $ E.notFound "Could not find token, ."
+        S.status status404
       Just subjectToken -> do
+        let st = T.unpack subjectToken
         pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
-        mToken <- M.access pipe M.master dbName (MT.findTokenById $ T.unpack subjectToken)
+        mToken <- M.access pipe M.master dbName (MT.findTokenById st)
         case mToken of
-          Nothing -> S.status status404
+          Nothing -> do
+            S.json $ E.notFound $ "Could not find token, " ++ st ++ "."
+            S.status status404
           Just token -> do
             currentTime <- liftIO getCurrentTime
             if currentTime > (MT.expiresAt token)
-              then
+              then do
+                S.json $ E.notFound $ "Could not find token, " ++ st ++ "."
                 S.status status404
               else do
                 resp <- M.access pipe M.master dbName (MT.produceTokenResponse token)

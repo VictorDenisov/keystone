@@ -1,4 +1,4 @@
-adminToken: ADMIN_TOKEN
+adminToken: ADMIN
 certificateFile: server.crt
 keyFile: server.key
 port: 35357

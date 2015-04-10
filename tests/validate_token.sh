@@ -7,4 +7,4 @@ fi
 
 token_to_verify=$1
 
-curl -v -k -H "X-Auth-Token: ADMIN_TOKEN" -H "X-Subject-Token: $token_to_verify" https://localhost:35357/v3/auth/tokens
+curl -v -k -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" https://localhost:35357/v3/auth/tokens
