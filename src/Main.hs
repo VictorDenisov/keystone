@@ -13,10 +13,11 @@ import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe)
 import Data.Time.Clock (getCurrentTime)
+import Network.HTTP.Types (methodPost)
 import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Status (status200, status201, status401, status404)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
-                   , rawPathInfo
+                   , rawPathInfo, requestMethod
                    )
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
@@ -97,7 +98,7 @@ dbName = "keystone"
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do
   liftIO $ putStrLn $ unpack $ rawPathInfo req
-  if rawPathInfo req == "/v3/auth/tokens" -- Verify that it's a post request. It should be auth free for issue token request only.
+  if (requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens")
     then
       app req respond
     else do
