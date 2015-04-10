@@ -82,9 +82,14 @@ application config = do
         case mToken of
           Nothing -> S.status status404
           Just token -> do
-            resp <- M.access pipe M.master dbName (MT.produceTokenResponse token)
-            S.status status200
-            S.json resp
+            currentTime <- liftIO getCurrentTime
+            if currentTime > (MT.expiresAt token)
+              then
+                S.status status404
+              else do
+                resp <- M.access pipe M.master dbName (MT.produceTokenResponse token)
+                S.status status200
+                S.json resp
         liftIO $ M.close pipe
 
 dbName = "keystone"
@@ -92,7 +97,7 @@ dbName = "keystone"
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do
   liftIO $ putStrLn $ unpack $ rawPathInfo req
-  if rawPathInfo req == "v3/auth/tokens"
+  if rawPathInfo req == "/v3/auth/tokens" -- Verify that it's a post request. It should be auth free for issue token request only.
     then
       app req respond
     else do

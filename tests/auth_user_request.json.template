@@ -6,7 +6,7 @@
             ],
             "password": {
                 "user": {
-                    "id": "551c986957c58410e2000000",
+                    "id": "<USER_ID>",
                     "password": "mypassword"
                 }
             }
