@@ -6,3 +6,4 @@ endpoint: https://localhost:35357
 database:
         dbHost: localhost
         dbPort: 27017
+logLevel: DEBUG

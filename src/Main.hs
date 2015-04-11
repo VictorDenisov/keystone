@@ -21,6 +21,7 @@ import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    )
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
+import System.Log.Logger (debugM, setLevel, updateGlobalLogger)
 import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
@@ -33,8 +34,12 @@ import qualified Model.Token as MT
 import qualified Model.User as MU
 import qualified User as U
 
+loggerName :: String
+loggerName = "Main"
+
 main = do
   config <- readConfig
+  updateGlobalLogger loggerName $ setLevel $ logLevel config
   app <- S.scottyApp (application config)
   let settings = tlsSettings
                       (certificateFile config)
@@ -106,7 +111,7 @@ dbName = "keystone"
 
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do
-  liftIO $ putStrLn $ unpack $ rawPathInfo req
+  liftIO $ debugM loggerName $ unpack $ rawPathInfo req
   if (requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens")
     then
       app req respond

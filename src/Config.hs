@@ -2,9 +2,15 @@
 module Config
 where
 
-import Data.Aeson.TH (deriveJSON, defaultOptions)
+import Control.Monad (MonadPlus(..))
+import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
+import Data.Aeson.TH ( deriveJSON, defaultOptions)
 import Data.ByteString (ByteString)
 import Data.Yaml (decodeFile)
+import System.Log.Logger (Priority(..))
+import Text.Read (readMaybe)
+
+import qualified Data.Text as T
 
 data KeystoneConfig = KeystoneConfig
                     { adminToken      :: String
@@ -13,12 +19,19 @@ data KeystoneConfig = KeystoneConfig
                     , port            :: Int
                     , endpoint        :: Maybe String
                     , database        :: Database
+                    , logLevel        :: Priority
                     }
 
 data Database = Database
               { dbHost :: String
               , dbPort :: Int
               }
+
+instance ToJSON Priority where
+  toJSON p = String $ T.pack $ show p
+
+instance FromJSON Priority where
+  parseJSON (String v) = maybe mzero return $ readMaybe $ T.unpack v
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
 
@@ -41,5 +54,6 @@ readConfig = do
                                      { dbHost = "localhost"
                                      , dbPort = 27017
                                      }
+                   , logLevel        = WARNING
                    }
   where defaultPort = 35357

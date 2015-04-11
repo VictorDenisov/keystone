@@ -26,6 +26,7 @@ executable keystone
                      , aeson  == 0.7.0.4
                      , bson == 0.3.1
                      , bytestring == 0.10.4.0
+                     , hslogger == 1.2.8
                      , http-types == 0.8.6
                      , monad-control == 1.0.0.4
                      , mongoDB == 2.0.3
