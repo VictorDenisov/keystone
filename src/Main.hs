@@ -26,6 +26,7 @@ import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
+import qualified Common.Database as CD
 import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Data.Text.Lazy as T
@@ -39,6 +40,7 @@ loggerName = "Main"
 
 main = do
   config <- readConfig
+  CD.verifyDatabase $ database config
   updateGlobalLogger loggerName $ setLevel $ logLevel config
   app <- S.scottyApp (application config)
   let settings = tlsSettings
@@ -55,7 +57,7 @@ application config = do
   S.get "/v3" $ do
     with_host_url config apiV3
   S.post "/v3/users" $ do
-    pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
+    pipe <- CD.connect $ database $ config
     (d :: U.UserCreateRequest) <- S.jsonData
     cryptedPassword <- case U.password d of
       Nothing -> return Nothing
@@ -63,17 +65,17 @@ application config = do
         p1 <- liftIO $ makePassword (pack p) 17
         return $ Just $ unpack p1
     let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (cryptedPassword)
-    e <- M.access pipe M.master dbName (MU.createUser u)
+    e <- CD.runDB pipe $ MU.createUser u
     S.status status201
     liftIO $ M.close pipe
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- S.jsonData
     liftIO $ putStrLn $ show au
-    pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
+    pipe <- CD.connect $ database $ config
     res <- mapM (A.authenticate pipe) (A.methods au)
     case head res of
       Right (tokenId, t) -> do
-        resp <- M.access pipe M.master dbName (MT.produceTokenResponse t)
+        resp <- CD.runDB pipe $ MT.produceTokenResponse t
         S.json resp
         S.addHeader "X-Subject-Token" (T.pack tokenId)
         S.status status200
@@ -89,8 +91,8 @@ application config = do
         S.status status404
       Just subjectToken -> do
         let st = T.unpack subjectToken
-        pipe <- liftIO $ M.connect (M.host $ dbHost $ database $ config)
-        mToken <- M.access pipe M.master dbName (MT.findTokenById st)
+        pipe <- CD.connect $ database $ config
+        mToken <- CD.runDB pipe $ MT.findTokenById st
         case mToken of
           Nothing -> do
             S.json $ E.notFound $ "Could not find token, " ++ st ++ "."
@@ -102,12 +104,10 @@ application config = do
                 S.json $ E.notFound $ "Could not find token, " ++ st ++ "."
                 S.status status404
               else do
-                resp <- M.access pipe M.master dbName (MT.produceTokenResponse token)
+                resp <- CD.runDB pipe $ MT.produceTokenResponse token
                 S.status status200
                 S.json resp
         liftIO $ M.close pipe
-
-dbName = "keystone"
 
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do

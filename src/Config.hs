@@ -14,11 +14,11 @@ import qualified Data.Text as T
 
 data KeystoneConfig = KeystoneConfig
                     { adminToken      :: String
-                    , certificateFile :: String
-                    , keyFile         :: String
-                    , port            :: Int
+                    , certificateFile :: String -- TLS runner checks if this file exists
+                    , keyFile         :: String -- TLS runner checks if this file exists
+                    , port            :: Int    -- Port won't bind if it's busy
                     , endpoint        :: Maybe String
-                    , database        :: Database
+                    , database        :: Database -- TODO Will be verified during creation of the pool
                     , logLevel        :: Priority
                     }
 
@@ -41,7 +41,8 @@ readConfig :: IO KeystoneConfig
 readConfig = do
   mConf <- decodeFile "keystone.yml"
   case mConf of
-    Just conf -> return conf
+    Just conf ->
+      return conf
     Nothing   -> do
       putStrLn $ "Failed to parse config file. Using default values."
       return $ KeystoneConfig
