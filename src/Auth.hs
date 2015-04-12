@@ -9,6 +9,7 @@ import Data.Aeson (FromJSON(..), (.:), Value(..))
 import Data.ByteString.Char8 (pack)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 
+import qualified Common.Database as CD
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
 import qualified Model.Token as MT
@@ -43,7 +44,7 @@ instance FromJSON AuthRequest where
 authenticate :: (MonadIO m)
              => M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
 authenticate pipe (PasswordMethod userId password) = do
-    mu <- M.access pipe M.master "keystone" (MU.findUserById userId)
+    mu <- CD.runDB pipe $ MU.findUserById userId
     case mu of
       Nothing -> return $ Left "User is not found."
       Just u  ->
@@ -53,7 +54,7 @@ authenticate pipe (PasswordMethod userId password) = do
               then do
                 currentTime <- liftIO getCurrentTime
                 let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId
-                mt <- M.access pipe M.master "keystone" (MT.createToken token)
+                mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
           Nothing -> return $ Left "User exists, but doesn't have any password."
