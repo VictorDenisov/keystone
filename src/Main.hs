@@ -47,7 +47,7 @@ main = do
   CD.verifyDatabase $ database config
   updateGlobalLogger loggerName $ setLevel $ logLevel config
   fh <- fileHandler "keystone.log" DEBUG
-  updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime $prio: $msg")
+  updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
   app <- S.scottyApp (application config)
   let settings = tlsSettings
