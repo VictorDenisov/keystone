@@ -3,6 +3,7 @@
 module Main
 where
 
+import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -15,15 +16,21 @@ import Data.Maybe (isNothing, maybe)
 import Data.Time.Clock (getCurrentTime)
 import Network.HTTP.Types (methodPost)
 import Network.HTTP.Types.Header (HeaderName)
-import Network.HTTP.Types.Status (status200, status201, status401, status404)
+import Network.HTTP.Types.Status ( status200, status201, status401, status404
+                                 , status500)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    , rawPathInfo, requestMethod
                    )
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
-import System.Log.Logger (debugM, setLevel, updateGlobalLogger)
+import System.Log.Handler (setFormatter)
+import System.Log.Handler.Simple (fileHandler)
+import System.Log.Logger ( debugM, setLevel, updateGlobalLogger, Priority(..)
+                         , addHandler)
+import System.Log.Formatter (simpleLogFormatter)
 import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
+import Web.Scotty.Trans (ScottyError(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
@@ -35,13 +42,13 @@ import qualified Model.Token as MT
 import qualified Model.User as MU
 import qualified User as U
 
-loggerName :: String
-loggerName = "Main"
-
 main = do
   config <- readConfig
   CD.verifyDatabase $ database config
   updateGlobalLogger loggerName $ setLevel $ logLevel config
+  fh <- fileHandler "keystone.log" DEBUG
+  updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime $prio: $msg")
+
   app <- S.scottyApp (application config)
   let settings = tlsSettings
                       (certificateFile config)
@@ -52,6 +59,9 @@ main = do
 application :: KeystoneConfig -> S.ScottyM ()
 application config = do
   S.middleware (withAuth $ adminToken config)
+  S.defaultHandler $ \e -> do
+    S.status status500
+    S.text $ showError e
   S.get "/" $ do
     with_host_url config apiVersions
   S.get "/v3" $ do

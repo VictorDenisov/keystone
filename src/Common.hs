@@ -6,3 +6,6 @@ maybeNothing v f = maybe (return Nothing) f v
 
 databaseVersion :: String
 databaseVersion = "0.0.1"
+
+loggerName :: String
+loggerName = "Main"
