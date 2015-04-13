@@ -1,0 +1,15 @@
+{
+    "auth": {
+        "identity": {
+            "methods": [
+                "password"
+            ],
+            "password": {
+                "user": {
+                    "id": "<USER_ID>",
+                    "password": "mypassword"
+                }
+            }
+        }
+    }
+}

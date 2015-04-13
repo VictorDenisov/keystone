@@ -8,6 +8,7 @@ import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), Value(..))
 import Data.ByteString.Char8 (pack)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
+import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
 import qualified Database.MongoDB as M
@@ -21,12 +22,15 @@ data AuthRequest = AuthRequest
                  } deriving Show
 
 data AuthMethod = PasswordMethod
-                { userId     :: String
+                { userId     :: M.ObjectId
                 , password   :: String
                 } deriving Show
 
 data AuthScope = AuthScope
                  deriving Show
+
+instance FromJSON M.ObjectId where
+  parseJSON (String v) = maybe (fail $ "Invalid object id - " ++ (T.unpack v)) return $ readMaybe $ T.unpack v
 
 instance FromJSON AuthRequest where
   parseJSON (Object v) = do

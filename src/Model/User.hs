@@ -39,8 +39,7 @@ listUsers = do
   docs <- M.rest cursor
   mapM fromBson docs
 
-findUserById :: (MonadIO m) => String -> M.Action m (Maybe User)
+findUserById :: (MonadIO m) => ObjectId -> M.Action m (Maybe User)
 findUserById uid = do
-  maybeNothing (readMaybe uid :: Maybe ObjectId) $ \oid -> do
-    mUser <- M.findOne (M.select ["_id" =: oid] collectionName)
-    maybeNothing mUser $ \v -> Just `liftM` (fromBson v)
+  mUser <- M.findOne (M.select ["_id" =: uid] collectionName)
+  maybeNothing mUser $ \v -> Just `liftM` (fromBson v)

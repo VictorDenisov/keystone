@@ -8,7 +8,7 @@ import Common (maybeNothing)
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 
-import Data.Aeson.Types (Value, (.=), object)
+import Data.Aeson.Types (Value(..), (.=), object, ToJSON(..))
 import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
@@ -17,6 +17,7 @@ import Data.Time.Clock (UTCTime)
 
 import Text.Read (readMaybe)
 
+import qualified Data.Text as T
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
 
@@ -25,10 +26,13 @@ collectionName = "token"
 
 data Token = Token { issuedAt  :: UTCTime
                    , expiresAt :: UTCTime
-                   , user      :: String
+                   , user      :: M.ObjectId
                    } deriving (Show, Read, Eq, Ord, Typeable)
 
 $(deriveBson ''Token)
+
+instance ToJSON M.ObjectId where
+  toJSON oid = String $ T.pack $ show oid
 
 produceTokenResponse :: MonadIO m => Token -> M.Action m Value
 produceTokenResponse (Token issued expires user) = do
@@ -38,7 +42,7 @@ produceTokenResponse (Token issued expires user) = do
                                         , "methods"    .= [ "password" :: String ]
                                         , "extras"    .= (object [])
                                         , "user"       .= (object [ "name"   .= MU.name u
-                                                                  , "id"     .= user
+                                                                  , "id"     .= (show user)
                                                                   , "domain" .= ( object [ "name" .= ("Default" :: String)
                                                                                          , "id"   .= ("default" :: String)])
                                                                   ] )
