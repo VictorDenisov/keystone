@@ -8,7 +8,7 @@ import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Crypto.PasswordStore (makePassword)
-import Data.Aeson.Types (Value)
+import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
@@ -30,17 +30,24 @@ import System.Log.Logger ( debugM, setLevel, updateGlobalLogger, Priority(..)
 import System.Log.Formatter (simpleLogFormatter)
 import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
-import Web.Scotty.Trans (ScottyError(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
 import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Data.Text.Lazy as T
-import qualified Web.Scotty as S
+import qualified Web.Scotty.Trans as S
 import qualified Model.Token as MT
 import qualified Model.User as MU
 import qualified User as U
+
+type ScottyM = S.ScottyT E.Error IO
+type ActionM = S.ActionT E.Error IO
+
+parseRequest :: FromJSON a => ActionM a
+parseRequest = do
+  S.rescue S.jsonData $ \e ->
+    S.raise $ E.badRequest $ E.message e
 
 main = do
   config <- readConfig
@@ -49,26 +56,26 @@ main = do
   fh <- fileHandler "keystone.log" DEBUG
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
-  app <- S.scottyApp (application config)
+  app <- S.scottyAppT id id (application config)
   let settings = tlsSettings
                       (certificateFile config)
                       (keyFile config)
   let serverSettings = setPort (port config) defaultSettings
   runTLS settings serverSettings app
 
-application :: KeystoneConfig -> S.ScottyM ()
+application :: KeystoneConfig -> ScottyM ()
 application config = do
   S.middleware (withAuth $ adminToken config)
   S.defaultHandler $ \e -> do
-    S.status status500
-    S.text $ showError e
+    S.status $ E.code e
+    S.json e
   S.get "/" $ do
     with_host_url config apiVersions
   S.get "/v3" $ do
     with_host_url config apiV3
   S.post "/v3/users" $ do
     pipe <- CD.connect $ database $ config
-    (d :: U.UserCreateRequest) <- S.jsonData
+    (d :: U.UserCreateRequest) <- parseRequest
     cryptedPassword <- case U.password d of
       Nothing -> return Nothing
       Just p  -> do
@@ -79,7 +86,7 @@ application config = do
     S.status status201
     liftIO $ M.close pipe
   S.post "/v3/auth/tokens" $ do
-    (au :: A.AuthRequest) <- S.jsonData
+    (au :: A.AuthRequest) <- parseRequest
     liftIO $ putStrLn $ show au
     pipe <- CD.connect $ database $ config
     res <- mapM (A.authenticate pipe) (A.methods au)
@@ -142,12 +149,12 @@ hXAuthToken = "X-Auth-Token"
 hXSubjectToken :: T.Text
 hXSubjectToken = "X-Subject-Token"
 
-host_url :: S.ActionM (Maybe String)
+host_url :: ActionM (Maybe String)
 host_url = do
   mh <- S.header "host"
   return $ fmap (\h -> "https://" ++ (T.unpack h)) mh
 
-with_host_url :: KeystoneConfig -> (String -> Value) -> S.ActionM ()
+with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
 with_host_url config v = do
   case endpoint config of
     Just e -> S.json $ v e
@@ -155,4 +162,4 @@ with_host_url config v = do
       mh <- host_url
       case mh of
         Just h -> S.json $ v h
-        Nothing -> S.raise "Host header is required or endpoint should be set"
+        Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
