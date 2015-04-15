@@ -44,11 +44,6 @@ import qualified User as U
 type ScottyM = S.ScottyT E.Error IO
 type ActionM = S.ActionT E.Error IO
 
-parseRequest :: FromJSON a => ActionM a
-parseRequest = do
-  S.rescue S.jsonData $ \e ->
-    S.raise $ E.badRequest $ E.message e
-
 main = do
   config <- readConfig
   CD.verifyDatabase $ database config
@@ -87,7 +82,7 @@ application config = do
     liftIO $ M.close pipe
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
-    liftIO $ putStrLn $ show au
+    liftIO $ debugM loggerName $ show au
     pipe <- CD.connect $ database $ config
     res <- mapM (A.authenticate pipe) (A.methods au)
     case head res of
@@ -125,6 +120,11 @@ application config = do
                 S.status status200
                 S.json resp
         liftIO $ M.close pipe
+
+parseRequest :: FromJSON a => ActionM a
+parseRequest = do
+  S.rescue S.jsonData $ \e ->
+    S.raise $ E.badRequest $ E.message e
 
 withAuth :: String -> Middleware
 withAuth adminToken app req respond = do
