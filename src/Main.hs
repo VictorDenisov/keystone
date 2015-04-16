@@ -31,6 +31,9 @@ import System.Log.Handler.Simple (fileHandler)
 import System.Log.Logger ( debugM, setLevel, updateGlobalLogger, Priority(..)
                          , addHandler)
 import System.Log.Formatter (simpleLogFormatter)
+
+import Text.Read (readMaybe)
+
 import Version (apiV3, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
@@ -104,17 +107,20 @@ application config = do
     liftIO $ M.close pipe
   S.get "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
-    pipe <- lift $ CD.connect $ database $ config
+    pipe <- CD.connect $ database $ config
     res <- runErrorT $ do
       when (isNothing mSubjectToken) $ fail "Could not find token, ."
-      let st = T.unpack $ fromJust mSubjectToken
+      let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
+
+      when (isNothing mst) $ fail "Token is not an object id"
+      let st = fromJust mst
       mToken <- lift $ CD.runDB pipe $ MT.findTokenById st
 
-      when (isNothing mToken) $ fail $ "Could not find token, " ++ st ++ "."
+      when (isNothing mToken) $ fail $ "Could not find token, " ++ (show st) ++ "."
       let token = fromJust mToken
       currentTime <- liftIO getCurrentTime
 
-      when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ st ++ "."
+      when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ (show st) ++ "."
       lift $ CD.runDB pipe $ MT.produceTokenResponse token
     liftIO $ M.close pipe
 

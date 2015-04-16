@@ -16,8 +16,6 @@ import Data.Data (Typeable)
 import Data.Maybe (fromJust)
 import Data.Time.Clock (UTCTime)
 
-import Text.Read (readMaybe)
-
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
@@ -54,8 +52,7 @@ createToken :: MonadIO m => Token -> M.Action  m M.Value
 createToken t =
   M.insert collectionName $ toBson t
 
-findTokenById :: MonadIO m => String -> M.Action m (Maybe Token)
+findTokenById :: MonadIO m => ObjectId -> M.Action m (Maybe Token)
 findTokenById tid = runMaybeT $ do
-  oid <- MaybeT $ return $ readMaybe tid
-  mToken <- MaybeT $ M.findOne (M.select ["_id" =: (oid :: ObjectId)] collectionName)
+  mToken <- MaybeT $ M.findOne (M.select ["_id" =: tid] collectionName)
   fromBson mToken
