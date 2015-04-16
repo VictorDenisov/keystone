@@ -7,6 +7,7 @@ import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Bson ((=:))
@@ -71,12 +72,16 @@ application config = do
   S.post "/v3/users" $ do
     pipe <- CD.connect $ database $ config
     (d :: U.UserCreateRequest) <- parseRequest
-    cryptedPassword <- case U.password d of
-      Nothing -> return Nothing
-      Just p  -> do
-        p1 <- liftIO $ makePassword (pack p) 17
-        return $ Just $ unpack p1
-    let u = MU.User (Just $ U.description d) (Just $ U.email d) (U.enabled d) (U.name d) (cryptedPassword)
+    cryptedPassword <- runMaybeT $ do
+      p <- MaybeT $ return $ U.password d
+      p1 <- liftIO $ makePassword (pack p) 17
+      return $ unpack p1
+    let u = MU.User
+                (Just $ U.description d)
+                (Just $ U.email d)
+                (U.enabled d)
+                (U.name d)
+                (cryptedPassword)
     e <- CD.runDB pipe $ MU.createUser u
     S.status status201
     liftIO $ M.close pipe
