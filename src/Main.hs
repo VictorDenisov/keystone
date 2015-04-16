@@ -7,13 +7,15 @@ import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
+import Control.Monad.Trans.Error (ErrorT(..))
 import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
-import Data.Maybe (isNothing, maybe)
+import Data.Maybe (isNothing, maybe, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Network.HTTP.Types (methodPost)
 import Network.HTTP.Types.Header (HeaderName)
@@ -102,29 +104,27 @@ application config = do
     liftIO $ M.close pipe
   S.get "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
-    case mSubjectToken of
-      Nothing -> do
-        S.json $ E.notFound "Could not find token, ."
+    pipe <- lift $ CD.connect $ database $ config
+    res <- runErrorT $ do
+      when (isNothing mSubjectToken) $ fail "Could not find token, ."
+      let st = T.unpack $ fromJust mSubjectToken
+      mToken <- lift $ CD.runDB pipe $ MT.findTokenById st
+
+      when (isNothing mToken) $ fail $ "Could not find token, " ++ st ++ "."
+      let token = fromJust mToken
+      currentTime <- liftIO getCurrentTime
+
+      when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ st ++ "."
+      lift $ CD.runDB pipe $ MT.produceTokenResponse token
+    liftIO $ M.close pipe
+
+    case res of
+      Left errorMessage -> do
         S.status status404
-      Just subjectToken -> do
-        let st = T.unpack subjectToken
-        pipe <- CD.connect $ database $ config
-        mToken <- CD.runDB pipe $ MT.findTokenById st
-        case mToken of
-          Nothing -> do
-            S.json $ E.notFound $ "Could not find token, " ++ st ++ "."
-            S.status status404
-          Just token -> do
-            currentTime <- liftIO getCurrentTime
-            if currentTime > (MT.expiresAt token)
-              then do
-                S.json $ E.notFound $ "Could not find token, " ++ st ++ "."
-                S.status status404
-              else do
-                resp <- CD.runDB pipe $ MT.produceTokenResponse token
-                S.status status200
-                S.json resp
-        liftIO $ M.close pipe
+        S.json $ E.notFound errorMessage
+      Right resp -> do
+        S.status status200
+        S.json resp
 
 parseRequest :: FromJSON a => ActionM a
 parseRequest = do
