@@ -6,11 +6,12 @@
 module Model.User
 where
 
-import Common (maybeNothing)
 import Control.Applicative ((<$>))
-import Control.Monad (mapM, liftM)
+import Control.Monad (mapM)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
@@ -40,6 +41,6 @@ listUsers = do
   mapM fromBson docs
 
 findUserById :: (MonadIO m) => ObjectId -> M.Action m (Maybe User)
-findUserById uid = do
-  mUser <- M.findOne (M.select ["_id" =: uid] collectionName)
-  maybeNothing mUser $ \v -> Just `liftM` (fromBson v)
+findUserById uid = runMaybeT $ do
+  mUser <- MaybeT $ M.findOne (M.select ["_id" =: uid] collectionName)
+  fromBson mUser

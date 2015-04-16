@@ -4,9 +4,10 @@
 module Model.Token
 where
 
-import Common (maybeNothing)
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Data.Aeson.Types (Value(..), (.=), object, ToJSON(..))
 import Data.Bson ((=:), ObjectId)
@@ -54,7 +55,7 @@ createToken t =
   M.insert collectionName $ toBson t
 
 findTokenById :: MonadIO m => String -> M.Action m (Maybe Token)
-findTokenById tid = do
-  maybeNothing (readMaybe tid :: Maybe ObjectId) $ \oid -> do
-    mToken <- M.findOne (M.select ["_id" =: oid] collectionName)
-    maybeNothing mToken $ \v -> Just `liftM` (fromBson v)
+findTokenById tid = runMaybeT $ do
+  oid <- MaybeT $ return $ readMaybe tid
+  mToken <- MaybeT $ M.findOne (M.select ["_id" =: (oid :: ObjectId)] collectionName)
+  fromBson mToken
