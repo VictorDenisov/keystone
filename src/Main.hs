@@ -3,7 +3,7 @@
 module Main
 where
 
-import Common (loggerName)
+import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -43,12 +43,11 @@ import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Data.Text.Lazy as T
 import qualified Web.Scotty.Trans as S
+import qualified Service as Srv
+import qualified Model.Service as MS
 import qualified Model.Token as MT
 import qualified Model.User as MU
 import qualified User as U
-
-type ScottyM = S.ScottyT E.Error IO
-type ActionM = S.ActionT E.Error IO
 
 main = do
   config <- readConfig
@@ -131,6 +130,16 @@ application config = do
       Right resp -> do
         S.status status200
         S.json resp
+  -- Service API
+  S.post "/v3/services" $ do
+    pipe <- CD.connect $ database $ config
+    (scr :: Srv.ServiceCreateRequest) <- parseRequest
+    let service = Srv.createRequestToService scr
+    sid <- CD.runDB pipe $ MS.createService service
+    liftIO $ M.close pipe
+    S.status status201
+    with_host_url config $ MS.produceServiceReply service sid
+
 
 parseRequest :: FromJSON a => ActionM a
 parseRequest = do

@@ -48,7 +48,7 @@ produceTokenResponse (Token issued expires user) = do
                                         ])
                   ]
 
-createToken :: MonadIO m => Token -> M.Action  m M.Value
+createToken :: MonadIO m => Token -> M.Action m M.Value
 createToken t =
   M.insert collectionName $ toBson t
 
