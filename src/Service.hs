@@ -29,6 +29,6 @@ instance FromJSON ServiceCreateRequest where
         <*> (service .:  "type")
   parseJSON v = typeMismatch "ServiceCreateRequest" v
 
-createRequestToService :: ServiceCreateRequest -> MS.Service
-createRequestToService ServiceCreateRequest{..} =
+newRequestToService :: ServiceCreateRequest -> MS.Service
+newRequestToService ServiceCreateRequest{..} =
   MS.Service description (maybe True id enabled) name stype

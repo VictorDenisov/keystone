@@ -132,9 +132,9 @@ application config = do
         S.json resp
   -- Service API
   S.post "/v3/services" $ do
-    pipe <- CD.connect $ database $ config
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
-    let service = Srv.createRequestToService scr
+    let service = Srv.newRequestToService scr
+    pipe <- CD.connect $ database $ config
     sid <- CD.runDB pipe $ MS.createService service
     liftIO $ M.close pipe
     S.status status201
