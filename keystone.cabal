@@ -38,6 +38,7 @@ executable keystone
                      , text == 1.1.0.0
                      , time == 1.4.2
                      , transformers == 0.3.0.0
+                     , vector == 0.10.9.1
                      , yaml == 0.8.10.1
                      , wai == 3.0.2.3
                      , warp == 3.0.9.3

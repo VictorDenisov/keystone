@@ -1,4 +1,5 @@
 {-# Language DeriveDataTypeable #-}
+{-# Language FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# Language TemplateHaskell #-}
@@ -6,12 +7,14 @@ module Model.Service
 where
 
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
 import Data.Bson (Val(..))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
+import Data.Vector (fromList)
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -54,15 +57,39 @@ instance Val ServiceType where
 
 $(deriveBson ''Service)
 
-produceServiceReply :: Service -> M.ObjectId -> String -> Value
-produceServiceReply (Service{..}) oid baseUrl
-      = object [ "service"
-                    .= (object [ "enabled" .= enabled
+produceServiceJson :: Service -> M.ObjectId -> String -> Value
+produceServiceJson (Service{..}) oid baseUrl
+      = object [ "enabled" .= enabled
                                , "type"    .= stype
                                , "id"      .= (show oid)
-                               , "links"   .= (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show oid)) ])]) ]
+                               , "links"   .= (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show oid)) ])]
+
+produceServiceReply :: Service -> M.ObjectId -> String -> Value
+produceServiceReply (service@Service{..}) oid baseUrl
+      = object [ "service" .= produceServiceJson service oid baseUrl ]
+
+produceServicesReply :: [(M.ObjectId, Service)] -> String -> Value
+produceServicesReply services baseUrl
+    = object [ "links" .= (object [ "next"     .= Null
+                                  , "previous" .= Null
+                                  , "self"     .= (baseUrl ++ "/v3/services")
+                                  ]
+                          )
+             , "services" .= servicesEntry
+             ]
+  where
+    servicesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceServiceJson s i) services
 
 createService :: MonadIO m => Service -> M.Action m M.ObjectId
 createService s = do
   M.ObjId oid <- M.insert collectionName $ toBson s
   return oid
+
+listServices :: (MonadIO m, MonadBaseControl IO m)
+             => M.Action m [(M.ObjectId, Service)]
+listServices = do
+  cur <- M.find $ M.select [] collectionName
+  docs <- M.rest cur
+  services <- mapM fromBson docs
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  return $ zip ids services

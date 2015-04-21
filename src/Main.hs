@@ -5,6 +5,7 @@ where
 
 import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..))
+import Control.Applicative ((<*>))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
@@ -139,7 +140,12 @@ application config = do
     liftIO $ M.close pipe
     S.status status201
     with_host_url config $ MS.produceServiceReply service sid
-
+  S.get "/v3/services" $ do
+    pipe <- CD.connect $ database $ config
+    services <- CD.runDB pipe $ MS.listServices
+    liftIO $ M.close pipe
+    S.status status200
+    with_host_url config $ MS.produceServicesReply services
 
 parseRequest :: FromJSON a => ActionM a
 parseRequest = do
