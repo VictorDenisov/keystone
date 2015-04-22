@@ -6,14 +6,17 @@
 module Model.Service
 where
 
+import Common (aesonOptions, capitalize)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
-import Data.Aeson (FromJSON(..), ToJSON(..))
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
+import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
 import Data.Bson (Val(..))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
+import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
 import Text.Read (readMaybe)
 
@@ -27,7 +30,7 @@ data Service = Service
              { description :: Maybe String
              , enabled     :: Bool
              , name        :: Maybe String
-             , stype       :: ServiceType
+             , type'       :: ServiceType
              } deriving (Show, Read, Eq, Ord, Typeable)
 
 data ServiceType = Identity
@@ -38,31 +41,32 @@ data ServiceType = Identity
                    deriving (Show, Read, Eq, Ord, Typeable)
 
 instance FromJSON ServiceType where
-  parseJSON (String s) = case s of
-    "identity" -> return Identity
-    "compute"  -> return Compute
-    "image"    -> return Image
-    "volume"   -> return Volume
-    "network"  -> return Network
-    _          -> fail $ "Unknown ServiceType " ++ (T.unpack s)
+  parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
+                          Just v -> return v
+                          Nothing -> fail $ "Unknown ServiceType " ++ (T.unpack s)
   parseJSON v = typeMismatch "ServiceType" v
 
 instance ToJSON ServiceType where
   toJSON v = String $ T.pack $ map toLower $ show v
 
 instance Val ServiceType where
-  val st = M.String $ T.pack $ show st
-  cast' (M.String s) = readMaybe $ T.unpack s
+  val st = M.String $ T.pack $ map toLower $ show st
+  cast' (M.String s) = readMaybe $ capitalize $ T.unpack s
   cast' _ = Nothing
 
 $(deriveBson ''Service)
 
+$(deriveJSON aesonOptions ''Service)
+
 produceServiceJson :: Service -> M.ObjectId -> String -> Value
-produceServiceJson (Service{..}) oid baseUrl
-      = object [ "enabled" .= enabled
-                               , "type"    .= stype
-                               , "id"      .= (show oid)
-                               , "links"   .= (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show oid)) ])]
+produceServiceJson (s@Service{..}) oid baseUrl
+      = Object
+        $ insert "id" (String $ T.pack $ show oid)
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show oid)) ])
+        $ fromObject $ toJSON s
+
+fromObject :: Value -> Object
+fromObject (Object o) = o
 
 produceServiceReply :: Service -> M.ObjectId -> String -> Value
 produceServiceReply (service@Service{..}) oid baseUrl
