@@ -146,6 +146,18 @@ application config = do
     liftIO $ M.close pipe
     S.status status200
     with_host_url config $ MS.produceServicesReply services
+  S.get "/v3/services/:sid" $ do
+    (sid :: M.ObjectId) <- S.param "sid"
+    pipe <- CD.connect $ database $ config
+    mService <- CD.runDB pipe $ MS.findServiceById sid
+    liftIO $ M.close pipe
+    case mService of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "Service not found"
+      Just service -> do
+        S.status status200
+        with_host_url config $ MS.produceServiceReply service sid
 
 parseRequest :: FromJSON a => ActionM a
 parseRequest = do

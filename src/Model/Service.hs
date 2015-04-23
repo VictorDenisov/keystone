@@ -9,10 +9,11 @@ where
 import Common (aesonOptions, capitalize)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
-import Data.Bson (Val(..))
+import Data.Bson (Val(..), (=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
@@ -97,3 +98,8 @@ listServices = do
   services <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
   return $ zip ids services
+
+findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)
+findServiceById sid = runMaybeT $ do
+  mService <- MaybeT $ M.findOne (M.select ["_id" =: sid] collectionName)
+  fromBson mService
