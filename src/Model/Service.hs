@@ -103,3 +103,10 @@ findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)
 findServiceById sid = runMaybeT $ do
   mService <- MaybeT $ M.findOne (M.select ["_id" =: sid] collectionName)
   fromBson mService
+
+deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
+deleteService sid = do
+  M.delete $ M.select ["_id" =: sid] collectionName
+  le <- M.runCommand ["getLastError" =: (M.Int32 1)]
+  (M.Int32 n) <- M.look "n" le
+  return $ fromIntegral n

@@ -20,8 +20,8 @@ import Data.Maybe (isNothing, maybe, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Network.HTTP.Types (methodPost)
 import Network.HTTP.Types.Header (HeaderName)
-import Network.HTTP.Types.Status ( status200, status201, status401, status404
-                                 , status500)
+import Network.HTTP.Types.Status ( status200, status201, status204, status401
+                                 , status404, status500)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    , rawPathInfo, requestMethod
                    )
@@ -158,6 +158,16 @@ application config = do
       Just service -> do
         S.status status200
         with_host_url config $ MS.produceServiceReply service sid
+  S.delete "/v3/services/:sid" $ do
+    (sid :: M.ObjectId) <- S.param "sid"
+    pipe <- CD.connect $ database $ config
+    n <- CD.runDB pipe $ MS.deleteService sid
+    liftIO $ M.close pipe
+    if n < 1
+      then do
+        S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
+        S.status status404
+      else S.status status204
 
 parseRequest :: FromJSON a => ActionM a
 parseRequest = do
