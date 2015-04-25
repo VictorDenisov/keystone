@@ -147,7 +147,7 @@ application config = do
     S.status status200
     with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ do
-    (sid :: M.ObjectId) <- S.param "sid"
+    (sid :: M.ObjectId) <- parseId "sid"
     pipe <- CD.connect $ database $ config
     mService <- CD.runDB pipe $ MS.findServiceById sid
     liftIO $ M.close pipe
@@ -159,7 +159,7 @@ application config = do
         S.status status200
         with_host_url config $ MS.produceServiceReply service sid
   S.delete "/v3/services/:sid" $ do
-    (sid :: M.ObjectId) <- S.param "sid"
+    (sid :: M.ObjectId) <- parseId "sid"
     pipe <- CD.connect $ database $ config
     n <- CD.runDB pipe $ MS.deleteService sid
     liftIO $ M.close pipe
@@ -168,6 +168,13 @@ application config = do
         S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
         S.status status404
       else S.status status204
+
+parseId :: Read a => T.Text -> ActionM a
+parseId paramName = do
+  s <- S.param paramName
+  case readMaybe s of
+    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (T.unpack paramName)
+    Just v  -> return v
 
 parseRequest :: FromJSON a => ActionM a
 parseRequest = do
