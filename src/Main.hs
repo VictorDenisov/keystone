@@ -81,7 +81,6 @@ application config = do
   S.get "/v3" $ do
     with_host_url config apiV3
   S.post "/v3/users" $ do
-    pipe <- CD.connect $ database $ config
     (d :: U.UserCreateRequest) <- parseRequest
     cryptedPassword <- runMaybeT $ do
       p <- MaybeT $ return $ U.password d
@@ -93,9 +92,10 @@ application config = do
                 (U.enabled d)
                 (U.name d)
                 (cryptedPassword)
+    pipe <- CD.connect $ database $ config
     e <- CD.runDB pipe $ MU.createUser u
-    S.status status201
     liftIO $ M.close pipe
+    S.status status201
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
