@@ -4,7 +4,7 @@ module Main
 where
 
 import Common (loggerName, ScottyM, ActionM)
-import Config (readConfig, KeystoneConfig(..), Database(..))
+import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
 import Control.Applicative ((<*>))
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -25,7 +25,7 @@ import Network.HTTP.Types.Status ( status200, status201, status204, status401
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    , rawPathInfo, requestMethod
                    )
-import Network.Wai.Handler.Warp (defaultSettings, setPort)
+import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple (fileHandler)
@@ -62,7 +62,9 @@ main = do
                       (certificateFile config)
                       (keyFile config)
   let serverSettings = setPort (port config) defaultSettings
-  runTLS settings serverSettings app
+  case serverType config of
+    Tls   -> runTLS settings serverSettings app
+    Plain -> runSettings serverSettings app
 
 application :: KeystoneConfig -> ScottyM ()
 application config = do

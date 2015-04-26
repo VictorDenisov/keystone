@@ -20,12 +20,23 @@ data KeystoneConfig = KeystoneConfig
                     , endpoint        :: Maybe String
                     , database        :: Database -- TODO Will be verified during creation of the pool
                     , logLevel        :: Priority
+                    , serverType      :: ServerType
                     }
 
 data Database = Database
               { dbHost :: String
               , dbPort :: Int
               }
+
+data ServerType = Tls
+                | Plain
+                  deriving (Read, Show)
+
+instance ToJSON ServerType where
+  toJSON t = String $ T.pack $ show t
+
+instance FromJSON ServerType where
+  parseJSON (String v) = maybe mzero return $ readMaybe $ T.unpack v
 
 instance ToJSON Priority where
   toJSON p = String $ T.pack $ show p
@@ -56,5 +67,6 @@ readConfig = do
                                      , dbPort = 27017
                                      }
                    , logLevel        = WARNING
+                   , serverType      = Plain
                    }
   where defaultPort = 35357

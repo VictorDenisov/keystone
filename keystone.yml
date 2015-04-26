@@ -7,3 +7,4 @@ database:
         dbHost: localhost
         dbPort: 27017
 logLevel: DEBUG
+serverType: Plain
