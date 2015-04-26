@@ -6,7 +6,7 @@
 module Model.Service
 where
 
-import Common (aesonOptions, capitalize)
+import Common (skipTickOptions, capitalize)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -57,7 +57,7 @@ instance Val ServiceType where
 
 $(deriveBson ''Service)
 
-$(deriveJSON aesonOptions ''Service)
+$(deriveJSON skipTickOptions ''Service)
 
 produceServiceJson :: Service -> M.ObjectId -> String -> Value
 produceServiceJson (s@Service{..}) oid baseUrl

@@ -1,5 +1,6 @@
 {
     "service": {
-        "name": "keystone"
+        "name": "keystone",
+        "enabled": false
     }
 }

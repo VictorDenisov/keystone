@@ -24,7 +24,9 @@ loggerName = "Main"
 type ScottyM = S.ScottyT E.Error IO
 type ActionM = S.ActionT E.Error IO
 
-aesonOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
+skipTickOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
+
+dropOptions size = defaultOptions { fieldLabelModifier = drop size }
 
 capitalize :: String -> String
 capitalize "" = ""
