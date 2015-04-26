@@ -166,6 +166,14 @@ application config = do
       Just service -> do
         S.status status200
         with_host_url config $ MS.produceServiceReply service sid
+  S.patch "/v3/services/:sid" $ do
+    (sid :: M.ObjectId) <- parseId "sid"
+    (sur :: Srv.ServiceUpdateRequest) <- parseRequest
+    pipe <- CD.connect $ database $ config
+    _ <- CD.runDB pipe $ MS.updateService sid (Srv.updateRequestToDocument sur)
+    liftIO $ M.close pipe
+    S.status status200
+    --with_host_url config $ MS.produceServiceReply service
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     pipe <- CD.connect $ database $ config
