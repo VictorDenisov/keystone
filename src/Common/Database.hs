@@ -28,3 +28,9 @@ connect dbConf = liftIO $ do
 
 runDB :: MonadIO m => M.Pipe -> M.Action m a -> m a
 runDB p f = M.access p M.master dbName f
+
+affectedDocs :: MonadIO m => M.Action m Int
+affectedDocs = do
+  le <- M.runCommand ["getLastError" M.=: (M.Int32 1)]
+  (M.Int32 n) <- M.look "n" le
+  return $ fromIntegral n

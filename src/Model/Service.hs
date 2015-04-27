@@ -7,6 +7,7 @@ module Model.Service
 where
 
 import Common (skipTickOptions, capitalize)
+import Common.Database (affectedDocs)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -108,13 +109,9 @@ updateService :: (MonadIO m)
               => M.ObjectId -> M.Document -> M.Action m Int
 updateService sid serviceUpdate = do
   M.modify (M.select ["_id" =: sid] collectionName) [ "$set" =: serviceUpdate ]
-  le <- M.runCommand ["getLastError" =: (M.Int32 1)]
-  (M.Int32 n) <- M.look "n" le
-  return $ fromIntegral n
+  affectedDocs
 
 deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteService sid = do
   M.delete $ M.select ["_id" =: sid] collectionName
-  le <- M.runCommand ["getLastError" =: (M.Int32 1)]
-  (M.Int32 n) <- M.look "n" le
-  return $ fromIntegral n
+  affectedDocs
