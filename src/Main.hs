@@ -6,6 +6,7 @@ where
 import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
 import Control.Applicative ((<*>))
+import Control.Exception (bracket)
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
@@ -149,9 +150,7 @@ application config = do
     S.status status201
     with_host_url config $ MS.produceServiceReply service sid
   S.get "/v3/services" $ do
-    pipe <- CD.connect $ database $ config
-    services <- CD.runDB pipe $ MS.listServices
-    liftIO $ M.close pipe
+    services <- CD.withDB (database config) $ MS.listServices
     S.status status200
     with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ do

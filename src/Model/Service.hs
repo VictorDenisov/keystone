@@ -98,6 +98,7 @@ listServices = do
   docs <- M.rest cur
   services <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  fail "Failing list services"
   return $ zip ids services
 
 findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)
