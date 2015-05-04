@@ -1,11 +1,16 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Common.Database
 where
 
 import Common (loggerName)
 import Config (Database(..))
+import Control.Applicative (Applicative)
 import Control.Exception (bracket)
+import Control.Monad.Base (MonadBase)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release, MonadResource, MonadBaseControl, MonadThrow)
 import Data.Text (Text)
 import System.IO.Error ( catchIOError, ioError, userError
                        , ioeGetErrorType, ioeGetLocation, ioeGetErrorString)
@@ -28,8 +33,16 @@ connect dbConf = liftIO $ do
     host = dbHost dbConf
     port = dbPort dbConf
 
-withDB :: MonadIO m => Database -> M.Action IO a -> m a
-withDB dbConf f = liftIO $ bracket (connect dbConf) (M.close) (\pipe -> runDB pipe f)
+withDB :: (MonadBaseControl IO m, MonadThrow m, MonadIO m)
+       => Database -> M.Action m a -> m a
+withDB dbConf f = runResourceT $ do
+  (releaseKey, pipe) <- allocate (M.connect $ M.Host host $ M.PortNumber $ fromIntegral port) M.close
+  v <- lift $ runDB pipe f
+  release releaseKey
+  return v
+  where 
+    host = dbHost dbConf
+    port = dbPort dbConf
 
 runDB :: MonadIO m => M.Pipe -> M.Action m a -> m a
 runDB p f = M.access p M.master dbName f

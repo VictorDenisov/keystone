@@ -1,7 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Common
 where
 
+import Control.Monad.Catch (MonadThrow(..), Exception(..))
+import Control.Monad.Error (MonadError(..))
 import Data.Aeson.TH (defaultOptions, Options(..))
 import Data.Bson (ObjectId(..))
 import Data.Char (toUpper)
@@ -23,6 +26,9 @@ loggerName = "Main"
 
 type ScottyM = S.ScottyT E.Error IO
 type ActionM = S.ActionT E.Error IO
+
+instance MonadThrow m => MonadThrow (S.ActionT E.Error m) where
+  throwM e = S.raise $ E.internalError $ show $ toException e
 
 skipTickOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
 
