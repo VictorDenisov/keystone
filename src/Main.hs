@@ -95,9 +95,7 @@ application config = do
                 (U.enabled d)
                 (U.name d)
                 (cryptedPassword)
-    pipe <- liftIO $ CD.connect $ database $ config
-    e <- CD.runDB pipe $ MU.createUser u
-    liftIO $ M.close pipe
+    e <- CD.withDB (database config) $ MU.createUser u
     S.status status201
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
@@ -144,9 +142,7 @@ application config = do
   S.post "/v3/services" $ do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
     let service = Srv.newRequestToService scr
-    pipe <- liftIO $ CD.connect $ database $ config
-    sid <- CD.runDB pipe $ MS.createService service
-    liftIO $ M.close pipe
+    sid <- CD.withDB (database config) $ MS.createService service
     S.status status201
     with_host_url config $ MS.produceServiceReply service sid
   S.get "/v3/services" $ do
@@ -155,9 +151,7 @@ application config = do
     with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
-    pipe <- liftIO $ CD.connect $ database $ config
-    mService <- CD.runDB pipe $ MS.findServiceById sid
-    liftIO $ M.close pipe
+    mService <- CD.withDB (database config) $ MS.findServiceById sid
     case mService of
       Nothing -> do
         S.status status404
@@ -168,16 +162,12 @@ application config = do
   S.patch "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
-    pipe <- liftIO $ CD.connect $ database $ config
-    _ <- CD.runDB pipe $ MS.updateService sid (Srv.updateRequestToDocument sur)
-    liftIO $ M.close pipe
+    _ <- CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
     S.status status200
     --with_host_url config $ MS.produceServiceReply service
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
-    pipe <- liftIO $ CD.connect $ database $ config
-    n <- CD.runDB pipe $ MS.deleteService sid
-    liftIO $ M.close pipe
+    n <- CD.withDB (database config) $ MS.deleteService sid
     if n < 1
       then do
         S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
