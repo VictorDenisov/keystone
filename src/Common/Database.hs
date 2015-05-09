@@ -14,7 +14,7 @@ import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release,
 import Data.Text (Text)
 import System.IO.Error ( catchIOError, ioError, userError
                        , ioeGetErrorType, ioeGetLocation, ioeGetErrorString)
-import System.Log.Logger (errorM)
+import System.Log.Logger (errorM, infoM)
 
 import qualified Database.MongoDB as M
 
@@ -24,9 +24,9 @@ dbName = "keystone"
 verifyDatabase :: Database -> IO ()
 verifyDatabase dbConf = return ()
 
-connect :: MonadIO m => Database -> m M.Pipe
-connect dbConf = liftIO $ do
-  putStrLn "Connecting to the database"
+connect :: Database -> IO M.Pipe
+connect dbConf = do
+  infoM loggerName "Connecting to the database"
   catchIOError (M.connect $ M.Host host $ M.PortNumber $ fromIntegral port) $ \e -> do
     fail $ "Can't connect to the database: " ++ (ioeGetErrorString e)
   where
@@ -36,7 +36,7 @@ connect dbConf = liftIO $ do
 withDB :: (MonadBaseControl IO m, MonadThrow m, MonadIO m)
        => Database -> M.Action m a -> m a
 withDB dbConf f = runResourceT $ do
-  (releaseKey, pipe) <- allocate (M.connect $ M.Host host $ M.PortNumber $ fromIntegral port) M.close
+  (releaseKey, pipe) <- allocate (connect dbConf) M.close
   v <- lift $ runDB pipe f
   release releaseKey
   return v

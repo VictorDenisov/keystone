@@ -95,14 +95,14 @@ application config = do
                 (U.enabled d)
                 (U.name d)
                 (cryptedPassword)
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     e <- CD.runDB pipe $ MU.createUser u
     liftIO $ M.close pipe
     S.status status201
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     res <- mapM (A.authenticate pipe) (A.methods au)
     case head res of
       Right (tokenId, t) -> do
@@ -116,7 +116,7 @@ application config = do
     liftIO $ M.close pipe
   S.get "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     res <- runErrorT $ do
       when (isNothing mSubjectToken) $ fail "Could not find token, ."
       let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
@@ -144,7 +144,7 @@ application config = do
   S.post "/v3/services" $ do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
     let service = Srv.newRequestToService scr
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     sid <- CD.runDB pipe $ MS.createService service
     liftIO $ M.close pipe
     S.status status201
@@ -155,7 +155,7 @@ application config = do
     with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     mService <- CD.runDB pipe $ MS.findServiceById sid
     liftIO $ M.close pipe
     case mService of
@@ -168,14 +168,14 @@ application config = do
   S.patch "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     _ <- CD.runDB pipe $ MS.updateService sid (Srv.updateRequestToDocument sur)
     liftIO $ M.close pipe
     S.status status200
     --with_host_url config $ MS.produceServiceReply service
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
-    pipe <- CD.connect $ database $ config
+    pipe <- liftIO $ CD.connect $ database $ config
     n <- CD.runDB pipe $ MS.deleteService sid
     liftIO $ M.close pipe
     if n < 1
