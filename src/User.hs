@@ -1,30 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 module User
-where
+( module User
+, module User.Types
+) where
 
+import Common (skipTickOptions)
 import Control.Monad (mzero)
 import Control.Applicative ((<*>), (<$>))
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
+import Data.Aeson.TH (mkParseJSON, defaultOptions)
 
-data UserCreateRequest = UserCreateRequest
-                       { projectId :: String
-                       , description :: String
-                       , domainId :: Maybe String
-                       , email :: String
-                       , enabled :: Bool
-                       , name :: String
-                       , password :: Maybe String
-                       } deriving Show
+import User.Types (UserCreateRequest(..))
 
 instance FromJSON UserCreateRequest where
   parseJSON (Object v) = do
     user <- v .: "user"
-    UserCreateRequest
-        <$> (user .:  "default_project_id")
-        <*> (user .:  "description")
-        <*> (user .:? "domain_id")
-        <*> (user .:  "email")
-        <*> (user .:  "enabled")
-        <*> (user .:  "name")
-        <*> (user .:? "password")
+    parseUcr user
   parseJSON _ = mzero
+
+parseUcr = $(mkParseJSON skipTickOptions ''UserCreateRequest)
+
