@@ -12,6 +12,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Trans.Error (ErrorT(..))
+import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
 import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Bson ((=:))
@@ -100,36 +101,41 @@ application config = do
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
-    pipe <- liftIO $ CD.connect $ database $ config
-    res <- mapM (A.authenticate pipe) (A.methods au)
-    case head res of
-      Right (tokenId, t) -> do
-        resp <- CD.runDB pipe $ MT.produceTokenResponse t
-        S.json resp
-        S.addHeader "X-Subject-Token" (T.pack tokenId)
-        S.status status200
-      Left errorMessage -> do
-        S.json $ E.unauthorized errorMessage
-        S.status status401
-    liftIO $ M.close pipe
+    runResourceT $ do
+      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
+      liftIO $ putStrLn "Waiting for your action"
+      _ <- liftIO getLine
+      liftIO $ putStrLn "Continuing the execution"
+      res <- mapM (A.authenticate pipe) (A.methods au)
+      case head res of
+        Right (tokenId, t) -> lift $ do
+          resp <- CD.runDB pipe $ MT.produceTokenResponse t
+          S.json resp
+          S.addHeader "X-Subject-Token" (T.pack tokenId)
+          S.status status200
+        Left errorMessage -> lift $ do
+          S.json $ E.unauthorized errorMessage
+          S.status status401
+      release releaseKey
   S.get "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
-    pipe <- liftIO $ CD.connect $ database $ config
-    res <- runErrorT $ do
-      when (isNothing mSubjectToken) $ fail "Could not find token, ."
-      let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
+    res <- runResourceT $ do
+      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
+      runErrorT $ do
+        when (isNothing mSubjectToken) $ fail "Could not find token, ."
+        let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
 
-      when (isNothing mst) $ fail "Token is not an object id"
-      let st = fromJust mst
-      mToken <- lift $ CD.runDB pipe $ MT.findTokenById st
+        when (isNothing mst) $ fail "Token is not an object id"
+        let st = fromJust mst
+        mToken <- lift $ CD.runDB pipe $ MT.findTokenById st
 
-      when (isNothing mToken) $ fail $ "Could not find token, " ++ (show st) ++ "."
-      let token = fromJust mToken
-      currentTime <- liftIO getCurrentTime
+        when (isNothing mToken) $ fail $ "Could not find token, " ++ (show st) ++ "."
+        let token = fromJust mToken
+        currentTime <- liftIO getCurrentTime
 
-      when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ (show st) ++ "."
-      lift $ CD.runDB pipe $ MT.produceTokenResponse token
-    liftIO $ M.close pipe
+        when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ (show st) ++ "."
+        lift $ CD.runDB pipe $ MT.produceTokenResponse token
+        lift $ release releaseKey
 
     case res of
       Left errorMessage -> do
