@@ -7,6 +7,7 @@ module Model.User
 where
 
 import Common (fromObject)
+import Common.Database (affectedDocs)
 import Control.Applicative ((<$>))
 import Control.Monad (mapM)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -81,3 +82,8 @@ findUserById :: (MonadIO m) => ObjectId -> M.Action m (Maybe User)
 findUserById uid = runMaybeT $ do
   mUser <- MaybeT $ M.findOne (M.select ["_id" =: uid] collectionName)
   fromBson mUser
+
+deleteUser :: (MonadIO m) => ObjectId -> M.Action m Int
+deleteUser uid = do
+  M.delete $ M.select ["_id" =: uid] collectionName
+  affectedDocs

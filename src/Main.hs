@@ -113,6 +113,14 @@ application config = do
       Just user -> do
         S.status status200
         with_host_url config $ MU.produceUserReply user uid
+  S.delete "/v3/users/:uid" $ do
+    (uid :: M.ObjectId) <- parseId "uid"
+    n <- CD.withDB (database config) $ MU.deleteUser uid
+    if n < 1
+      then do
+        S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
+        S.status status404
+      else S.status status204
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
