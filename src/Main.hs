@@ -84,43 +84,6 @@ application config = do
     with_host_url config apiVersions
   S.get "/v3" $ do
     with_host_url config apiV3
-  S.post "/v3/users" $ do
-    (d :: U.UserCreateRequest) <- parseRequest
-    cryptedPassword <- runMaybeT $ do
-      p <- MaybeT $ return $ U.password d
-      p1 <- liftIO $ makePassword (pack p) 17
-      return $ unpack p1
-    let user = MU.User
-                (Just $ U.description d)
-                (Just $ U.email d)
-                (U.enabled d)
-                (U.name d)
-                (cryptedPassword)
-    uid <- CD.withDB (database config) $ MU.createUser user
-    S.status status201
-    with_host_url config $ MU.produceUserReply user uid
-  S.get "/v3/users" $ do
-    users <- CD.withDB (database config) $ MU.listUsers
-    S.status status200
-    with_host_url config $ MU.produceUsersReply users
-  S.get "/v3/users/:uid" $ do
-    (uid :: M.ObjectId) <- parseId "uid"
-    mUser <- CD.withDB (database config) $ MU.findUserById uid
-    case mUser of
-      Nothing -> do
-        S.status status404
-        S.json $ E.notFound "User not found"
-      Just user -> do
-        S.status status200
-        with_host_url config $ MU.produceUserReply user uid
-  S.delete "/v3/users/:uid" $ do
-    (uid :: M.ObjectId) <- parseId "uid"
-    n <- CD.withDB (database config) $ MU.deleteUser uid
-    if n < 1
-      then do
-        S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
-        S.status status404
-      else S.status status204
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
@@ -205,6 +168,44 @@ application config = do
     if n < 1
       then do
         S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
+        S.status status404
+      else S.status status204
+  -- User API
+  S.post "/v3/users" $ do
+    (d :: U.UserCreateRequest) <- parseRequest
+    cryptedPassword <- runMaybeT $ do
+      p <- MaybeT $ return $ U.password d
+      p1 <- liftIO $ makePassword (pack p) 17
+      return $ unpack p1
+    let user = MU.User
+                (Just $ U.description d)
+                (Just $ U.email d)
+                (U.enabled d)
+                (U.name d)
+                (cryptedPassword)
+    uid <- CD.withDB (database config) $ MU.createUser user
+    S.status status201
+    with_host_url config $ MU.produceUserReply user uid
+  S.get "/v3/users" $ do
+    users <- CD.withDB (database config) $ MU.listUsers
+    S.status status200
+    with_host_url config $ MU.produceUsersReply users
+  S.get "/v3/users/:uid" $ do
+    (uid :: M.ObjectId) <- parseId "uid"
+    mUser <- CD.withDB (database config) $ MU.findUserById uid
+    case mUser of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "User not found"
+      Just user -> do
+        S.status status200
+        with_host_url config $ MU.produceUserReply user uid
+  S.delete "/v3/users/:uid" $ do
+    (uid :: M.ObjectId) <- parseId "uid"
+    n <- CD.withDB (database config) $ MU.deleteUser uid
+    if n < 1
+      then do
+        S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
         S.status status404
       else S.status status204
 
