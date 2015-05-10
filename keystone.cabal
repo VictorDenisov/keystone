@@ -35,6 +35,7 @@ executable keystone
                      , pwstore-fast == 2.4.4
                      , resourcet == 1.1.4.1
                      , scotty == 0.9.1
+                     , split == 0.2.2
                      , template-haskell == 2.9.0.0
                      , th-lift == 0.7.2
                      , text == 1.1.0.0

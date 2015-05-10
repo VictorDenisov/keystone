@@ -7,7 +7,9 @@ import Control.Monad.Catch (MonadThrow(..), Exception(..))
 import Data.Aeson (Value(..), Object)
 import Data.Aeson.TH (defaultOptions, Options(..))
 import Data.Bson (ObjectId(..))
-import Data.Char (toUpper)
+import Data.Char (toUpper, toLower, isUpper)
+import Data.List (intercalate)
+import Data.List.Split (split, whenElt, keepDelimsL)
 import Data.Maybe (maybe)
 
 import Text.Read (readMaybe)
@@ -33,6 +35,13 @@ instance MonadThrow m => MonadThrow (S.ActionT E.Error m) where
 skipTickOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
 
 dropOptions size = defaultOptions { fieldLabelModifier = drop size }
+
+underscoreOptions = defaultOptions { fieldLabelModifier = camelToUnderscore}
+
+camelToUnderscore "" = ""
+camelToUnderscore s = map toLower $ (head s) : (intercalate "_" $ underscoreIt $ tail s)
+
+underscoreIt = split $ keepDelimsL $ whenElt isUpper
 
 capitalize :: String -> String
 capitalize "" = ""

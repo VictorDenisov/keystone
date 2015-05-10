@@ -5,7 +5,7 @@ module User
 , module User.Types
 ) where
 
-import Common (skipTickOptions)
+import Common (underscoreOptions)
 import Control.Monad (mzero)
 import Control.Applicative ((<*>), (<$>))
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
@@ -19,5 +19,5 @@ instance FromJSON UserCreateRequest where
     parseUcr user
   parseJSON _ = mzero
 
-parseUcr = $(mkParseJSON skipTickOptions ''UserCreateRequest)
+parseUcr = $(mkParseJSON underscoreOptions ''UserCreateRequest)
 

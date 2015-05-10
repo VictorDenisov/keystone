@@ -12,7 +12,7 @@ import Control.Applicative ((<*>), (<$>))
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 
 data UserCreateRequest = UserCreateRequest
-                       { projectId :: String
+                       { defaultProjectId :: String
                        , description :: String
                        , domainId :: Maybe String
                        , email :: String
