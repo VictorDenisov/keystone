@@ -11,7 +11,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
-import Control.Monad.Trans.Error (ErrorT(..))
+import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
 import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value, FromJSON(..))
@@ -121,7 +121,7 @@ application config = do
     mSubjectToken <- S.header hXSubjectToken
     res <- runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      runErrorT $ do
+      runExceptT $ do
         when (isNothing mSubjectToken) $ fail "Could not find token, ."
         let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
 

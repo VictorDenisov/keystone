@@ -4,7 +4,6 @@ module Common
 where
 
 import Control.Monad.Catch (MonadThrow(..), Exception(..))
-import Control.Monad.Error (MonadError(..))
 import Data.Aeson.TH (defaultOptions, Options(..))
 import Data.Bson (ObjectId(..))
 import Data.Char (toUpper)
