@@ -6,7 +6,7 @@
 module Model.Service
 where
 
-import Common (skipTickOptions, capitalize)
+import Common (skipTickOptions, capitalize, fromObject)
 import Common.Database (affectedDocs)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -67,9 +67,6 @@ produceServiceJson (s@Service{..}) oid baseUrl
         $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show oid)) ])
         $ fromObject $ toJSON s
 
-fromObject :: Value -> Object
-fromObject (Object o) = o
-
 produceServiceReply :: Service -> M.ObjectId -> String -> Value
 produceServiceReply (service@Service{..}) oid baseUrl
       = object [ "service" .= produceServiceJson service oid baseUrl ]
@@ -98,7 +95,6 @@ listServices = do
   docs <- M.rest cur
   services <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
-  fail "Failing list services"
   return $ zip ids services
 
 findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)

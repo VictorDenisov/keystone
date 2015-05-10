@@ -7,4 +7,4 @@ fi
 
 protocol=$1
 
-curl -v -k -d@create_user_request.json -H "X-Auth-Token: ADMIN" $protocol://localhost:35357/v3/users
+curl -v -k -H "X-Auth-Token: ADMIN" $protocol://127.0.0.1:35357/v3/users?page=0&per_page=3

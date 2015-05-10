@@ -90,14 +90,29 @@ application config = do
       p <- MaybeT $ return $ U.password d
       p1 <- liftIO $ makePassword (pack p) 17
       return $ unpack p1
-    let u = MU.User
+    let user = MU.User
                 (Just $ U.description d)
                 (Just $ U.email d)
                 (U.enabled d)
                 (U.name d)
                 (cryptedPassword)
-    e <- CD.withDB (database config) $ MU.createUser u
+    uid <- CD.withDB (database config) $ MU.createUser user
     S.status status201
+    with_host_url config $ MU.produceUserReply user uid
+  S.get "/v3/users" $ do
+    users <- CD.withDB (database config) $ MU.listUsers
+    S.status status200
+    with_host_url config $ MU.produceUsersReply users
+  S.get "/v3/users/:uid" $ do
+    (uid :: M.ObjectId) <- parseId "uid"
+    mUser <- CD.withDB (database config) $ MU.findUserById uid
+    case mUser of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "User not found"
+      Just user -> do
+        S.status status200
+        with_host_url config $ MU.produceUserReply user uid
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au

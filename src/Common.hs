@@ -4,6 +4,7 @@ module Common
 where
 
 import Control.Monad.Catch (MonadThrow(..), Exception(..))
+import Data.Aeson (Value(..), Object)
 import Data.Aeson.TH (defaultOptions, Options(..))
 import Data.Bson (ObjectId(..))
 import Data.Char (toUpper)
@@ -36,6 +37,9 @@ dropOptions size = defaultOptions { fieldLabelModifier = drop size }
 capitalize :: String -> String
 capitalize "" = ""
 capitalize s = (toUpper $ head s) : tail s
+
+fromObject :: Value -> Object
+fromObject (Object o) = o
 
 instance Parsable ObjectId where
   parseParam t = maybe
