@@ -191,9 +191,14 @@ application config = do
   S.patch "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
-    _ <- CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
-    S.status status200
-    --with_host_url config $ MS.produceServiceReply service
+    mService <- CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
+    case mService of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "Service not found"
+      Just service -> do
+        S.status status200
+        with_host_url config $ MS.produceServiceReply service sid
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     n <- CD.withDB (database config) $ MS.deleteService sid

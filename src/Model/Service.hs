@@ -103,10 +103,11 @@ findServiceById sid = runMaybeT $ do
   fromBson mService
 
 updateService :: (MonadIO m)
-              => M.ObjectId -> M.Document -> M.Action m Int
+              => M.ObjectId -> M.Document -> M.Action m (Maybe Service)
 updateService sid serviceUpdate = do
   M.modify (M.select ["_id" =: sid] collectionName) [ "$set" =: serviceUpdate ]
-  affectedDocs
+  -- If the service is deleted between these commands we assume it's never been updated
+  findServiceById sid
 
 deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteService sid = do
