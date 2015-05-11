@@ -83,6 +83,13 @@ findUserById uid = runMaybeT $ do
   mUser <- MaybeT $ M.findOne (M.select ["_id" =: uid] collectionName)
   fromBson mUser
 
+updateUser :: (MonadIO m)
+           => M.ObjectId -> M.Document -> M.Action m (Maybe User)
+updateUser uid userUpdate = do
+  M.modify (M.select ["_id" =: uid] collectionName) [ "$set" =: userUpdate ]
+  -- If the user is deleted between these commands we assume it's never been updated
+  findUserById uid
+
 deleteUser :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteUser uid = do
   M.delete $ M.select ["_id" =: uid] collectionName

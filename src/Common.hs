@@ -38,6 +38,9 @@ dropOptions size = defaultOptions { fieldLabelModifier = drop size }
 
 underscoreOptions = defaultOptions { fieldLabelModifier = camelToUnderscore}
 
+(<.>) :: Options -> Options -> Options
+xOptions <.> yOptions = yOptions { fieldLabelModifier = fieldLabelModifier xOptions . fieldLabelModifier yOptions }
+
 camelToUnderscore "" = ""
 camelToUnderscore s = map toLower $ (head s) : (intercalate "_" $ underscoreIt $ tail s)
 

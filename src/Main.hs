@@ -200,6 +200,17 @@ application config = do
       Just user -> do
         S.status status200
         with_host_url config $ MU.produceUserReply user uid
+  S.patch "/v3/users/:uid" $ do
+    (uid :: M.ObjectId) <- parseId "uid"
+    (uur :: U.UserUpdateRequest) <- parseRequest
+    mUser <- CD.withDB (database config) $ MU.updateUser uid (U.updateRequestToDocument uur)
+    case mUser of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "User not found"
+      Just user -> do
+        S.status status200
+        with_host_url config $ MU.produceUserReply user uid
   S.delete "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
     n <- CD.withDB (database config) $ MU.deleteUser uid

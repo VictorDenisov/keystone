@@ -20,3 +20,13 @@ data UserCreateRequest = UserCreateRequest
                        , name :: String
                        , password :: Maybe String
                        } deriving Show
+
+data UserUpdateRequest = UserUpdateRequest
+                       { udefaultProjectId :: Maybe String
+                       , udescription :: Maybe String
+                       , udomainId :: Maybe String
+                       , uemail :: Maybe String
+                       , uenabled :: Maybe Bool
+                       , uname :: Maybe String
+                       , upassword :: Maybe String
+                       } deriving Show
