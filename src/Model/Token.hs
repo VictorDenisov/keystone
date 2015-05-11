@@ -30,9 +30,6 @@ data Token = Token { issuedAt  :: UTCTime
 
 $(deriveBson ''Token)
 
-instance ToJSON M.ObjectId where
-  toJSON oid = String $ T.pack $ show oid
-
 produceTokenResponse :: MonadIO m => Token -> M.Action m Value
 produceTokenResponse (Token issued expires user) = do
   u <- fromJust `liftM` MU.findUserById user

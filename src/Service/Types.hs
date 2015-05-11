@@ -5,6 +5,7 @@ where
 import Data.Data (Typeable)
 
 import qualified Model.Service as MS
+import qualified Database.MongoDB as M
 
 data ServiceCreateRequest = ServiceCreateRequest
                           { description :: Maybe String
@@ -19,3 +20,12 @@ data ServiceUpdateRequest = ServiceUpdateRequest
                           , uname        :: Maybe String
                           , utype        :: Maybe MS.ServiceType
                           } deriving (Show, Read, Eq, Ord, Typeable)
+
+data EndpointCreateRequest = EndpointCreateRequest
+                           { einterface :: MS.Interface
+                           , ename      :: Maybe String
+                           , eregion    :: Maybe String
+                           , eurl       :: String
+                           , eserviceId :: M.ObjectId
+                           , eenabled   :: Maybe Bool
+                           } deriving (Show, Read, Eq, Ord, Typeable)

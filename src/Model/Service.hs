@@ -6,7 +6,7 @@
 module Model.Service
 where
 
-import Common (skipTickOptions, capitalize, fromObject)
+import Common (skipTickOptions, capitalize, fromObject, dropOptions)
 import Common.Database (affectedDocs)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -33,6 +33,7 @@ data Service = Service
              , enabled     :: Bool
              , name        :: Maybe String
              , type'       :: ServiceType
+             , endpoints   :: [Endpoint]
              } deriving (Show, Read, Eq, Ord, Typeable)
 
 data ServiceType = Identity
@@ -41,6 +42,18 @@ data ServiceType = Identity
                  | Volume
                  | Network
                    deriving (Show, Read, Eq, Ord, Typeable)
+
+data Endpoint = Endpoint
+              { einterface :: Interface
+              , eurl       :: String
+              , eenabled   :: Bool
+              , eid        :: Maybe ObjectId
+              } deriving (Show, Read, Eq, Ord, Typeable)
+
+data Interface = Admin
+               | Internal
+               | Public
+                 deriving (Show, Read, Eq, Ord, Typeable)
 
 instance FromJSON ServiceType where
   parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
@@ -60,6 +73,24 @@ $(deriveBson ''Service)
 
 $(deriveJSON skipTickOptions ''Service)
 
+instance FromJSON Interface where
+  parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
+                          Just v -> return v
+                          Nothing -> fail $ "Unknown Interface " ++ (T.unpack s)
+  parseJSON v = typeMismatch "Interface" v
+
+instance ToJSON Interface where
+  toJSON v = String $ T.pack $ map toLower $ show v
+
+instance Val Interface where
+  val st = M.String $ T.pack $ map toLower $ show st
+  cast' (M.String s) = readMaybe $ capitalize $ T.unpack s
+  cast' _ = Nothing
+
+$(deriveBson ''Endpoint)
+
+$(deriveJSON (dropOptions 1) ''Endpoint)
+
 produceServiceJson :: Service -> M.ObjectId -> String -> Value
 produceServiceJson (s@Service{..}) oid baseUrl
       = Object
@@ -70,6 +101,17 @@ produceServiceJson (s@Service{..}) oid baseUrl
 produceServiceReply :: Service -> M.ObjectId -> String -> Value
 produceServiceReply (service@Service{..}) oid baseUrl
       = object [ "service" .= produceServiceJson service oid baseUrl ]
+
+produceEndpointJson :: Endpoint -> M.ObjectId -> String -> Value
+produceEndpointJson (s@Endpoint{..}) endpointId baseUrl
+      = Object
+        $ insert "id" (String $ T.pack $ show endpointId)
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show endpointId)) ])
+        $ fromObject $ toJSON s
+
+produceEndpointReply :: Endpoint -> M.ObjectId -> String -> Value
+produceEndpointReply (endpoint@Endpoint{..}) endpointId baseUrl
+      = object [ "endpoint" .= produceEndpointJson endpoint endpointId baseUrl ]
 
 produceServicesReply :: [(M.ObjectId, Service)] -> String -> Value
 produceServicesReply services baseUrl
@@ -113,3 +155,10 @@ deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteService sid = do
   M.delete $ M.select ["_id" =: sid] collectionName
   affectedDocs
+
+addEndpoint :: (MonadIO m) => ObjectId -> Endpoint -> M.Action m (Maybe M.ObjectId)
+addEndpoint sid endpoint = do
+  endpointId <- liftIO M.genObjectId
+  M.modify (M.select ["_id" =: sid] collectionName) [ "$push" =: ["endpoints" =: (toBson $ endpoint { eid = Just endpointId })] ]
+  count <- affectedDocs
+  return $ Just endpointId

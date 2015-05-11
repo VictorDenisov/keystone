@@ -29,9 +29,6 @@ data AuthMethod = PasswordMethod
 data AuthScope = AuthScope
                  deriving Show
 
-instance FromJSON M.ObjectId where
-  parseJSON (String v) = maybe (fail $ "Invalid object id - " ++ (T.unpack v)) return $ readMaybe $ T.unpack v
-
 instance FromJSON AuthRequest where
   parseJSON (Object v) = do
     auth <- v .: "auth"

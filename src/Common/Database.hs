@@ -11,12 +11,16 @@ import Control.Monad.Base (MonadBase)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release, MonadResource, MonadBaseControl, MonadThrow)
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
+import Data.Aeson.Types (typeMismatch)
 import Data.Text (Text)
 import System.IO.Error ( catchIOError, ioError, userError
                        , ioeGetErrorType, ioeGetLocation, ioeGetErrorString)
 import System.Log.Logger (errorM, infoM)
+import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
+import qualified Data.Text as T
 
 dbName :: Text
 dbName = "keystone"
@@ -52,3 +56,12 @@ affectedDocs = do
   le <- M.runCommand ["getLastError" M.=: (M.Int32 1)]
   (M.Int32 n) <- M.look "n" le
   return $ fromIntegral n
+
+instance FromJSON M.ObjectId where
+  parseJSON (String s) = case readMaybe $ T.unpack s of
+                          Just v -> return v
+                          Nothing -> fail $ "Invalid object id - " ++ (T.unpack s)
+  parseJSON v = typeMismatch "ObjectId" v
+
+instance ToJSON M.ObjectId where
+  toJSON v = String $ T.pack $ show v

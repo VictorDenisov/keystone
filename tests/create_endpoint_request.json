@@ -1,0 +1,7 @@
+{
+    "endpoint": {
+        "interface": "admin",
+        "url": "http://localhost:35357/v3",
+        "service_id": "553d6d2e57c5841e36000000"
+    }
+}

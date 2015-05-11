@@ -170,6 +170,18 @@ application config = do
         S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
         S.status status404
       else S.status status204
+  --- Endpoint API
+  S.post "/v3/endpoints" $ do
+    (ecr :: Srv.EndpointCreateRequest) <- parseRequest
+    let endpoint = Srv.newRequestToEndpoint ecr
+    mEid <- CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
+    case mEid of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "Service not found"
+      Just eid -> do
+        S.status status201
+        with_host_url config $ MS.produceEndpointReply endpoint eid
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest

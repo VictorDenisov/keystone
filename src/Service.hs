@@ -7,8 +7,8 @@ module Service
 , module Service.Types
 ) where
 
-import Common (skipTickOptions, dropOptions)
-import Service.Types (ServiceCreateRequest(..), ServiceUpdateRequest(..))
+import Common (skipTickOptions, dropOptions, underscoreOptions, (<.>))
+import Service.Types
 import Control.Applicative ((<*>), (<$>))
 import Data.Aeson ( FromJSON(..), (.:), (.:?), Value(..))
 import Data.Aeson.TH (mkParseJSON, defaultOptions)
@@ -22,7 +22,11 @@ import qualified Model.Service as MS
 
 newRequestToService :: ServiceCreateRequest -> MS.Service
 newRequestToService ServiceCreateRequest{..} =
-  MS.Service description (maybe True id enabled) name type'
+  MS.Service description (maybe True id enabled) name type' []
+
+newRequestToEndpoint :: EndpointCreateRequest -> MS.Endpoint
+newRequestToEndpoint EndpointCreateRequest{..} =
+  MS.Endpoint einterface eurl (maybe True id eenabled) Nothing
 
 updateRequestToDocument :: ServiceUpdateRequest -> M.Document
 updateRequestToDocument ServiceUpdateRequest{..} = concat
@@ -44,6 +48,14 @@ instance FromJSON ServiceUpdateRequest where
     parseSur service
   parseJSON v = typeMismatch (nameBase ''ServiceUpdateRequest) v
 
+instance FromJSON EndpointCreateRequest where
+  parseJSON (Object v) = do
+    endpoint <- v .: "endpoint"
+    parseEcr endpoint
+  parseJSON v = typeMismatch (nameBase ''EndpointCreateRequest) v
+
 parseScr = $(mkParseJSON skipTickOptions ''ServiceCreateRequest)
 
 parseSur = $(mkParseJSON (dropOptions 1) ''ServiceUpdateRequest)
+
+parseEcr = $(mkParseJSON (dropOptions 1 <.> underscoreOptions) ''EndpointCreateRequest)
