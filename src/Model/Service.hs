@@ -114,7 +114,17 @@ produceEndpointReply :: Endpoint -> M.ObjectId -> String -> Value
 produceEndpointReply (endpoint@Endpoint{..}) serviceId baseUrl
       = object [ "endpoint" .= produceEndpointJson endpoint serviceId baseUrl ]
 
-produceEndpointsReply = undefined
+produceEndpointsReply :: [(M.ObjectId, Endpoint)] -> String -> Value
+produceEndpointsReply endpoints baseUrl
+    = object [ "links" .= (object [ "next"     .= Null
+                                  , "previous" .= Null
+                                  , "self"     .= (baseUrl ++ "/v3/endpoints")
+                                  ]
+                          )
+             , "endpoints" .= endpointsEntry
+             ]
+  where
+    endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
 
 produceServicesReply :: [(M.ObjectId, Service)] -> String -> Value
 produceServicesReply services baseUrl
@@ -167,16 +177,12 @@ addEndpoint sid endpoint = do
   count <- affectedDocs
   return $ Just endpointId
 
-unwrapDoc :: M.Document -> M.Document
-unwrapDoc ([f]) = (\(M.Doc d) -> d) (M.value f)
-
 listEndpoints :: (MonadIO m) => M.Action m [(M.ObjectId, Endpoint)]
 listEndpoints = do
-  docs <- M.aggregate collectionName [ ["$project" =: [ "endpoints" =: (M.Int32 1)
-                                                      , "_id" =: (M.Int32 0)]]
+  docs <- M.aggregate collectionName [ ["$project" =: ["endpoints" =: (M.Int32 1)]]
                                      , ["$unwind" =: (M.String "$endpoints")]
                                      ]
-  let docs' = map unwrapDoc docs
-  endpoints <- mapM fromBson docs'
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "id")) docs'
-  return $ zip ids endpoints
+  let eDocs = map ((\(M.Doc d) -> d) . (M.valueAt "endpoints")) docs
+  endpoints <- mapM fromBson eDocs
+  let serviceIds = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  return $ zip serviceIds endpoints
