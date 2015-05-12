@@ -52,22 +52,25 @@ import Data.Text (append, cons, Text, pack)
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Lift ()
+import Language.Haskell.TH.Syntax
 
 class (Show a, Eq a, Typeable a) => Bson a where
   toBson     :: a -> Document
   fromBson   :: Monad m => Document -> m a
 
+type FieldLabelModifier = String -> String
+
 -- | Derive 'Bson' and 'Val' declarations for a data type.
-deriveBson :: Name -> Q [Dec]
-deriveBson type' = do
+deriveBson :: FieldLabelModifier -> Name -> Q [Dec]
+deriveBson flm type' = do
   (cx, conss, keys) <- bsonType
   
   -- Each type in the data type must be an instance of val
   let context = [ classP ''Val [varT key] | key <- keys ] ++ map return cx
   
   -- Generate the functions for the Bson instance
-  let fs = [ funD 'toBson (map deriveToBson conss)
-           , funD 'fromBson [clause [] (normalB $ deriveFromBson conss) []]
+  let fs = [ funD 'toBson (map (deriveToBson flm) conss)
+           , funD 'fromBson [clause [] (normalB $ deriveFromBson flm conss) []]
            ]
   i <- instanceD (sequence context) (mkType ''Bson [mkType type' (map varT keys)]) fs
 
@@ -85,7 +88,7 @@ deriveBson type' = do
   
   where
 
-    -- Check that wha has been provided is a data/newtype declaration
+    -- Check that what has been provided is a data/newtype declaration
     bsonType = do
       info <- reify type'
       case info of
@@ -106,11 +109,11 @@ deriveBson type' = do
     -- deriveToBson generates the clauses that pattern match the
     -- constructors of the data type, and then the function to convert
     -- them to Bson.
-    deriveToBson :: Con -> Q Clause
+    deriveToBson :: FieldLabelModifier -> Con -> Q Clause
     -- If it's a constructor with named fields, we can simply use
     -- selectFields
-    deriveToBson (RecC name fields) = do
-      let fieldsDoc = selectFields $ map (\(n, _, _) -> n) fields
+    deriveToBson flm (RecC name fields) = do
+      let fieldsDoc = selectFields flm $ map (\(n, _, _) -> n) fields
       consDoc <- getConsDoc name
       i <- newName "i"
       -- With data Foo = Foo {one :: String, two :: Int}
@@ -119,7 +122,7 @@ deriveBson type' = do
       clause [asP i (recP name [])] (normalB $ [| (merge $(getConsDoc name)) ($fieldsDoc $(varE i)) |]) []
     -- If it's a normal constructor, generate a document with an array
     -- with the data.
-    deriveToBson (NormalC name types) = do
+    deriveToBson flm (NormalC name types) = do
       -- There are no types, but just a constructor (data Foo = Foo),
       -- simply store the constructor name.
       if null types
@@ -132,21 +135,21 @@ deriveBson type' = do
           fields <- mapM (\_ -> newName "f") types
           clause [conP name (map varP fields)]
             (normalB $ [| (merge $(getConsDoc name)) . (\f -> [dataField =: f]) $ $(listE (map varE fields)) |]) []
-    deriveToBson _ = inputError
+    deriveToBson _ _ = inputError
 
 
     -- deriveFromBson gets the _cons field, and guesses which
     -- constructor to use. Fails if it can't match _cons with a
     -- constructor of the data type.
-    deriveFromBson :: [Con] -> Q Exp
-    deriveFromBson conss = do
+    deriveFromBson :: FieldLabelModifier -> [Con] -> Q Exp
+    deriveFromBson flm conss = do
       con <- newName "con"
       docN <- newName "doc"
       (SigE _ (ConT strtype)) <- runQ [| "" :: String |]
       let doc = varE docN
       lamE [varP docN] $ doE
         [ bindS (varP con) [| lookup consField $doc |]
-        , noBindS $ caseE (sigE (varE con) (conT strtype)) (map (genMatch doc) conss ++ noMatch)
+        , noBindS $ caseE (sigE (varE con) (conT strtype)) (map (genMatch flm doc) conss ++ noMatch)
         ]
  
     noMatch = [match [p| _ |] (normalB [| fail "Couldn't find right constructor" |]) []]
@@ -154,14 +157,14 @@ deriveBson type' = do
 
     -- Generate the case statements after we get the _cons field, to
     -- match it and get the right constructor
-    genMatch :: Q Exp -> Con -> Q Match
-    genMatch doc (RecC name fields) =
+    genMatch :: FieldLabelModifier -> Q Exp -> Con -> Q Match
+    genMatch flm doc (RecC name fields) =
       -- Match the string literal that we got from the doc (_cons)
       flip (match (litP $ StringL $ nameBase name)) [] $ do
-        (fields', stmts) <- genStmts (map (\(n, _, _) -> n) fields) doc
+        (fields', stmts) <- genStmts flm (map (\(n, _, _) -> n) fields) doc
         let ci = noBindS $ [| return $(recConE name fields') |]
         normalB (doE $ stmts ++ [ci])
-    genMatch doc (NormalC name types) =
+    genMatch _ doc (NormalC name types) =
       flip (match (litP $ StringL $ nameBase name)) [] $
         if null types
         then normalB [| return $(conE name) |]
@@ -186,17 +189,17 @@ deriveBson type' = do
                                                 ])
                                    |]
                         ]
-    genMatch _ _ = inputError
+    genMatch _ _ _ = inputError
 
     -- genStmts generates the lookups on the document and also returns
     -- the vars names that are used in the statements, coupled with
     -- the original fields.
-    genStmts :: [Name] -> Q Exp -> Q ([Q (Name, Exp)], [Q Stmt])
-    genStmts [] _ = return ([], [])
-    genStmts (f : fs) doc = do
+    genStmts :: FieldLabelModifier -> [Name] -> Q Exp -> Q ([Q (Name, Exp)], [Q Stmt])
+    genStmts _ [] _ = return ([], [])
+    genStmts flm (f : fs) doc = do
       fvar <- newName "f"
-      let stmt = bindS (varP fvar) $ [| lookup (pack $ nameBase f) $doc |]
-      (fields, stmts) <- genStmts fs doc
+      let stmt = bindS (varP fvar) $ [| lookup (pack $(liftString $ flm $ nameBase f)) $doc |]
+      (fields, stmts) <- genStmts flm fs doc
       return $ (return (f, VarE fvar) : fields, stmt : stmts)
 
 
@@ -213,14 +216,14 @@ Please note that there is no checking for the names to be actual
 fields of the bson document mapped to a datatype, so be careful.
 
 -}
-selectFields :: [Name] -> Q Exp
-selectFields ns = do
+selectFields :: FieldLabelModifier -> [Name] -> Q Exp
+selectFields flm ns = do
   d <- newName "d"
   e <- gf d ns
   lamE [varP d] (return e)
   where
     gf _ []        = [| [] |]
-    gf d (n : ns') = [| ($(getLabel n) =: $(varE n) $(varE d)) : $(gf d ns') |]
+    gf d (n : ns') = [| ($(getLabel flm n) =: $(varE n) $(varE d)) : $(gf d ns') |]
 
 {-|
 
@@ -236,8 +239,8 @@ getConsDoc n = [| [consField =: nameBase n] |]
 subDocument :: Label -> Document -> Document
 subDocument lab doc = [append lab (cons '.' l) := v | (l := v) <- doc]
 
-getLabel :: Name -> Q Exp
-getLabel n = [| (pack $ nameBase n) |]
+getLabel :: FieldLabelModifier -> Name -> Q Exp
+getLabel flm n = [| (pack $(liftString $ flm $ nameBase n)) |]
 
 {-|
 
@@ -246,7 +249,7 @@ Returns a function that gets a datatype and a value, and generates a 'Document' 
 @$(getField 'time) post@ will generate @[\"time\" =: time post]@.
 
 -}
-getField :: Name -> Q Exp
-getField n = [| \d -> $(getLabel n) =: $(varE n) d |]
+getField :: FieldLabelModifier -> Name -> Q Exp
+getField flm n = [| \d -> $(getLabel flm n) =: $(varE n) d |]
 
 

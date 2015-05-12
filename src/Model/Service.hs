@@ -69,7 +69,7 @@ instance Val ServiceType where
   cast' (M.String s) = readMaybe $ capitalize $ T.unpack s
   cast' _ = Nothing
 
-$(deriveBson ''Service)
+$(deriveBson id ''Service)
 
 $(deriveJSON skipTickOptions ''Service)
 
@@ -87,7 +87,7 @@ instance Val Interface where
   cast' (M.String s) = readMaybe $ capitalize $ T.unpack s
   cast' _ = Nothing
 
-$(deriveBson ''Endpoint)
+$(deriveBson (drop 1) ''Endpoint)
 
 $(deriveJSON (dropOptions 1) ''Endpoint)
 

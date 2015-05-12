@@ -28,7 +28,7 @@ data Token = Token { issuedAt  :: UTCTime
                    , user      :: M.ObjectId
                    } deriving (Show, Read, Eq, Ord, Typeable)
 
-$(deriveBson ''Token)
+$(deriveBson id ''Token)
 
 produceTokenResponse :: MonadIO m => Token -> M.Action m Value
 produceTokenResponse (Token issued expires user) = do

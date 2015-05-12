@@ -37,7 +37,7 @@ data User = User { description :: Maybe String
                  , password :: Maybe String -- hash of the password
                  } deriving (Show, Read, Eq, Ord, Typeable)
 
-$(deriveBson ''User)
+$(deriveBson id ''User)
 
 $(deriveJSON defaultOptions ''User)
 
