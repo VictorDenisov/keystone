@@ -179,9 +179,13 @@ application config = do
       Nothing -> do
         S.status status404
         S.json $ E.notFound "Service not found"
-      Just eid -> do
+      Just _eid -> do
         S.status status201
-        with_host_url config $ MS.produceEndpointReply endpoint eid
+        with_host_url config $ MS.produceEndpointReply endpoint (Srv.eserviceId ecr)
+  S.get "/v3/endpoints" $ do
+    endpoints <- CD.withDB (database config) $ MS.listEndpoints
+    S.status status200
+    with_host_url config $ MS.produceEndpointsReply endpoints
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest

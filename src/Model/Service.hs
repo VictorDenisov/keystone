@@ -103,15 +103,18 @@ produceServiceReply (service@Service{..}) oid baseUrl
       = object [ "service" .= produceServiceJson service oid baseUrl ]
 
 produceEndpointJson :: Endpoint -> M.ObjectId -> String -> Value
-produceEndpointJson (s@Endpoint{..}) endpointId baseUrl
+produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
       = Object
-        $ insert "id" (String $ T.pack $ show endpointId)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show endpointId)) ])
+        -- Endpoint already has its own id in its structure
+        $ insert "service_id" (String $ T.pack $ show serviceId)
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show eid)) ])
         $ fromObject $ toJSON s
 
 produceEndpointReply :: Endpoint -> M.ObjectId -> String -> Value
-produceEndpointReply (endpoint@Endpoint{..}) endpointId baseUrl
-      = object [ "endpoint" .= produceEndpointJson endpoint endpointId baseUrl ]
+produceEndpointReply (endpoint@Endpoint{..}) serviceId baseUrl
+      = object [ "endpoint" .= produceEndpointJson endpoint serviceId baseUrl ]
+
+produceEndpointsReply = undefined
 
 produceServicesReply :: [(M.ObjectId, Service)] -> String -> Value
 produceServicesReply services baseUrl
