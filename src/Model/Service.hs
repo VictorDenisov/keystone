@@ -159,6 +159,21 @@ deleteService sid = do
 addEndpoint :: (MonadIO m) => ObjectId -> Endpoint -> M.Action m (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
   endpointId <- liftIO M.genObjectId
+  -- TODO Replace endpoints with label generator
   M.modify (M.select ["_id" =: sid] collectionName) [ "$push" =: ["endpoints" =: (toBson $ endpoint { eid = Just endpointId })] ]
   count <- affectedDocs
   return $ Just endpointId
+
+unwrapDoc :: M.Document -> M.Document
+unwrapDoc ([f]) = (\(M.Doc d) -> d) (M.value f)
+
+listEndpoints :: (MonadIO m) => M.Action m [(M.ObjectId, Endpoint)]
+listEndpoints = do
+  docs <- M.aggregate collectionName [ ["$project" =: [ "endpoints" =: (M.Int32 1)
+                                                      , "_id" =: (M.Int32 0)]]
+                                     , ["$unwind" =: (M.String "$endpoints")]
+                                     ]
+  let docs' = map unwrapDoc docs
+  endpoints <- mapM fromBson docs'
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "id")) docs'
+  return $ zip ids endpoints
