@@ -1,0 +1,8 @@
+{
+    "project": {
+        "description": "a project",
+        "enabled": true,
+        "name": "admin",
+        "domain_id": "default"
+    }
+}
