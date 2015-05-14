@@ -44,9 +44,11 @@ import qualified Auth as A
 import qualified Common.Database as CD
 import qualified Error as E
 import qualified Database.MongoDB as M
+import qualified Project as P
 import qualified Data.Text.Lazy as T
 import qualified Web.Scotty.Trans as S
 import qualified Service as Srv
+import qualified Model.Project as MP
 import qualified Model.Service as MS
 import qualified Model.Token as MT
 import qualified Model.User as MU
@@ -186,6 +188,13 @@ application config = do
     endpoints <- CD.withDB (database config) $ MS.listEndpoints
     S.status status200
     with_host_url config $ MS.produceEndpointsReply endpoints
+  -- Project API
+  S.post "/v3/projects" $ do
+    (pcr :: P.ProjectCreateRequest) <- parseRequest
+    let project = P.newRequestToProject pcr
+    pid <- CD.withDB (database config) $ MP.createProject project
+    S.status status201
+    with_host_url config $ MP.produceProjectReply project pid
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest
