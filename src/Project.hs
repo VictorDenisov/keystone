@@ -6,8 +6,9 @@ module Project
 , module Project.Types
 ) where
 
+import Common (underscoreOptions)
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object, (.:))
-import Data.Aeson.TH (mkParseJSON, defaultOptions)
+import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (typeMismatch)
 import Data.Maybe (fromMaybe)
 import Project.Types
@@ -26,5 +27,5 @@ instance FromJSON ProjectCreateRequest where
     parsePcr project
   parseJSON v = typeMismatch (nameBase ''ProjectCreateRequest) v
 
-parsePcr = $(mkParseJSON defaultOptions ''ProjectCreateRequest)
+parsePcr = $(mkParseJSON underscoreOptions ''ProjectCreateRequest)
 
