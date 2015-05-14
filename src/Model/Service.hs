@@ -19,6 +19,7 @@ import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
+import Data.Maybe (fromJust)
 import Data.Vector (fromList)
 import Text.Read (readMaybe)
 
@@ -107,7 +108,7 @@ produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
       = Object
         -- Endpoint already has its own id in its structure
         $ insert "service_id" (String $ T.pack $ show serviceId)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show eid)) ])
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show $ fromJust eid)) ])
         $ fromObject $ toJSON s
 
 produceEndpointReply :: Endpoint -> M.ObjectId -> String -> Value
