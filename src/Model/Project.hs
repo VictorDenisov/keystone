@@ -1,4 +1,5 @@
 {-# Language DeriveDataTypeable #-}
+{-# Language FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -8,12 +9,14 @@ where
 import Common (capitalize, fromObject)
 
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
+import Data.Vector (fromList)
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -43,7 +46,28 @@ produceProjectReply :: Project -> M.ObjectId -> String -> Value
 produceProjectReply project pid baseUrl
       = object [ "project" .= produceProjectJson project pid baseUrl ]
 
+produceProjectsReply :: [(M.ObjectId, Project)] -> String -> Value
+produceProjectsReply projects baseUrl
+    = object [ "links" .= (object [ "next"     .= Null
+                                  , "previous" .= Null
+                                  , "self"     .= (baseUrl ++ "/v3/projects")
+                                  ]
+                          )
+             , "projects" .= projectsEntry
+             ]
+  where
+    projectsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceProjectJson s i) projects
+
 createProject :: MonadIO m => Project -> M.Action m M.ObjectId
 createProject p = do
   M.ObjId pid <- M.insert collectionName $ toBson p
   return pid
+
+listProjects :: (MonadIO m, MonadBaseControl IO m)
+             => M.Action m [(M.ObjectId, Project)]
+listProjects = do
+  cur <- M.find $ M.select [] collectionName
+  docs <- M.rest cur
+  projects <- mapM fromBson docs
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  return $ zip ids projects

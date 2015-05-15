@@ -195,6 +195,10 @@ application config = do
     pid <- CD.withDB (database config) $ MP.createProject project
     S.status status201
     with_host_url config $ MP.produceProjectReply project pid
+  S.get "/v3/projects" $ do
+    projects <- CD.withDB (database config) $ MP.listProjects
+    S.status status200
+    with_host_url config $ MP.produceProjectsReply projects
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest

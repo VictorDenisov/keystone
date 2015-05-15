@@ -163,6 +163,7 @@ updateService :: (MonadIO m)
 updateService sid serviceUpdate = do
   M.modify (M.select ["_id" =: sid] collectionName) [ "$set" =: serviceUpdate ]
   -- If the service is deleted between these commands we assume it's never been updated
+  -- TODO Remove this from here. It should be handled by a higher layer.
   findServiceById sid
 
 deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
