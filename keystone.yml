@@ -2,7 +2,7 @@ adminToken: ADMIN
 certificateFile: server.crt
 keyFile: server.key
 port: 35357
-endpoint: https://localhost:35357
+#endpoint: http://localhost:35357
 database:
         dbHost: localhost
         dbPort: 27017

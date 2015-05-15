@@ -284,17 +284,21 @@ hXAuthToken = "X-Auth-Token"
 hXSubjectToken :: T.Text
 hXSubjectToken = "X-Subject-Token"
 
-host_url :: ActionM (Maybe String)
-host_url = do
+host_url :: ServerType -> ActionM (Maybe String)
+host_url st = do
   mh <- S.header "host"
-  return $ fmap (\h -> "https://" ++ (T.unpack h)) mh
+  let protocol =
+          case st of
+            Plain -> "http"
+            Tls   -> "https"
+  return $ fmap (\h -> protocol ++ "://" ++ (T.unpack h)) mh
 
 with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
 with_host_url config v = do
   case endpoint config of
     Just e -> S.json $ v e
     Nothing -> do
-      mh <- host_url
+      mh <- host_url $ serverType config
       case mh of
         Just h -> S.json $ v h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
