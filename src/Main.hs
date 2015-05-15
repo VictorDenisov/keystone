@@ -199,6 +199,16 @@ application config = do
     projects <- CD.withDB (database config) $ MP.listProjects
     S.status status200
     with_host_url config $ MP.produceProjectsReply projects
+  S.get "/v3/projects/:pid" $ do
+    (pid :: M.ObjectId) <- parseId "pid"
+    mProject <- CD.withDB (database config) $ MP.findProjectById pid
+    case mProject of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "Project not found"
+      Just project -> do
+        S.status status200
+        with_host_url config $ MP.produceProjectReply project pid
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest

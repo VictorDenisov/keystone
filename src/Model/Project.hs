@@ -10,9 +10,11 @@ import Common (capitalize, fromObject)
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
 import Data.Aeson.TH (deriveJSON, defaultOptions)
+import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
@@ -71,3 +73,8 @@ listProjects = do
   projects <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
   return $ zip ids projects
+
+findProjectById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Project)
+findProjectById pid = runMaybeT $ do
+  mProject <- MaybeT $ M.findOne (M.select ["_id" =: pid] collectionName)
+  fromBson mProject
