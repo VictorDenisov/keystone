@@ -20,6 +20,9 @@ executable keystone
   other-modules:       Version
                      , User
                      , Config
+                     , Model.Project
+                     , Model.Role
+                     , Model.Service
                      , Model.User
   -- other-extensions:
   build-depends:       base >=4.7 && <4.8

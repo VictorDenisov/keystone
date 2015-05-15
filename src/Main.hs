@@ -42,17 +42,19 @@ import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
-import qualified Error as E
-import qualified Database.MongoDB as M
-import qualified Project as P
 import qualified Data.Text.Lazy as T
-import qualified Web.Scotty.Trans as S
-import qualified Service as Srv
+import qualified Database.MongoDB as M
+import qualified Error as E
 import qualified Model.Project as MP
+import qualified Model.Role as MR
 import qualified Model.Service as MS
 import qualified Model.Token as MT
 import qualified Model.User as MU
+import qualified Project as P
+import qualified Role as R
+import qualified Service as Srv
 import qualified User as U
+import qualified Web.Scotty.Trans as S
 
 main = do
   config <- readConfig
@@ -258,6 +260,27 @@ application config = do
         S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
         S.status status404
       else S.status status204
+  -- Role API
+  S.post "/v3/roles" $ do
+    (rcr :: R.RoleCreateRequest) <- parseRequest
+    let role = R.newRequestToRole rcr
+    rid <- CD.withDB (database config) $ MR.createRole role
+    S.status status201
+    with_host_url config $ MR.produceRoleReply role rid
+  S.get "/v3/roles" $ do
+    roles <- CD.withDB (database config) $ MR.listRoles
+    S.status status200
+    with_host_url config $ MR.produceRolesReply roles
+  S.get "/v3/roles/:rid" $ do
+    (rid :: M.ObjectId) <- parseId "rid"
+    mRole <- CD.withDB (database config) $ MR.findRoleById rid
+    case mRole of
+      Nothing -> do
+        S.status status404
+        S.json $ E.notFound "Role not found"
+      Just role -> do
+        S.status status200
+        with_host_url config $ MR.produceRoleReply role rid
 
 parseId :: Read a => T.Text -> ActionM a
 parseId paramName = do
