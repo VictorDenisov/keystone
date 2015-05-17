@@ -8,7 +8,7 @@ import qualified Database.MongoDB as M
 
 data ProjectCreateRequest = ProjectCreateRequest
                           { description :: Maybe String
-                          , domainId    :: String
+                          , domainId    :: Maybe String
                           , name        :: String
                           , enabled     :: Maybe Bool
                           } deriving (Show, Read, Eq, Ord, Typeable)

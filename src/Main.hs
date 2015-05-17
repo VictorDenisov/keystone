@@ -211,6 +211,12 @@ application config = do
       Just project -> do
         S.status status200
         with_host_url config $ MP.produceProjectReply project pid
+  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ do
+    (pid :: M.ObjectId) <- parseId "pid"
+    (uid :: M.ObjectId) <- parseId "uid"
+    (rid :: M.ObjectId) <- parseId "rid"
+    res <- CD.withDB (database config) $ MP.addUserWithRole (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid)
+    S.status status204
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest

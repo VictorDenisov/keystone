@@ -7,8 +7,12 @@ module Model.Project
 where
 
 import Common (capitalize, fromObject)
+import Common.Database (affectedDocs)
 
+import Control.Monad (when)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
@@ -18,11 +22,18 @@ import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
+import Data.Time.Clock (getCurrentTime)
 import Data.Vector (fromList)
+import Model.Common (TransactionId(..), CaptureStatus(..))
+import Model.Transaction (Transaction(..))
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
 import qualified Data.Text as T
+
+import qualified Model.Role as MR
+import qualified Model.Transaction as Tr
+import qualified Model.User as MU
 
 collectionName :: M.Collection
 collectionName = "project"
@@ -32,6 +43,12 @@ data Project = Project
              , description :: Maybe String
              , enabled :: Bool
              } deriving (Show, Read, Eq, Ord, Typeable)
+
+-- aux fields
+userRoleAssignments = "userRoleAssignments"
+pendingTransactions = "pendingTransactions"
+
+newtype ProjectId = ProjectId M.ObjectId
 
 $(deriveBson id ''Project)
 
@@ -78,3 +95,72 @@ findProjectById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Project)
 findProjectById pid = runMaybeT $ do
   mProject <- MaybeT $ M.findOne (M.select ["_id" =: pid] collectionName)
   fromBson mProject
+
+addUserWithRole :: (MonadIO m)
+                => ProjectId -> MU.UserId -> MR.RoleId -> M.Action m (Either String Int)
+addUserWithRole (ProjectId pid) (MU.UserId uid) (MR.RoleId rid) = runExceptT $ do
+  let t = (AddRole uid rid pid)
+  curTime <- liftIO getCurrentTime
+  (M.ObjId tid) <- lift $ M.insert Tr.collectionName $ [Tr.state =: Tr.Initial, Tr.lastModified =: curTime] ++ (toBson t)
+  lift $ M.modify (M.select ["_id" =: tid, Tr.state =: Tr.Initial] Tr.collectionName)
+                                              [ "$set" =: [Tr.state =: Tr.Pending]
+                                              , "$currentDate" =: [Tr.lastModified =: True]]
+  pendingCount <- lift affectedDocs
+  when (pendingCount /= 1) $ fail "Failed to move to pending state. Couldn't find created transaction"
+  rcs <- lift $ MR.captureRole rid (TransactionId tid)
+  when (rcs == CaptureFailed) $ do
+    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    fail $ "Failed to capture role with id " ++ (show rid)
+  ucs <- lift $ MU.captureUser uid (TransactionId tid)
+  when (ucs == CaptureFailed) $ do
+    lift $ MR.rollbackCaptureRole rid (TransactionId tid)
+    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    fail $ "Failed to capture user with id " ++ (show uid)
+  urcs <- lift $ addUserRolePair (ProjectId pid) (MU.UserId uid) (MR.RoleId rid) (TransactionId tid)
+  when (urcs == CaptureFailed) $ do
+    lift $ MU.rollbackCaptureUser uid (TransactionId tid)
+    lift $ MR.rollbackCaptureRole rid (TransactionId tid)
+    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    fail "Failed to update project with user and role"
+  lift $ M.modify (M.select ["_id" =: tid, Tr.state =: Tr.Pending] Tr.collectionName)
+                                              [ "$set" =: [Tr.state =: Tr.Applied]
+                                              , "$currentDate" =: [Tr.lastModified =: True]]
+  appliedCount <- lift affectedDocs
+  when (appliedCount /= 1) $ do
+    lift $ MU.rollbackCaptureUser uid (TransactionId tid)
+    lift $ MR.rollbackCaptureRole rid (TransactionId tid)
+    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    fail "Failed to move transaction to applied state"
+  lift $ MR.pullTransaction rid (TransactionId tid)
+  lift $ MU.pullTransaction uid (TransactionId tid)
+  lift $ pullTransaction pid (TransactionId tid)
+  lift $ M.modify (M.select ["_id" =: tid, Tr.state =: Tr.Applied] Tr.collectionName)
+                                              [ "$set" =: [Tr.state =: Tr.Done]
+                                              , "$currentDate" =: [Tr.lastModified =: True]]
+  return 1
+
+addUserRolePair :: (MonadIO m)
+                => ProjectId
+                -> MU.UserId
+                -> MR.RoleId
+                -> TransactionId
+                -> M.Action m CaptureStatus
+addUserRolePair (ProjectId pid)
+                (MU.UserId uid)
+                (MR.RoleId rid)
+                (TransactionId tid) = do
+  M.modify (M.select ["_id" =: pid, pendingTransactions =: ["$ne" =: tid] ] collectionName)
+                                      [ "$push"  =: [userRoleAssignments =: [ "userId" =: uid
+                                                                            , "roleId" =: rid
+                                                                            ]]
+                                      , "$push" =: [pendingTransactions =: tid]
+                                      ]
+  count <- affectedDocs
+  if count == 1
+    then return Captured
+    else return CaptureFailed
+
+pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
+pullTransaction pid (TransactionId tid) = do
+  M.modify (M.select ["_id" =: pid, pendingTransactions =: tid] collectionName)
+                                      ["$pull" =: [pendingTransactions =: tid]]

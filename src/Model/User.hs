@@ -22,6 +22,7 @@ import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
+import Model.Common (CaptureStatus(..), TransactionId(..))
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -36,6 +37,12 @@ data User = User { description :: Maybe String
                  , name :: String
                  , password :: Maybe String -- hash of the password
                  } deriving (Show, Read, Eq, Ord, Typeable)
+
+-- aux fields
+pendingTransactions = "pendingTransactions"
+refCount = "refCount"
+
+newtype UserId = UserId M.ObjectId
 
 $(deriveBson id ''User)
 
@@ -94,3 +101,31 @@ deleteUser :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteUser uid = do
   M.delete $ M.select ["_id" =: uid] collectionName
   affectedDocs
+
+captureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
+captureUser uid (TransactionId tid) = do
+  M.modify (M.select ["_id" =: uid, pendingTransactions =: ["$ne" =: tid] ] collectionName)
+                                      [ "$inc"  =: [refCount =: (M.Int32 1)]
+                                      , "$push" =: [pendingTransactions =: tid]
+                                      ]
+  count <- affectedDocs
+  if count == 1
+    then return Captured
+    else return CaptureFailed
+
+rollbackCaptureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
+rollbackCaptureUser uid (TransactionId tid) = do
+  M.modify (M.select ["_id" =: uid, pendingTransactions =: tid] collectionName)
+                                      [ "$dec"  =: [refCount =: (M.Int32 1)]
+                                      , "$pull" =: [pendingTransactions =: tid]
+                                      ]
+  count <- affectedDocs
+  if count == 1
+    then return Captured
+    else return CaptureFailed
+
+pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
+pullTransaction uid (TransactionId tid) = do
+  M.modify (M.select ["_id" =: uid, pendingTransactions =: tid] collectionName)
+                                      ["$pull" =: [pendingTransactions =: tid]]
+
