@@ -198,7 +198,8 @@ application config = do
     S.status status201
     with_host_url config $ MP.produceProjectReply project pid
   S.get "/v3/projects" $ do
-    projects <- CD.withDB (database config) $ MP.listProjects
+    projectName <- parseMaybeString "name"
+    projects <- CD.withDB (database config) $ MP.listProjects projectName
     S.status status200
     with_host_url config $ MP.produceProjectsReply projects
   S.get "/v3/projects/:pid" $ do
@@ -310,7 +311,7 @@ parseMaybeString paramName =
 
 parseMaybeParam :: Read a => T.Text -> ActionM (Maybe a)
 parseMaybeParam paramName =
-  (flip S.rescue) (\msg -> (liftIO $ putStrLn $ show msg) >> (return Nothing)) $ do
+  (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
     case readMaybe value of
       Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (T.unpack paramName)

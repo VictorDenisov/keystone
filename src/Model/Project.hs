@@ -25,6 +25,7 @@ import Data.HashMap.Strict (insert)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (getCurrentTime)
 import Data.Vector (fromList)
+import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (TransactionId(..), CaptureStatus(..))
 import Model.Transaction (Transaction(..))
 import Text.Read (readMaybe)
@@ -93,9 +94,12 @@ createProject p = do
   return pid
 
 listProjects :: (MonadIO m, MonadBaseControl IO m)
-             => M.Action m [(M.ObjectId, Project)]
-listProjects = do
-  cur <- M.find $ M.select [] collectionName
+             => (Maybe String) -> M.Action m [(M.ObjectId, Project)]
+listProjects mName = do
+  let nameFilter = case mName of
+                      Nothing -> []
+                      Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
+  cur <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cur
   projects <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
