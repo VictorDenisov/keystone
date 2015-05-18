@@ -22,6 +22,7 @@ import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
+import Data.Maybe (catMaybes)
 import Data.Time.Clock (getCurrentTime)
 import Data.Vector (fromList)
 import Model.Common (TransactionId(..), CaptureStatus(..))
@@ -45,7 +46,9 @@ data Project = Project
              } deriving (Show, Read, Eq, Ord, Typeable)
 
 -- aux fields
+userRoleAssignments :: T.Text
 userRoleAssignments = "userRoleAssignments"
+pendingTransactions :: T.Text
 pendingTransactions = "pendingTransactions"
 
 newtype ProjectId = ProjectId M.ObjectId
@@ -164,3 +167,20 @@ pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
 pullTransaction pid (TransactionId tid) = do
   M.modify (M.select ["_id" =: pid, pendingTransactions =: tid] collectionName)
                                       ["$pull" =: [pendingTransactions =: tid]]
+
+listUserRoles :: (MonadIO m) => ProjectId -> MU.UserId -> M.Action m [(M.ObjectId, MR.Role)]
+listUserRoles (ProjectId pid) (MU.UserId uid) = do
+  docs <- M.aggregate collectionName [ ["$match" =: ["_id" =: pid]]
+                                     , ["$unwind" =: (M.String $ '$' `T.cons` userRoleAssignments)]
+                                     , ["$match" =: [(userRoleAssignments `T.append` ".userId") =: uid]]
+                                     ]
+  liftIO $ putStrLn $ show docs
+  let roleIds = map ((\(M.ObjId o) -> o) . (M.valueAt "roleId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)) docs
+
+  roles <- mapM MR.findRoleById roleIds
+  liftIO $ putStrLn $ show roles
+  let res = catMaybes ((flip map) (zip roleIds roles)
+                                            (\(a, b') -> case b' of
+                                                  Just b -> Just (a, b)
+                                                  Nothing -> Nothing))
+  return res

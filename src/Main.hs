@@ -211,6 +211,12 @@ application config = do
       Just project -> do
         S.status status200
         with_host_url config $ MP.produceProjectReply project pid
+  S.get "/v3/projects/:pid/users/:uid/roles" $ do
+    (pid :: M.ObjectId) <- parseId "pid"
+    (uid :: M.ObjectId) <- parseId "uid"
+    roles <- CD.withDB (database config) $ MP.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
+    S.status status200
+    with_host_url config $ MR.produceRolesReply roles -- TODO base url should be revised here
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
