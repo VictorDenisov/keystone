@@ -293,6 +293,10 @@ application config = do
       Just role -> do
         S.status status200
         with_host_url config $ MR.produceRoleReply role rid
+  S.get "/v3/role_assignments" $ do
+    roles <- CD.withDB (database config) $ MP.listAssignments Nothing Nothing
+    S.status status200
+    with_host_url config $ MP.produceAssignmentsReply roles -- TODO base url should be revised here
 
 parseId :: Read a => T.Text -> ActionM a
 parseId paramName = do

@@ -53,9 +53,16 @@ pendingTransactions = "pendingTransactions"
 
 newtype ProjectId = ProjectId M.ObjectId
 
+
 $(deriveBson id ''Project)
 
 $(deriveJSON defaultOptions ''Project)
+
+data Assignment = Assignment
+                { userId :: MU.UserId
+                , roleId :: MR.RoleId
+                , projectId :: ProjectId
+                }
 
 produceProjectJson :: Project -> M.ObjectId -> String -> Value
 produceProjectJson (project@Project{..}) pid baseUrl
@@ -184,3 +191,40 @@ listUserRoles (ProjectId pid) (MU.UserId uid) = do
                                                   Just b -> Just (a, b)
                                                   Nothing -> Nothing))
   return res
+
+produceAssignmentJson :: Assignment -> String -> Value
+produceAssignmentJson (Assignment (MU.UserId uid) (MR.RoleId rid) (ProjectId pid)) baseUrl
+      = object [ "role" .= (object ["id" .= rid])
+               , "user" .= (object ["id" .= uid])
+               , "scope" .= (object ["project" .= (object ["id" .= pid] )])
+               , "links" .= (object ["assignment" .= (baseUrl ++ "/v3/projects/" ++ (show pid) ++ "/users/" ++ (show uid) ++ "/roles/" ++ (show rid))])
+               ]
+
+produceAssignmentsReply :: [Assignment] -> String -> Value
+produceAssignmentsReply assignments baseUrl
+    = object [ "links" .= (object [ "next"     .= Null
+                                  , "previous" .= Null
+                                  , "self"     .= (baseUrl ++ "/v3/role_assignments")
+                                  ]
+                          )
+             , "role_assignments" .= assignmentsEntry
+             ]
+  where
+    assignmentsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\a -> produceAssignmentJson a) assignments
+
+listAssignments :: (MonadIO m) => (Maybe ProjectId) -> (Maybe MU.UserId) -> M.Action m [Assignment]
+listAssignments pid' uid' = do
+  let projectFilter = case pid' of
+                        Just (ProjectId v) -> [["$match" =: ["_id" =: v]]]
+                        Nothing -> []
+  let userFilter = case uid' of
+                        Just (MU.UserId v) -> [ ["$match" =: [(userRoleAssignments `T.append` ".userId") =: v]]]
+                        Nothing -> []
+  docs <- M.aggregate collectionName $ projectFilter ++ [["$unwind" =: (M.String $ '$' `T.cons` userRoleAssignments)] ] ++ userFilter
+  liftIO $ putStrLn $ show docs
+  let assignments = map (\x -> Assignment (MU.UserId $ getUserId x) (MR.RoleId $ getRoleId x) (ProjectId $ getProjectId x)) docs
+  return assignments
+  where
+    getUserId = (\(M.ObjId u) -> u) . (M.valueAt "userId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)
+    getRoleId = (\(M.ObjId r) -> r) . (M.valueAt "roleId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)
+    getProjectId = (\(M.ObjId d) -> d) . (M.valueAt "_id")
