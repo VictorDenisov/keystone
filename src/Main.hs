@@ -74,7 +74,7 @@ main = do
 
 application :: KeystoneConfig -> ScottyM ()
 application config = do
-  S.middleware (withAuth $ adminToken config)
+  S.middleware (withAuth config)
   S.defaultHandler $ \e -> do
     S.status $ E.code e
     case statusCode $ E.code e of
@@ -329,8 +329,9 @@ parseRequest = do
   S.rescue S.jsonData $ \e ->
     S.raise $ E.badRequest $ E.message e
 
-withAuth :: String -> Middleware
-withAuth adminToken app req respond = do
+withAuth :: KeystoneConfig -> Middleware
+withAuth config app req respond = do
+  let adminToken = Config.adminToken config
   liftIO $ debugM loggerName $ unpack $ rawPathInfo req
   if (requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens")
     then
@@ -342,9 +343,17 @@ withAuth adminToken app req respond = do
       case mToken of
         Nothing -> respond $ responseLBS status401 [] "Token is required"
         Just m ->
-          if m /= (pack adminToken)
-            then respond $ responseLBS status401 [] "Wrong token"
-            else app req respond
+          if m == (pack adminToken)
+            then app req respond
+            else do
+              let mTokenId = readMaybe $ unpack m
+              case mTokenId of
+                Nothing -> respond $ responseLBS status401 [] "Wrong token"
+                Just tokenId  -> do
+                  mToken <- CD.withDB (database config) $ MT.findTokenById tokenId
+                  case mToken of
+                    Nothing -> respond $ responseLBS status401 [] "Wrong token"
+                    Just token -> app req respond -- TODO verify that this user has access
 
 hXAuthToken :: HeaderName
 hXAuthToken = "X-Auth-Token"
