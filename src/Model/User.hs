@@ -22,6 +22,7 @@ import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
+import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (CaptureStatus(..), TransactionId(..))
 import Text.Read (readMaybe)
 
@@ -77,9 +78,12 @@ createUser u = do
   M.ObjId oid <- M.insert collectionName $ toBson u
   return oid
 
-listUsers :: (MonadIO m, MonadBaseControl IO m) => M.Action m [(M.ObjectId, User)]
-listUsers = do
-  cursor <- M.find (M.select [] collectionName)
+listUsers :: (MonadIO m, MonadBaseControl IO m) => (Maybe String) -> M.Action m [(M.ObjectId, User)]
+listUsers mName = do
+  let nameFilter = case mName of
+                      Nothing -> []
+                      Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
+  cursor <- M.find (M.select nameFilter collectionName)
   docs <- M.rest cursor
   users <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs

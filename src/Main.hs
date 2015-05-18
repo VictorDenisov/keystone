@@ -240,7 +240,9 @@ application config = do
     S.status status201
     with_host_url config $ MU.produceUserReply user uid
   S.get "/v3/users" $ do
-    users <- CD.withDB (database config) $ MU.listUsers
+    userName <- parseMaybeString "name"
+    liftIO $ putStrLn $ show userName
+    users <- CD.withDB (database config) $ MU.listUsers userName
     S.status status200
     with_host_url config $ MU.produceUsersReply users
   S.get "/v3/users/:uid" $ do
@@ -300,10 +302,16 @@ application config = do
     S.status status200
     with_host_url config $ MP.produceAssignmentsReply roles -- TODO base url should be revised here
 
+parseMaybeString :: T.Text -> ActionM (Maybe String)
+parseMaybeString paramName =
+  (flip S.rescue) (\msg -> return Nothing) $ do
+    (value :: String) <- S.param paramName
+    return $ Just value
+
 parseMaybeParam :: Read a => T.Text -> ActionM (Maybe a)
 parseMaybeParam paramName =
-  (flip S.rescue) (\msg -> return Nothing) $ do
-    value <- S.param paramName
+  (flip S.rescue) (\msg -> (liftIO $ putStrLn $ show msg) >> (return Nothing)) $ do
+    (value :: String) <- S.param paramName
     case readMaybe value of
       Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (T.unpack paramName)
       Just v  -> return $ Just v
