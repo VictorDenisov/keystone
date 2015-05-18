@@ -181,11 +181,9 @@ listUserRoles (ProjectId pid) (MU.UserId uid) = do
                                      , ["$unwind" =: (M.String $ '$' `T.cons` userRoleAssignments)]
                                      , ["$match" =: [(userRoleAssignments `T.append` ".userId") =: uid]]
                                      ]
-  liftIO $ putStrLn $ show docs
   let roleIds = map ((\(M.ObjId o) -> o) . (M.valueAt "roleId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)) docs
 
   roles <- mapM MR.findRoleById roleIds
-  liftIO $ putStrLn $ show roles
   let res = catMaybes ((flip map) (zip roleIds roles)
                                             (\(a, b') -> case b' of
                                                   Just b -> Just (a, b)
@@ -221,7 +219,6 @@ listAssignments pid' uid' = do
                         Just (MU.UserId v) -> [ ["$match" =: [(userRoleAssignments `T.append` ".userId") =: v]]]
                         Nothing -> []
   docs <- M.aggregate collectionName $ projectFilter ++ [["$unwind" =: (M.String $ '$' `T.cons` userRoleAssignments)] ] ++ userFilter
-  liftIO $ putStrLn $ show docs
   let assignments = map (\x -> Assignment (MU.UserId $ getUserId x) (MR.RoleId $ getRoleId x) (ProjectId $ getProjectId x)) docs
   return assignments
   where

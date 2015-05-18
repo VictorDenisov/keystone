@@ -5,7 +5,7 @@ where
 
 import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
-import Control.Applicative ((<*>))
+import Control.Applicative ((<*>), (<$>))
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -294,9 +294,19 @@ application config = do
         S.status status200
         with_host_url config $ MR.produceRoleReply role rid
   S.get "/v3/role_assignments" $ do
-    roles <- CD.withDB (database config) $ MP.listAssignments Nothing Nothing
+    userId <- parseMaybeParam "user.id"
+    projectId <- parseMaybeParam "scope.project.id"
+    roles <- CD.withDB (database config) $ MP.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
     S.status status200
     with_host_url config $ MP.produceAssignmentsReply roles -- TODO base url should be revised here
+
+parseMaybeParam :: Read a => T.Text -> ActionM (Maybe a)
+parseMaybeParam paramName =
+  (flip S.rescue) (\msg -> return Nothing) $ do
+    value <- S.param paramName
+    case readMaybe value of
+      Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (T.unpack paramName)
+      Just v  -> return $ Just v
 
 parseId :: Read a => T.Text -> ActionM a
 parseId paramName = do
