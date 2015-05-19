@@ -7,4 +7,11 @@ fi
 
 token_to_verify=$1
 
-curl -v -k -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" https://localhost:35357/v3/auth/tokens
+if [[ $# -lt 2 ]]; then
+	protocol="http"
+else
+	protocol=$2
+fi
+
+
+curl -v -k -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" $protocol://localhost:35357/v3/auth/tokens

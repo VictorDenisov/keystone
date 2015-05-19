@@ -1,12 +1,16 @@
 #!/bin/bash
 
-if [[ $# -lt 2 ]]; then
-	echo "Protocol and User id are required"
+if [[ $# -lt 1 ]]; then
+	echo "User id are required"
 	exit 1
 fi
 
-protocol=$1
-user_id=$2
+user_id=$1
+if [[ $# -lt 2 ]]; then
+	protocol="http"
+else
+	protocol=$2
+fi
 
 sed -e "s/<USER_ID>/$user_id/" auth_user_request.json.template > auth_user_request.json
 
