@@ -93,9 +93,6 @@ application config = do
     liftIO $ debugM loggerName $ show au
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      liftIO $ putStrLn "Waiting for your action"
-      _ <- liftIO getLine
-      liftIO $ putStrLn "Continuing the execution"
       res <- mapM (A.authenticate pipe) (A.methods au)
       case head res of
         Right (tokenId, t) -> lift $ do
