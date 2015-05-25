@@ -26,24 +26,10 @@ collectionName = "token"
 data Token = Token { issuedAt  :: UTCTime
                    , expiresAt :: UTCTime
                    , user      :: M.ObjectId
+                   , project   :: Maybe M.ObjectId -- currently only project scope is available
                    } deriving (Show, Read, Eq, Ord, Typeable)
 
 $(deriveBson id ''Token)
-
-produceTokenResponse :: MonadIO m => Token -> M.Action m Value
-produceTokenResponse (Token issued expires user) = do
-  u <- fromJust `liftM` MU.findUserById user
-  return $ object [ "token" .= ( object [ "expires_at" .= expires
-                                        , "issued_at"  .= issued
-                                        , "methods"    .= [ "password" :: String ]
-                                        , "extras"    .= (object [])
-                                        , "user"       .= (object [ "name"   .= MU.name u
-                                                                  , "id"     .= (show user)
-                                                                  , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                                                         , "id"   .= ("default" :: String)])
-                                                                  ] )
-                                        ])
-                  ]
 
 createToken :: MonadIO m => Token -> M.Action m M.Value
 createToken t =

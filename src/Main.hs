@@ -91,12 +91,13 @@ application config = do
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
+    baseUrl <- getBaseUrl config
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- mapM (A.authenticate pipe) (A.methods au)
+      res <- mapM (A.authenticate (A.scope au) pipe) (A.methods au)
       case head res of
         Right (tokenId, t) -> lift $ do
-          resp <- CD.runDB pipe $ MT.produceTokenResponse t
+          resp <- CD.runDB pipe $ A.produceTokenResponse t baseUrl
           S.json resp
           S.addHeader "X-Subject-Token" (T.pack tokenId)
           S.status status200
@@ -106,6 +107,7 @@ application config = do
       release releaseKey
   S.get "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
+    baseUrl <- getBaseUrl config
     res <- runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
       runExceptT $ do
@@ -121,7 +123,7 @@ application config = do
         currentTime <- liftIO getCurrentTime
 
         when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ (show st) ++ "."
-        lift $ CD.runDB pipe $ MT.produceTokenResponse token
+        lift $ CD.runDB pipe $ A.produceTokenResponse token baseUrl
         lift $ release releaseKey
 
     case res of
@@ -367,12 +369,17 @@ host_url st = do
             Tls   -> "https"
   return $ fmap (\h -> protocol ++ "://" ++ (T.unpack h)) mh
 
-with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
-with_host_url config v = do
+getBaseUrl :: KeystoneConfig -> ActionM String
+getBaseUrl config = do
   case endpoint config of
-    Just e -> S.json $ v e
+    Just e -> return e
     Nothing -> do
       mh <- host_url $ serverType config
       case mh of
-        Just h -> S.json $ v h
+        Just h -> return h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
+
+with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
+with_host_url config v = do
+  url <- getBaseUrl config
+  S.json $ v url

@@ -9,6 +9,11 @@
                     "id": "<USER_ID>",
                     "password": "mypassword"
                 }
+            },
+            "scope": {
+                "project": {
+                    "id": "<PROJECT_ID>"
+                }
             }
         }
     }
