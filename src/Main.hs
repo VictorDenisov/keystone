@@ -231,8 +231,8 @@ application config = do
       p1 <- liftIO $ makePassword (pack p) 17
       return $ unpack p1
     let user = MU.User
-                (Just $ U.description d)
-                (Just $ U.email d)
+                (U.description d)
+                (U.email d)
                 (U.enabled d)
                 (U.name d)
                 (cryptedPassword)

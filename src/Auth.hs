@@ -12,7 +12,7 @@ import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 import Data.Aeson.Types (Value(..), (.=), object, ToJSON(..))
 import Data.ByteString.Char8 (pack)
-import Data.Maybe (fromJust, maybeToList, catMaybes)
+import Data.Maybe (fromJust, maybeToList, catMaybes, listToMaybe)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 import Data.Vector (fromList)
 import Text.Read (readMaybe)
@@ -27,13 +27,15 @@ import qualified Model.Service as MS
 import qualified Data.Text as T
 
 data AuthRequest = AuthRequest
-                 { methods  :: [AuthMethod]
-                 , scope    :: Maybe AuthScope
+                 { methods :: [AuthMethod]
+                 , scope   :: Maybe AuthScope
                  } deriving Show
 
-data AuthMethod = UserIdMethod
-                { userId     :: M.ObjectId
-                , password   :: String
+data AuthMethod = PasswordMethod
+                { userId   :: Maybe M.ObjectId
+                , userName :: Maybe String
+                , domainId :: Maybe String
+                , password :: String
                 } deriving Show
 
 data AuthScope = ProjectIdScope
@@ -50,7 +52,10 @@ instance FromJSON AuthRequest where
       case m of
         "password" -> do
           userSpec <- mDescr .: "user"
-          UserIdMethod <$> (userSpec .: "id") <*> (userSpec .: "password")
+          mDomainId <- runMaybeT $ do
+            domainSpec <- MaybeT $ userSpec .:? "domain"
+            MaybeT $ domainSpec .:? "id"
+          PasswordMethod <$> (userSpec .:? "id") <*> (userSpec .:? "name") <*> (return mDomainId) <*> (userSpec .: "password")
     scope <- runMaybeT $ do
       s <- MaybeT $ identity .:? "scope"
       p <- MaybeT $ s .:? "project"
@@ -58,14 +63,21 @@ instance FromJSON AuthRequest where
       return $ ProjectIdScope i
     return $ AuthRequest ms scope
 
-authenticate :: (MonadIO m)
+authenticate :: (MonadBaseControl IO m, MonadIO m)
              => (Maybe AuthScope) -> M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
-authenticate mScope pipe (UserIdMethod userId password) = do
-    mu <- CD.runDB pipe $ MU.findUserById userId
+authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) = do
+    mu <- case mUserId of
+              Just userId ->
+                runMaybeT $ do
+                  mu <- MaybeT $ CD.runDB pipe $ MU.findUserById userId
+                  return (userId, mu)
+              Nothing -> do
+                users <- CD.runDB pipe $ MU.listUsers mUserName
+                return $ listToMaybe users
     scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
       Nothing -> return $ Left "User is not found."
-      Just u  ->
+      Just (userId, u)  ->
         case MU.password u of
           Just p ->
             if verifyPassword (pack password) (pack p)

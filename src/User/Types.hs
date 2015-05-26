@@ -13,9 +13,9 @@ import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 
 data UserCreateRequest = UserCreateRequest
                        { defaultProjectId :: String
-                       , description :: String
-                       , domainId :: String
-                       , email :: String
+                       , description :: Maybe String
+                       , domainId :: Maybe String
+                       , email :: Maybe String
                        , enabled :: Bool
                        , name :: String
                        , password :: Maybe String
