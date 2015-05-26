@@ -10,8 +10,9 @@ import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 import Data.Aeson.Types (Value(..), (.=), object, ToJSON(..))
 import Data.ByteString.Char8 (pack)
-import Data.Maybe (fromJust, maybeToList)
+import Data.Maybe (fromJust, maybeToList, catMaybes)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
+import Data.Vector (fromList)
 import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
@@ -87,7 +88,9 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
     pid <- MaybeT $ return mProjectId
     project <- MaybeT $ MP.findProjectById pid
     assignments <- lift $ MP.listAssignments (Just $ MP.ProjectId pid)
-                                      (Just $ MU.UserId user)
+                                             (Just $ MU.UserId user)
+    mroles <- lift $ mapM assignmentToRoleReply assignments
+    let roles = catMaybes mroles
     return $ [ "project" .= (object [ "id"   .= pid
                                    , "name" .= MP.name project
                                    , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
@@ -97,7 +100,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                                  )
                                    ]
                            )
-             , "roles" .= (object [])] -- TODO add roles to token response
+             , "roles" .= (Array $ fromList roles)] -- TODO add roles to token response
 
   return $ object [ "token" .= ( object $ [ "expires_at" .= expires
                                         , "issued_at"  .= issued
@@ -111,7 +114,8 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
   where
-    assignmentToRoleReply (MP.Assignment _ (MR.RoleId roleId) _ ) = runMaybeT $ do
+    assignmentToRoleReply :: MonadIO m => MP.Assignment -> M.Action m (Maybe Value)
+    assignmentToRoleReply (MP.Assignment _ (MR.RoleId roleId) _) = runMaybeT $ do
       role <- MaybeT $ MR.findRoleById roleId
       return $ object [ "id" .= roleId
                       , "name" .= MR.name role
