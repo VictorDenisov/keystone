@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# Language ScopedTypeVariables #-}
 {-# Language TemplateHaskell #-}
 {-# Language DeriveDataTypeable #-}
 module Model.User
@@ -101,10 +102,33 @@ updateUser uid userUpdate = do
   -- If the user is deleted between these commands we assume it's never been updated
   findUserById uid
 
+rfCnt :: M.Document -> Int
+rfCnt doc = case (M.look refCount doc) of
+  Nothing -> 0
+  Just (M.Int32 v) -> fromIntegral v
+  Just _ -> 1
+
+-- TODO return error message
 deleteUser :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteUser uid = do
-  M.delete $ M.select ["_id" =: uid] collectionName
-  affectedDocs
+  mUserDoc <- M.findOne (M.select ["_id" =: uid] collectionName)
+  case mUserDoc of
+    Nothing -> return 0
+    Just userDoc ->
+      if (rfCnt userDoc) /= 0
+        then return 0
+        else
+          case M.look pendingTransactions userDoc of
+            Nothing -> do
+              M.delete $ M.select ["_id" =: uid] collectionName
+              affectedDocs
+            Just (M.Array xs) -> if null xs
+                                  then do
+                                    M.delete $ M.select ["_id" =: uid] collectionName
+                                    affectedDocs
+                                  else
+                                    return 0
+            Just _ -> return 0
 
 captureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 captureUser uid (TransactionId tid) = do
