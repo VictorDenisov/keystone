@@ -102,8 +102,8 @@ updateUser uid userUpdate = do
   -- If the user is deleted between these commands we assume it's never been updated
   findUserById uid
 
-rfCnt :: M.Document -> Int
-rfCnt doc = case (M.look refCount doc) of
+getRefCount :: M.Document -> Int
+getRefCount doc = case (M.look refCount doc) of
   Nothing -> 0
   Just (M.Int32 v) -> fromIntegral v
   Just _ -> 1
@@ -122,7 +122,7 @@ deleteUser uid = do
   case mUserDoc of
     Nothing -> return 0
     Just userDoc ->
-      if (rfCnt userDoc) /= 0 || (not $ null $ getPendingTransactions userDoc)
+      if ((getRefCount userDoc) /= 0) || (not $ null $ getPendingTransactions userDoc)
         then
           return 0
         else do
