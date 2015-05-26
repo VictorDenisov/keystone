@@ -108,6 +108,13 @@ rfCnt doc = case (M.look refCount doc) of
   Just (M.Int32 v) -> fromIntegral v
   Just _ -> 1
 
+getPendingTransactions :: M.Document -> [M.Value]
+getPendingTransactions doc =
+  case M.look pendingTransactions doc of
+    Nothing -> []
+    Just (M.Array xs) -> xs
+    Just v -> error $ (T.unpack pendingTransactions) ++ " field in user should be an array."
+
 -- TODO return error message
 deleteUser :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteUser uid = do
@@ -115,20 +122,12 @@ deleteUser uid = do
   case mUserDoc of
     Nothing -> return 0
     Just userDoc ->
-      if (rfCnt userDoc) /= 0
-        then return 0
-        else
-          case M.look pendingTransactions userDoc of
-            Nothing -> do
-              M.delete $ M.select ["_id" =: uid] collectionName
-              affectedDocs
-            Just (M.Array xs) -> if null xs
-                                  then do
-                                    M.delete $ M.select ["_id" =: uid] collectionName
-                                    affectedDocs
-                                  else
-                                    return 0
-            Just _ -> return 0
+      if (rfCnt userDoc) /= 0 || (not $ null $ getPendingTransactions userDoc)
+        then
+          return 0
+        else do
+          M.delete $ M.select ["_id" =: uid] collectionName
+          affectedDocs
 
 captureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 captureUser uid (TransactionId tid) = do
