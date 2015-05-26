@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ $# -lt 2]]; then
+if [[ $# -lt 2 ]]; then
 	echo "Two arguments are required - project id and user id"
 	exit 1
 fi

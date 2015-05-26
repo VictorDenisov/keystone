@@ -1,3 +1,4 @@
+{-# Language FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Auth
 where
@@ -5,6 +6,7 @@ import Control.Applicative ((<*>), (<$>))
 import Control.Monad (forM, liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
@@ -21,6 +23,7 @@ import qualified Model.User as MU
 import qualified Model.Token as MT
 import qualified Model.Project as MP
 import qualified Model.Role as MR
+import qualified Model.Service as MS
 import qualified Data.Text as T
 
 data AuthRequest = AuthRequest
@@ -81,7 +84,7 @@ authenticate mScope pipe (PasswordMethod userId password) = do
 
 authenticate _ _ _ = return $ Left "Method is not supported."
 
-produceTokenResponse :: MonadIO m => MT.Token -> String -> M.Action m Value
+produceTokenResponse :: (MonadBaseControl IO m, MonadIO m) => MT.Token -> String -> M.Action m Value
 produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
   u <- fromJust `liftM` MU.findUserById user
   scopeFields <- runMaybeT $ do
@@ -91,6 +94,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                              (Just $ MU.UserId user)
     mroles <- lift $ mapM assignmentToRoleReply assignments
     let roles = catMaybes mroles
+    endpoints <- lift $ MS.listServices
     return $ [ "project" .= (object [ "id"   .= pid
                                    , "name" .= MP.name project
                                    , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
@@ -100,7 +104,9 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                                  )
                                    ]
                            )
-             , "roles" .= (Array $ fromList roles)] -- TODO add roles to token response
+             , "roles" .= (Array $ fromList roles)
+             , "endpoints" .= (Array $ fromList $ map serviceToValue endpoints)
+             ]
 
   return $ object [ "token" .= ( object $ [ "expires_at" .= expires
                                         , "issued_at"  .= issued
@@ -120,3 +126,19 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
       return $ object [ "id" .= roleId
                       , "name" .= MR.name role
                       ]
+
+    serviceToValue :: (M.ObjectId, MS.Service) -> Value
+    serviceToValue (serviceId, service) =
+               object [ "id"        .= serviceId
+                      , "name"      .= MS.name service
+                      , "type"      .= MS.type' service
+                      , "endpoints" .= (map endpointToValue $ MS.endpoints service)
+                      ]
+    endpointToValue :: MS.Endpoint -> Value
+    endpointToValue endpoint = object
+                             [ "id"        .= MS.eid endpoint
+                             , "interface" .= MS.einterface endpoint
+                             , "region"    .= (String "Default")
+                             , "region_id" .= (String "default")
+                             , "url"       .= MS.eurl endpoint
+                             ]
