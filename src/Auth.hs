@@ -31,12 +31,12 @@ data AuthRequest = AuthRequest
                  , scope    :: Maybe AuthScope
                  } deriving Show
 
-data AuthMethod = PasswordMethod
+data AuthMethod = UserIdMethod
                 { userId     :: M.ObjectId
                 , password   :: String
                 } deriving Show
 
-data AuthScope = AuthScope
+data AuthScope = ProjectIdScope
                { projectId :: M.ObjectId
                } deriving Show
 
@@ -50,17 +50,17 @@ instance FromJSON AuthRequest where
       case m of
         "password" -> do
           userSpec <- mDescr .: "user"
-          PasswordMethod <$> (userSpec .: "id") <*> (userSpec .: "password")
+          UserIdMethod <$> (userSpec .: "id") <*> (userSpec .: "password")
     scope <- runMaybeT $ do
       s <- MaybeT $ identity .:? "scope"
       p <- MaybeT $ s .:? "project"
       i <- MaybeT $ p .:? "id"
-      return $ AuthScope i
+      return $ ProjectIdScope i
     return $ AuthRequest ms scope
 
 authenticate :: (MonadIO m)
              => (Maybe AuthScope) -> M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
-authenticate mScope pipe (PasswordMethod userId password) = do
+authenticate mScope pipe (UserIdMethod userId password) = do
     mu <- CD.runDB pipe $ MU.findUserById userId
     scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
@@ -78,7 +78,7 @@ authenticate mScope pipe (PasswordMethod userId password) = do
           Nothing -> return $ Left "User exists, but doesn't have any password."
   where
     calcProjectId mScope = runMaybeT $ do
-      (AuthScope pid) <- MaybeT $ return mScope
+      (ProjectIdScope pid) <- MaybeT $ return mScope
       project <- MaybeT $ MP.findProjectById pid
       return pid
 
