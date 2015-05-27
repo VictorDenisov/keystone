@@ -24,7 +24,7 @@ import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
-import Model.Common (CaptureStatus(..), TransactionId(..))
+import Model.Common (CaptureStatus(..), TransactionId(..), OpStatus(..))
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -115,19 +115,21 @@ getPendingTransactions doc =
     Just (M.Array xs) -> xs
     Just v -> error $ (T.unpack pendingTransactions) ++ " field in user should be an array."
 
--- TODO return error message
-deleteUser :: (MonadIO m) => ObjectId -> M.Action m Int
+deleteUser :: (MonadIO m) => ObjectId -> M.Action m OpStatus
 deleteUser uid = do
   mUserDoc <- M.findOne (M.select ["_id" =: uid] collectionName)
   case mUserDoc of
-    Nothing -> return 0
+    Nothing -> return NotFound
     Just userDoc ->
       if ((getRefCount userDoc) /= 0) || (not $ null $ getPendingTransactions userDoc)
         then
-          return 0
+          return Busy
         else do
           M.delete $ M.select ["_id" =: uid] collectionName
-          affectedDocs
+          ad <- affectedDocs
+          if ad == 0
+            then return NotFound
+            else return Success
 
 captureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 captureUser uid (TransactionId tid) = do

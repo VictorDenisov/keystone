@@ -43,3 +43,6 @@ internalError message = Error status500 message
 
 badRequest :: String -> Error
 badRequest message = Error status400 message
+
+conflict :: String -> Error
+conflict message = Error status409 message

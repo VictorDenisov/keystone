@@ -20,10 +20,11 @@ import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe, fromJust)
 import Data.Time.Clock (getCurrentTime)
+import Model.Common (OpStatus(..))
 import Network.HTTP.Types (methodPost)
 import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
-                                 , status404, status500, statusCode)
+                                 , status404, status409, status500, statusCode)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    , rawPathInfo, requestMethod
                    )
@@ -268,12 +269,15 @@ application config = do
         with_host_url config $ MU.produceUserReply user uid
   S.delete "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
-    n <- CD.withDB (database config) $ MU.deleteUser uid
-    if n < 1
-      then do
+    st <- CD.withDB (database config) $ MU.deleteUser uid
+    case st of
+      Success  -> S.status status204
+      NotFound -> do
         S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
         S.status status404
-      else S.status status204
+      Busy     -> do
+        S.json $ E.conflict $ "The user " ++ (show uid) ++ " has a role assigned. Please remove the role assignment first."
+        S.status status409
   -- Role API
   S.post "/v3/roles" $ do
     (rcr :: R.RoleCreateRequest) <- parseRequest

@@ -11,3 +11,7 @@ data CaptureStatus = Captured
 
 newtype ProjectId = ProjectId M.ObjectId
 
+data OpStatus = Success
+              | NotFound
+              | Busy
+                deriving Show
