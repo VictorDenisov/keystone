@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# Language TemplateHaskell #-}
 module Common.Database
 where
 
@@ -14,6 +15,7 @@ import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release,
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.Types (typeMismatch)
 import Data.Text (Text)
+import Language.Haskell.TH.Syntax (nameBase)
 import System.IO.Error ( catchIOError, ioError, userError
                        , ioeGetErrorType, ioeGetLocation, ioeGetErrorString)
 import System.Log.Logger (errorM, infoM)
@@ -54,14 +56,16 @@ runDB p f = M.access p M.master dbName f
 affectedDocs :: MonadIO m => M.Action m Int
 affectedDocs = do
   le <- M.runCommand ["getLastError" M.=: (M.Int32 1)]
-  (M.Int32 n) <- M.look "n" le
-  return $ fromIntegral n
+  mn <- M.look "n" le
+  case mn of
+    (M.Int32 n) -> return $ fromIntegral n
+    _           -> fail "Mongodb returned non integer n from getLastError commmand"
 
 instance FromJSON M.ObjectId where
   parseJSON (String s) = case readMaybe $ T.unpack s of
                           Just v -> return v
                           Nothing -> fail $ "Invalid object id - " ++ (T.unpack s)
-  parseJSON v = typeMismatch "ObjectId" v
+  parseJSON v = typeMismatch (nameBase ''M.ObjectId) v
 
 instance ToJSON M.ObjectId where
   toJSON v = String $ T.pack $ show v
