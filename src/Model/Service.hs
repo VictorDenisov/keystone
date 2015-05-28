@@ -19,7 +19,6 @@ import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
-import Data.Maybe (fromJust)
 import Data.Vector (fromList)
 import Text.Read (readMaybe)
 
@@ -48,7 +47,7 @@ data Endpoint = Endpoint
               { einterface :: Interface
               , eurl       :: String
               , eenabled   :: Bool
-              , eid        :: Maybe ObjectId
+              , eid        :: ObjectId
               } deriving (Show, Read, Eq, Ord, Typeable)
 
 data Interface = Admin
@@ -108,7 +107,7 @@ produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
       = Object
         -- Endpoint already has its own id in its structure
         $ insert "service_id" (String $ T.pack $ show serviceId)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show $ fromJust eid)) ])
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show eid)) ])
         $ fromObject $ toJSON s
 
 produceEndpointReply :: Endpoint -> M.ObjectId -> String -> Value
@@ -173,11 +172,13 @@ deleteService sid = do
 
 addEndpoint :: (MonadIO m) => ObjectId -> Endpoint -> M.Action m (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
-  endpointId <- liftIO M.genObjectId
   -- TODO Replace endpoints with label generator
-  M.modify (M.select ["_id" =: sid] collectionName) [ "$push" =: ["endpoints" =: (toBson $ endpoint { eid = Just endpointId })] ]
+  M.modify (M.select ["_id" =: sid] collectionName) [ "$push" =: ["endpoints" =: (toBson endpoint)] ]
   count <- affectedDocs
-  return $ Just endpointId
+  return $
+    if count == 1
+      then Just $ eid endpoint
+      else Nothing
 
 listEndpoints :: (MonadIO m) => M.Action m [(M.ObjectId, Endpoint)]
 listEndpoints = do

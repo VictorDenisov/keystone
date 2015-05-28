@@ -24,9 +24,10 @@ newRequestToService :: ServiceCreateRequest -> MS.Service
 newRequestToService ServiceCreateRequest{..} =
   MS.Service description (maybe True id enabled) name type' []
 
-newRequestToEndpoint :: EndpointCreateRequest -> MS.Endpoint
-newRequestToEndpoint EndpointCreateRequest{..} =
-  MS.Endpoint einterface eurl (maybe True id eenabled) Nothing
+newRequestToEndpoint :: EndpointCreateRequest -> IO MS.Endpoint
+newRequestToEndpoint EndpointCreateRequest{..} = do
+  endpointId <- M.genObjectId
+  return $ MS.Endpoint einterface eurl (maybe True id eenabled) endpointId
 
 updateRequestToDocument :: ServiceUpdateRequest -> M.Document
 updateRequestToDocument ServiceUpdateRequest{..} = concat

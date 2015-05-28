@@ -177,7 +177,7 @@ application config = do
   --- Endpoint API
   S.post "/v3/endpoints" $ do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest
-    let endpoint = Srv.newRequestToEndpoint ecr
+    endpoint <- liftIO $ Srv.newRequestToEndpoint ecr
     mEid <- CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
     case mEid of
       Nothing -> do
