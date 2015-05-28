@@ -7,7 +7,7 @@ module Model.Service
 where
 
 import Common (skipTickOptions, capitalize, fromObject, dropOptions)
-import Common.Database (affectedDocs)
+import Common.Database (affectedDocs, pushC, setC, projectC, unwindC, idF)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -20,6 +20,7 @@ import Data.Char (toLower)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
+import Language.Haskell.TH.Syntax (nameBase)
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -35,6 +36,9 @@ data Service = Service
              , type'       :: ServiceType
              , endpoints   :: [Endpoint]
              } deriving (Show, Read, Eq, Ord, Typeable)
+
+endpointsF = T.pack $ nameBase 'endpoints
+endpointsA = (M.String $ '$' `T.cons` endpointsF) -- endpoints command for aggregation
 
 data ServiceType = Identity
                  | Compute
@@ -59,7 +63,7 @@ instance FromJSON ServiceType where
   parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
                           Just v -> return v
                           Nothing -> fail $ "Unknown ServiceType " ++ (T.unpack s)
-  parseJSON v = typeMismatch "ServiceType" v
+  parseJSON v = typeMismatch (nameBase ''ServiceType) v
 
 instance ToJSON ServiceType where
   toJSON v = String $ T.pack $ map toLower $ show v
@@ -77,7 +81,7 @@ instance FromJSON Interface where
   parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
                           Just v -> return v
                           Nothing -> fail $ "Unknown Interface " ++ (T.unpack s)
-  parseJSON v = typeMismatch "Interface" v
+  parseJSON v = typeMismatch (nameBase ''Interface) v
 
 instance ToJSON Interface where
   toJSON v = String $ T.pack $ map toLower $ show v
@@ -149,31 +153,30 @@ listServices = do
   cur <- M.find $ M.select [] collectionName
   docs <- M.rest cur
   services <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip ids services
 
 findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)
 findServiceById sid = runMaybeT $ do
-  mService <- MaybeT $ M.findOne (M.select ["_id" =: sid] collectionName)
+  mService <- MaybeT $ M.findOne (M.select [idF =: sid] collectionName)
   fromBson mService
 
 updateService :: (MonadIO m)
               => M.ObjectId -> M.Document -> M.Action m (Maybe Service)
 updateService sid serviceUpdate = do
-  M.modify (M.select ["_id" =: sid] collectionName) [ "$set" =: serviceUpdate ]
+  M.modify (M.select [idF =: sid] collectionName) [ setC =: serviceUpdate ]
   -- If the service is deleted between these commands we assume it's never been updated
   -- TODO Remove this from here. It should be handled by a higher layer.
   findServiceById sid
 
 deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
 deleteService sid = do
-  M.delete $ M.select ["_id" =: sid] collectionName
+  M.delete $ M.select [idF =: sid] collectionName
   affectedDocs
 
 addEndpoint :: (MonadIO m) => ObjectId -> Endpoint -> M.Action m (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
-  -- TODO Replace endpoints with label generator
-  M.modify (M.select ["_id" =: sid] collectionName) [ "$push" =: ["endpoints" =: (toBson endpoint)] ]
+  M.modify (M.select [idF =: sid] collectionName) [ pushC =: [endpointsF =: (toBson endpoint)] ]
   count <- affectedDocs
   return $
     if count == 1
@@ -182,10 +185,10 @@ addEndpoint sid endpoint = do
 
 listEndpoints :: (MonadIO m) => M.Action m [(M.ObjectId, Endpoint)]
 listEndpoints = do
-  docs <- M.aggregate collectionName [ ["$project" =: ["endpoints" =: (M.Int32 1)]]
-                                     , ["$unwind" =: (M.String "$endpoints")]
+  docs <- M.aggregate collectionName [ [projectC =: [endpointsF =: (M.Int32 1)]]
+                                     , [unwindC  =: endpointsA]
                                      ]
-  let eDocs = map ((\(M.Doc d) -> d) . (M.valueAt "endpoints")) docs
+  let eDocs = map ((\(M.Doc d) -> d) . (M.valueAt endpointsF)) docs
   endpoints <- mapM fromBson eDocs
-  let serviceIds = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  let serviceIds = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip serviceIds endpoints

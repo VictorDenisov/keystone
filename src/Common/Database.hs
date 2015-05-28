@@ -69,3 +69,19 @@ instance FromJSON M.ObjectId where
 
 instance ToJSON M.ObjectId where
   toJSON v = String $ T.pack $ show v
+
+-- Common fields that are used around
+idF = "_id"
+idF :: Text
+
+-- Common database commands that are user around.
+projectC = "$project"
+unwindC  = "$unwind"
+pushC    = "$push"
+setC     = "$set"
+
+projectC :: Text
+unwindC  :: Text
+pushC    :: Text
+setC     :: Text
+
