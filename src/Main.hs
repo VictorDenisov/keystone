@@ -21,7 +21,7 @@ import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
-import Network.HTTP.Types (methodPost)
+import Network.HTTP.Types (methodGet, methodPost)
 import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, status409, status500, statusCode)
@@ -38,7 +38,7 @@ import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
 
-import Version (apiV3, apiVersions)
+import Version (apiV3Reply, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
@@ -88,7 +88,7 @@ application config = do
   S.get "/" $ do
     with_host_url config apiVersions
   S.get "/v3" $ do
-    with_host_url config apiV3
+    with_host_url config apiV3Reply
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
@@ -336,8 +336,8 @@ withAuth :: KeystoneConfig -> Middleware
 withAuth config app req respond = do
   let adminToken = Config.adminToken config
   liftIO $ debugM loggerName $ unpack $ rawPathInfo req
-  if (requestMethod req == methodPost) && ( rawPathInfo req == "/v3/auth/tokens"
-                                         || rawPathInfo req == "/v3")
+  if ((requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens")) ||
+                                         ((requestMethod req == methodGet) && ((rawPathInfo req == "/v3") || (rawPathInfo req == "/")))
     then
       app req respond
     else do
