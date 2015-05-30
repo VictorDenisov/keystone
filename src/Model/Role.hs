@@ -7,7 +7,7 @@ module Model.Role
 where
 
 import Common (capitalize, fromObject, loggerName)
-import Common.Database (affectedDocs)
+import Common.Database (affectedDocs, decC, idF, incC, neC, pullC, pushC)
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -80,19 +80,19 @@ listRoles = do
   cur <- M.find $ M.select [] collectionName
   docs <- M.rest cur
   roles <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip ids roles
 
 findRoleById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Role)
 findRoleById rid = runMaybeT $ do
-  mRole <- MaybeT $ M.findOne (M.select ["_id" =: rid] collectionName)
+  mRole <- MaybeT $ M.findOne (M.select [idF =: rid] collectionName)
   fromBson mRole
 
 captureRole :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 captureRole rid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: rid, pendingTransactions =: ["$ne" =: tid] ] collectionName)
-                                      [ "$inc"  =: [refCount =: (M.Int32 1)]
-                                      , "$push" =: [pendingTransactions =: tid]
+  M.modify (M.select [idF =: rid, pendingTransactions =: [neC =: tid] ] collectionName)
+                                      [ incC  =: [refCount =: (M.Int32 1)]
+                                      , pushC =: [pendingTransactions =: tid]
                                       ]
   count <- affectedDocs
   if count == 1
@@ -101,9 +101,9 @@ captureRole rid (TransactionId tid) = do
 
 rollbackCaptureRole :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 rollbackCaptureRole rid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: rid, pendingTransactions =: tid] collectionName)
-                                      [ "$dec"  =: [refCount =: (M.Int32 1)]
-                                      , "$pull" =: [pendingTransactions =: tid]
+  M.modify (M.select [idF =: rid, pendingTransactions =: tid] collectionName)
+                                      [ decC  =: [refCount =: (M.Int32 1)]
+                                      , pullC =: [pendingTransactions =: tid]
                                       ]
   count <- affectedDocs
   if count == 1
@@ -112,14 +112,14 @@ rollbackCaptureRole rid (TransactionId tid) = do
 
 pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
 pullTransaction rid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: rid, pendingTransactions =: tid] collectionName)
-                                      ["$pull" =: [pendingTransactions =: tid]]
+  M.modify (M.select [idF =: rid, pendingTransactions =: tid] collectionName)
+                                      [pullC =: [pendingTransactions =: tid]]
 
 releaseRole :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
 releaseRole rid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: rid] collectionName) [ "$dec" =: [refCount =: (M.Int32 1)]
-                                                    , "$push" =: [pendingTransactions =: tid]
-                                                    ]
+  M.modify (M.select [idF =: rid] collectionName) [ decC  =: [refCount =: (M.Int32 1)]
+                                                  , pushC =: [pendingTransactions =: tid]
+                                                  ]
   count <- affectedDocs
   if count == 1
     then return ()
