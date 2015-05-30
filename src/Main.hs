@@ -169,11 +169,11 @@ application config = do
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     n <- CD.withDB (database config) $ MS.deleteService sid
-    if n < 1
-      then do
+    case n of
+      NotFound -> do
         S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
         S.status status404
-      else S.status status204
+      Success -> S.status status204
   --- Endpoint API
   S.post "/v3/endpoints" $ do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest

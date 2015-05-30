@@ -23,6 +23,7 @@ import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
+import Model.Common (OpStatus(..))
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -171,10 +172,14 @@ updateService sid serviceUpdate = do
   -- TODO Remove this from here. It should be handled by a higher layer.
   findServiceById sid
 
-deleteService :: (MonadIO m) => ObjectId -> M.Action m Int
+deleteService :: (MonadIO m) => ObjectId -> M.Action m OpStatus
 deleteService sid = do
   M.delete $ M.select [idF =: sid] collectionName
-  affectedDocs
+  ad <- affectedDocs
+  if ad == 0
+    then return NotFound
+    else return Success
+
 
 addEndpoint :: (MonadIO m) => ObjectId -> Endpoint -> M.Action m (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
