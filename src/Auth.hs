@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Auth
 where
+import Common (loggerName)
 import Control.Applicative ((<*>), (<$>))
 import Control.Monad (forM, liftM)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -15,6 +16,7 @@ import Data.ByteString.Char8 (pack)
 import Data.Maybe (fromJust, maybeToList, catMaybes, listToMaybe)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 import Data.Vector (fromList)
+import System.Log.Logger (debugM)
 import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
@@ -98,15 +100,19 @@ authenticate _ _ _ = return $ Left "Method is not supported."
 
 produceTokenResponse :: (MonadBaseControl IO m, MonadIO m) => MT.Token -> String -> M.Action m Value
 produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
+  liftIO $ debugM loggerName $ "Producing token response"
   u <- fromJust `liftM` MU.findUserById user
   scopeFields <- runMaybeT $ do
     pid <- MaybeT $ return mProjectId
+    liftIO $ debugM loggerName $ "pid" ++ (show pid)
     project <- MaybeT $ MP.findProjectById pid
+    liftIO $ debugM loggerName $ "project" ++ (show project)
     assignments <- lift $ MP.listAssignments (Just $ MP.ProjectId pid)
                                              (Just $ MU.UserId user)
+    liftIO $ debugM loggerName $ "Received assignments " ++ (show assignments)
     mroles <- lift $ mapM assignmentToRoleReply assignments
+    liftIO $ debugM loggerName $ "Received roles " ++ (show mroles)
     let roles = catMaybes mroles
-    endpoints <- lift $ MS.listServices
     return $ [ "project" .= (object [ "id"   .= pid
                                    , "name" .= MP.name project
                                    , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
@@ -117,18 +123,20 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                    ]
                            )
              , "roles" .= (Array $ fromList roles)
-             , "endpoints" .= (Array $ fromList $ map serviceToValue endpoints)
              ]
+  endpoints <- MS.listServices
+  liftIO $ debugM loggerName $ "Scope fields are: " ++ (show scopeFields)
 
   return $ object [ "token" .= ( object $ [ "expires_at" .= expires
-                                        , "issued_at"  .= issued
-                                        , "methods"    .= [ "password" :: String ]
-                                        , "extras"    .= (object [])
-                                        , "user"       .= (object [ "name"   .= MU.name u
-                                                                  , "id"     .= (show user)
-                                                                  , "domain" .= ( object [ "name" .= ("Default" :: String)
+                                          , "issued_at"  .= issued
+                                          , "methods"    .= [ "password" :: String ]
+                                          , "extras"     .= (object [])
+                                          , "user"       .= (object [ "name"   .= MU.name u
+                                                                    , "id"     .= (show user)
+                                                                    , "domain" .= ( object [ "name" .= ("Default" :: String)
                                                                                          , "id"   .= ("default" :: String)])
                                                                   ] )
+                                          , "endpoints"  .= (Array $ fromList $ map serviceToValue endpoints)
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
   where

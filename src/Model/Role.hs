@@ -41,6 +41,7 @@ pendingTransactions = "pendingTransactions"
 refCount = "refCount"
 
 newtype RoleId = RoleId M.ObjectId
+                 deriving (Show)
 
 $(deriveBson id ''Role)
 

@@ -6,7 +6,7 @@
 module Model.Project
 where
 
-import Common (capitalize, fromObject)
+import Common (capitalize, fromObject, loggerName)
 import Common.Database ( affectedDocs, currentDateC, idF, matchC, neC, pullC
                        , pushC, setC, unwindC, (+.+), (+++))
 
@@ -29,6 +29,7 @@ import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (TransactionId(..), CaptureStatus(..))
 import Model.Transaction (Transaction(..))
+import System.Log.Logger (debugM)
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -59,6 +60,7 @@ roleIdF :: T.Text
 roleIdF = "roleId"
 
 newtype ProjectId = ProjectId M.ObjectId
+                    deriving (Show)
 
 
 $(deriveBson id ''Project)
@@ -69,7 +71,7 @@ data Assignment = Assignment
                 { userId :: MU.UserId
                 , roleId :: MR.RoleId
                 , projectId :: ProjectId
-                }
+                } deriving (Show)
 
 produceProjectJson :: Project -> M.ObjectId -> String -> Value
 produceProjectJson (project@Project{..}) pid baseUrl
@@ -121,7 +123,8 @@ addUserWithRole :: (MonadIO m)
 addUserWithRole (ProjectId pid) (MU.UserId uid) (MR.RoleId rid) = runExceptT $ do
   let t = (AddRole uid rid pid)
   curTime <- liftIO getCurrentTime
-  (M.ObjId tid) <- lift $ M.insert Tr.collectionName $ [Tr.state =: Tr.Initial, Tr.lastModified =: curTime] ++ (toBson t)
+  (M.ObjId tid) <- lift $ M.insert Tr.collectionName $ [ Tr.state =: Tr.Initial
+                                                       , Tr.lastModified =: curTime] ++ (toBson t)
   lift $ M.modify (M.select [idF =: tid, Tr.state =: Tr.Initial] Tr.collectionName)
                                               [ setC         =: [Tr.state =: Tr.Pending]
                                               , currentDateC =: [Tr.lastModified =: True]]
@@ -129,6 +132,7 @@ addUserWithRole (ProjectId pid) (MU.UserId uid) (MR.RoleId rid) = runExceptT $ d
   when (pendingCount /= 1) $ fail "Failed to move to pending state. Couldn't find created transaction"
   rcs <- lift $ MR.captureRole rid (TransactionId tid)
   when (rcs == CaptureFailed) $ do
+    liftIO $ debugM loggerName $ "Rolling back role capture"
     lift $ M.delete (M.select [idF =: tid] collectionName)
     fail $ "Failed to capture role with id " ++ (show rid)
   ucs <- lift $ MU.captureUser uid (TransactionId tid)

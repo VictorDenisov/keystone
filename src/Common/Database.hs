@@ -75,7 +75,7 @@ idF = "_id"
 idF :: Text
 
 -- Common database commands that are user around.
-currentDateC = "$dec"
+currentDateC = "$currentDate"
 decC         = "$dec"
 incC         = "$inc"
 matchC       = "$match"
