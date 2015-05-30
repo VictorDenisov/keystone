@@ -336,7 +336,8 @@ withAuth :: KeystoneConfig -> Middleware
 withAuth config app req respond = do
   let adminToken = Config.adminToken config
   liftIO $ debugM loggerName $ unpack $ rawPathInfo req
-  if (requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens")
+  if (requestMethod req == methodPost) && ( rawPathInfo req == "/v3/auth/tokens"
+                                         || rawPathInfo req == "/v3")
     then
       app req respond
     else do

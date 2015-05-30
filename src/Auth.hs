@@ -136,7 +136,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                                                     , "domain" .= ( object [ "name" .= ("Default" :: String)
                                                                                          , "id"   .= ("default" :: String)])
                                                                   ] )
-                                          , "endpoints"  .= (Array $ fromList $ map serviceToValue endpoints)
+                                          , "catalog"  .= (Array $ fromList $ map serviceToValue endpoints)
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
   where
