@@ -75,13 +75,21 @@ idF = "_id"
 idF :: Text
 
 -- Common database commands that are user around.
+decC     = "$dec"
+incC     = "$inc"
+neC      = "$ne"
 projectC = "$project"
-unwindC  = "$unwind"
+pullC    = "$pull"
 pushC    = "$push"
 setC     = "$set"
+unwindC  = "$unwind"
 
+decC     :: Text
+incC     :: Text
+neC      :: Text
 projectC :: Text
-unwindC  :: Text
+pullC    :: Text
 pushC    :: Text
 setC     :: Text
+unwindC  :: Text
 

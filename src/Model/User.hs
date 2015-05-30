@@ -8,7 +8,7 @@ module Model.User
 where
 
 import Common (fromObject)
-import Common.Database (affectedDocs)
+import Common.Database (affectedDocs, decC, idF, incC, neC, pullC, pushC, setC)
 import Control.Applicative ((<$>))
 import Control.Monad (mapM)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -87,18 +87,18 @@ listUsers mName = do
   cursor <- M.find (M.select nameFilter collectionName)
   docs <- M.rest cursor
   users <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip ids users
 
 findUserById :: (MonadIO m) => ObjectId -> M.Action m (Maybe User)
 findUserById uid = runMaybeT $ do
-  mUser <- MaybeT $ M.findOne (M.select ["_id" =: uid] collectionName)
+  mUser <- MaybeT $ M.findOne (M.select [idF =: uid] collectionName)
   fromBson mUser
 
 updateUser :: (MonadIO m)
            => M.ObjectId -> M.Document -> M.Action m (Maybe User)
 updateUser uid userUpdate = do
-  M.modify (M.select ["_id" =: uid] collectionName) [ "$set" =: userUpdate ]
+  M.modify (M.select [idF =: uid] collectionName) [ setC =: userUpdate ]
   -- If the user is deleted between these commands we assume it's never been updated
   findUserById uid
 
@@ -117,7 +117,7 @@ getPendingTransactions doc =
 
 deleteUser :: (MonadIO m) => ObjectId -> M.Action m OpStatus
 deleteUser uid = do
-  mUserDoc <- M.findOne (M.select ["_id" =: uid] collectionName)
+  mUserDoc <- M.findOne (M.select [idF =: uid] collectionName)
   case mUserDoc of
     Nothing -> return NotFound
     Just userDoc ->
@@ -125,7 +125,7 @@ deleteUser uid = do
         then
           return Busy
         else do
-          M.delete $ M.select ["_id" =: uid] collectionName
+          M.delete $ M.select [idF =: uid] collectionName
           ad <- affectedDocs
           if ad == 0
             then return NotFound
@@ -133,9 +133,9 @@ deleteUser uid = do
 
 captureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 captureUser uid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: uid, pendingTransactions =: ["$ne" =: tid] ] collectionName)
-                                      [ "$inc"  =: [refCount =: (M.Int32 1)]
-                                      , "$push" =: [pendingTransactions =: tid]
+  M.modify (M.select [idF =: uid, pendingTransactions =: [neC =: tid] ] collectionName)
+                                      [ incC  =: [refCount =: (M.Int32 1)]
+                                      , pushC =: [pendingTransactions =: tid]
                                       ]
   count <- affectedDocs
   if count == 1
@@ -144,9 +144,9 @@ captureUser uid (TransactionId tid) = do
 
 rollbackCaptureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
 rollbackCaptureUser uid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: uid, pendingTransactions =: tid] collectionName)
-                                      [ "$dec"  =: [refCount =: (M.Int32 1)]
-                                      , "$pull" =: [pendingTransactions =: tid]
+  M.modify (M.select [idF =: uid, pendingTransactions =: tid] collectionName)
+                                      [ decC  =: [refCount =: (M.Int32 1)]
+                                      , pullC =: [pendingTransactions =: tid]
                                       ]
   count <- affectedDocs
   if count == 1
@@ -155,6 +155,6 @@ rollbackCaptureUser uid (TransactionId tid) = do
 
 pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
 pullTransaction uid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: uid, pendingTransactions =: tid] collectionName)
-                                      ["$pull" =: [pendingTransactions =: tid]]
+  M.modify (M.select [idF =: uid, pendingTransactions =: tid] collectionName)
+                                      [pullC =: [pendingTransactions =: tid]]
 
