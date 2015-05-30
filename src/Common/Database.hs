@@ -75,21 +75,30 @@ idF = "_id"
 idF :: Text
 
 -- Common database commands that are user around.
-decC     = "$dec"
-incC     = "$inc"
-neC      = "$ne"
-projectC = "$project"
-pullC    = "$pull"
-pushC    = "$push"
-setC     = "$set"
-unwindC  = "$unwind"
+currentDateC = "$dec"
+decC         = "$dec"
+incC         = "$inc"
+matchC       = "$match"
+neC          = "$ne"
+projectC     = "$project"
+pullC        = "$pull"
+pushC        = "$push"
+setC         = "$set"
+unwindC      = "$unwind"
 
-decC     :: Text
-incC     :: Text
-neC      :: Text
-projectC :: Text
-pullC    :: Text
-pushC    :: Text
-setC     :: Text
-unwindC  :: Text
+currentDateC :: Text
+decC         :: Text
+incC         :: Text
+matchC       :: Text
+neC          :: Text
+projectC     :: Text
+pullC        :: Text
+pushC        :: Text
+setC         :: Text
+unwindC      :: Text
 
+(+.+) :: Text -> Text -> Text
+a +.+ b = a `T.append` "." `T.append` b
+
+(+++) :: Text -> Text -> Text
+a +++ b = a `T.append` b

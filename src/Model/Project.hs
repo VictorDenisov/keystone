@@ -7,7 +7,8 @@ module Model.Project
 where
 
 import Common (capitalize, fromObject)
-import Common.Database (affectedDocs)
+import Common.Database ( affectedDocs, currentDateC, idF, matchC, neC, pullC
+                       , pushC, setC, unwindC, (+.+), (+++))
 
 import Control.Monad (when)
 import Control.Monad.Except (ExceptT, runExceptT)
@@ -51,6 +52,11 @@ userRoleAssignments :: T.Text
 userRoleAssignments = "userRoleAssignments"
 pendingTransactions :: T.Text
 pendingTransactions = "pendingTransactions"
+
+userIdF :: T.Text
+userIdF = "userId"
+roleIdF :: T.Text
+roleIdF = "roleId"
 
 newtype ProjectId = ProjectId M.ObjectId
 
@@ -102,12 +108,12 @@ listProjects mName = do
   cur <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cur
   projects <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt "_id")) docs
+  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip ids projects
 
 findProjectById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Project)
 findProjectById pid = runMaybeT $ do
-  mProject <- MaybeT $ M.findOne (M.select ["_id" =: pid] collectionName)
+  mProject <- MaybeT $ M.findOne (M.select [idF =: pid] collectionName)
   fromBson mProject
 
 addUserWithRole :: (MonadIO m)
@@ -116,41 +122,41 @@ addUserWithRole (ProjectId pid) (MU.UserId uid) (MR.RoleId rid) = runExceptT $ d
   let t = (AddRole uid rid pid)
   curTime <- liftIO getCurrentTime
   (M.ObjId tid) <- lift $ M.insert Tr.collectionName $ [Tr.state =: Tr.Initial, Tr.lastModified =: curTime] ++ (toBson t)
-  lift $ M.modify (M.select ["_id" =: tid, Tr.state =: Tr.Initial] Tr.collectionName)
-                                              [ "$set" =: [Tr.state =: Tr.Pending]
-                                              , "$currentDate" =: [Tr.lastModified =: True]]
+  lift $ M.modify (M.select [idF =: tid, Tr.state =: Tr.Initial] Tr.collectionName)
+                                              [ setC         =: [Tr.state =: Tr.Pending]
+                                              , currentDateC =: [Tr.lastModified =: True]]
   pendingCount <- lift affectedDocs
   when (pendingCount /= 1) $ fail "Failed to move to pending state. Couldn't find created transaction"
   rcs <- lift $ MR.captureRole rid (TransactionId tid)
   when (rcs == CaptureFailed) $ do
-    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    lift $ M.delete (M.select [idF =: tid] collectionName)
     fail $ "Failed to capture role with id " ++ (show rid)
   ucs <- lift $ MU.captureUser uid (TransactionId tid)
   when (ucs == CaptureFailed) $ do
     lift $ MR.rollbackCaptureRole rid (TransactionId tid)
-    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    lift $ M.delete (M.select [idF =: tid] collectionName)
     fail $ "Failed to capture user with id " ++ (show uid)
   urcs <- lift $ addUserRolePair (ProjectId pid) (MU.UserId uid) (MR.RoleId rid) (TransactionId tid)
   when (urcs == CaptureFailed) $ do
     lift $ MU.rollbackCaptureUser uid (TransactionId tid)
     lift $ MR.rollbackCaptureRole rid (TransactionId tid)
-    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    lift $ M.delete (M.select [idF =: tid] collectionName)
     fail "Failed to update project with user and role"
-  lift $ M.modify (M.select ["_id" =: tid, Tr.state =: Tr.Pending] Tr.collectionName)
-                                              [ "$set" =: [Tr.state =: Tr.Applied]
-                                              , "$currentDate" =: [Tr.lastModified =: True]]
+  lift $ M.modify (M.select [idF =: tid, Tr.state =: Tr.Pending] Tr.collectionName)
+                                              [ setC         =: [Tr.state =: Tr.Applied]
+                                              , currentDateC =: [Tr.lastModified =: True]]
   appliedCount <- lift affectedDocs
   when (appliedCount /= 1) $ do
     lift $ MU.rollbackCaptureUser uid (TransactionId tid)
     lift $ MR.rollbackCaptureRole rid (TransactionId tid)
-    lift $ M.delete (M.select ["_id" =: tid] collectionName)
+    lift $ M.delete (M.select [idF =: tid] collectionName)
     fail "Failed to move transaction to applied state"
   lift $ MR.pullTransaction rid (TransactionId tid)
   lift $ MU.pullTransaction uid (TransactionId tid)
   lift $ pullTransaction pid (TransactionId tid)
-  lift $ M.modify (M.select ["_id" =: tid, Tr.state =: Tr.Applied] Tr.collectionName)
-                                              [ "$set" =: [Tr.state =: Tr.Done]
-                                              , "$currentDate" =: [Tr.lastModified =: True]]
+  lift $ M.modify (M.select [idF =: tid, Tr.state =: Tr.Applied] Tr.collectionName)
+                                              [ setC         =: [Tr.state =: Tr.Done]
+                                              , currentDateC =: [Tr.lastModified =: True]]
   return 1
 
 addUserRolePair :: (MonadIO m)
@@ -163,11 +169,11 @@ addUserRolePair (ProjectId pid)
                 (MU.UserId uid)
                 (MR.RoleId rid)
                 (TransactionId tid) = do
-  M.modify (M.select ["_id" =: pid, pendingTransactions =: ["$ne" =: tid] ] collectionName)
-                                      [ "$push"  =: [userRoleAssignments =: [ "userId" =: uid
-                                                                            , "roleId" =: rid
-                                                                            ]]
-                                      , "$push" =: [pendingTransactions =: tid]
+  M.modify (M.select [idF =: pid, pendingTransactions =: [neC =: tid] ] collectionName)
+                                      [ pushC =: [userRoleAssignments =: [ userIdF =: uid
+                                                                         , roleIdF =: rid
+                                                                         ]]
+                                      , pushC =: [pendingTransactions =: tid]
                                       ]
   count <- affectedDocs
   if count == 1
@@ -176,16 +182,16 @@ addUserRolePair (ProjectId pid)
 
 pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
 pullTransaction pid (TransactionId tid) = do
-  M.modify (M.select ["_id" =: pid, pendingTransactions =: tid] collectionName)
-                                      ["$pull" =: [pendingTransactions =: tid]]
+  M.modify (M.select [idF =: pid, pendingTransactions =: tid] collectionName)
+                                      [pullC =: [pendingTransactions =: tid]]
 
 listUserRoles :: (MonadIO m) => ProjectId -> MU.UserId -> M.Action m [(M.ObjectId, MR.Role)]
 listUserRoles (ProjectId pid) (MU.UserId uid) = do
-  docs <- M.aggregate collectionName [ ["$match" =: ["_id" =: pid]]
-                                     , ["$unwind" =: (M.String $ '$' `T.cons` userRoleAssignments)]
-                                     , ["$match" =: [(userRoleAssignments `T.append` ".userId") =: uid]]
+  docs <- M.aggregate collectionName [ [matchC  =: [idF =: pid]]
+                                     , [unwindC =: (M.String $ "$" +++ userRoleAssignments)]
+                                     , [matchC  =: [(userRoleAssignments +.+ userIdF) =: uid]]
                                      ]
-  let roleIds = map ((\(M.ObjId o) -> o) . (M.valueAt "roleId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)) docs
+  let roleIds = map ((\(M.ObjId o) -> o) . (M.valueAt roleIdF) . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)) docs
 
   roles <- mapM MR.findRoleById roleIds
   let res = catMaybes ((flip map) (zip roleIds roles)
@@ -217,15 +223,15 @@ produceAssignmentsReply assignments baseUrl
 listAssignments :: (MonadIO m) => (Maybe ProjectId) -> (Maybe MU.UserId) -> M.Action m [Assignment]
 listAssignments pid' uid' = do
   let projectFilter = case pid' of
-                        Just (ProjectId v) -> [["$match" =: ["_id" =: v]]]
+                        Just (ProjectId v) -> [[matchC =: [idF =: v]]]
                         Nothing -> []
   let userFilter = case uid' of
-                        Just (MU.UserId v) -> [ ["$match" =: [(userRoleAssignments `T.append` ".userId") =: v]]]
+                        Just (MU.UserId v) -> [ [matchC =: [(userRoleAssignments +.+ userIdF) =: v]]]
                         Nothing -> []
-  docs <- M.aggregate collectionName $ projectFilter ++ [["$unwind" =: (M.String $ '$' `T.cons` userRoleAssignments)] ] ++ userFilter
+  docs <- M.aggregate collectionName $ projectFilter ++ [[unwindC =: (M.String $ "$" +++ userRoleAssignments)] ] ++ userFilter
   let assignments = map (\x -> Assignment (MU.UserId $ getUserId x) (MR.RoleId $ getRoleId x) (ProjectId $ getProjectId x)) docs
   return assignments
   where
-    getUserId = (\(M.ObjId u) -> u) . (M.valueAt "userId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)
-    getRoleId = (\(M.ObjId r) -> r) . (M.valueAt "roleId") . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)
-    getProjectId = (\(M.ObjId d) -> d) . (M.valueAt "_id")
+    getUserId = (\(M.ObjId u) -> u) . (M.valueAt userIdF) . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)
+    getRoleId = (\(M.ObjId r) -> r) . (M.valueAt roleIdF) . (\(M.Doc d) -> d) . (M.valueAt userRoleAssignments)
+    getProjectId = (\(M.ObjId d) -> d) . (M.valueAt idF)
