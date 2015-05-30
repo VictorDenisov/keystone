@@ -7,10 +7,12 @@ module Model.Service
 where
 
 import Common (skipTickOptions, capitalize, fromObject, dropOptions)
-import Common.Database (affectedDocs, pushC, setC, projectC, unwindC, idF)
+import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
+                       , (+++))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
+import Control.Monad (liftM)
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
@@ -38,7 +40,7 @@ data Service = Service
              } deriving (Show, Read, Eq, Ord, Typeable)
 
 endpointsF = T.pack $ nameBase 'endpoints
-endpointsA = (M.String $ '$' `T.cons` endpointsF) -- endpoints command for aggregation
+endpointsA = (M.String $ "$" +++ endpointsF) -- endpoints command for aggregation
 
 data ServiceType = Identity
                  | Compute

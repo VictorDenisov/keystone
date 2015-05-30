@@ -106,7 +106,7 @@ getRefCount :: M.Document -> Int
 getRefCount doc = case (M.look refCount doc) of
   Nothing -> 0
   Just (M.Int32 v) -> fromIntegral v
-  Just _ -> 1
+  Just v -> error $ (T.unpack refCount) ++ " field in user should be an int."
 
 getPendingTransactions :: M.Document -> [M.Value]
 getPendingTransactions doc =
