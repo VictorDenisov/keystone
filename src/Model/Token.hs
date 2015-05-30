@@ -4,6 +4,8 @@
 module Model.Token
 where
 
+import Common.Database (idF)
+
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
@@ -37,5 +39,5 @@ createToken t =
 
 findTokenById :: MonadIO m => ObjectId -> M.Action m (Maybe Token)
 findTokenById tid = runMaybeT $ do
-  mToken <- MaybeT $ M.findOne (M.select ["_id" =: tid] collectionName)
+  mToken <- MaybeT $ M.findOne (M.select [idF =: tid] collectionName)
   fromBson mToken
