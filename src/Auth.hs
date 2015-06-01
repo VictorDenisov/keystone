@@ -1,4 +1,5 @@
 {-# Language FlexibleContexts #-}
+{-# Language ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Auth
 where
@@ -43,7 +44,7 @@ data AuthMethod = PasswordMethod
 data AuthScope = ProjectIdScope
                { projectId     :: Maybe M.ObjectId
                , projectName   :: Maybe String
-               , scopeDomainId :: Maybe M.ObjectId
+               , scopeDomainId :: Maybe String
                } deriving Show
 
 instance FromJSON AuthRequest where
@@ -61,11 +62,11 @@ instance FromJSON AuthRequest where
             MaybeT $ domainSpec .:? "id"
           PasswordMethod <$> (userSpec .:? "id") <*> (userSpec .:? "name") <*> (return mDomainId) <*> (userSpec .: "password")
     scope <- runMaybeT $ do
-      s <- MaybeT $ identity .:? "scope"
+      s <- MaybeT $ auth .:? "scope"
       p <- MaybeT $ s .:? "project"
       i <- lift $ p .:? "id"
       n <- lift $ p .:? "name"
-      di <- MaybeT $ runMaybeT $ do
+      di <- lift $ runMaybeT $ do
         d <- MaybeT $ p .:? "domain"
         MaybeT $ d .:? "id"
       return $ ProjectIdScope i n di
@@ -82,7 +83,7 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
               Nothing -> do
                 users <- CD.runDB pipe $ MU.listUsers mUserName
                 return $ listToMaybe users
-    scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
+    --scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
       Nothing -> return $ Left "User is not found."
       Just (userId, u)  ->
@@ -91,16 +92,20 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
             if verifyPassword (pack password) (pack p)
               then do
                 currentTime <- liftIO getCurrentTime
-                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId $ fromJust scopeProjectId
+                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId Nothing
                 mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
           Nothing -> return $ Left "User exists, but doesn't have any password."
   where
+    {-
     calcProjectId mScope = runMaybeT $ do
-      (ProjectIdScope pid _ _) <- MaybeT $ return mScope
-      project <- MaybeT $ MP.findProjectById $ fromJust pid
+      (ProjectIdScope mPid _ _) <- MaybeT $ return mScope
+      case mPid of
+        project <- MaybeT $ MP.findProjectById $ fromJust pid
+        Nothing -> 
       return pid
+      -}
 
 authenticate _ _ _ = return $ Left "Method is not supported."
 
