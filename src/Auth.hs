@@ -83,7 +83,7 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
               Nothing -> do
                 users <- CD.runDB pipe $ MU.listUsers mUserName
                 return $ listToMaybe users
-    --scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
+    scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
       Nothing -> return $ Left "User is not found."
       Just (userId, u)  ->
@@ -92,20 +92,21 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
             if verifyPassword (pack password) (pack p)
               then do
                 currentTime <- liftIO getCurrentTime
-                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId Nothing
+                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId scopeProjectId
                 mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
           Nothing -> return $ Left "User exists, but doesn't have any password."
   where
-    {-
     calcProjectId mScope = runMaybeT $ do
-      (ProjectIdScope mPid _ _) <- MaybeT $ return mScope
+      (ProjectIdScope mPid mPname _) <- MaybeT $ return mScope
       case mPid of
-        project <- MaybeT $ MP.findProjectById $ fromJust pid
-        Nothing -> 
-      return pid
-      -}
+        Just pid -> do
+          project <- MaybeT $ MP.findProjectById pid
+          return pid
+        Nothing -> do
+          (pid, _) <- MaybeT $ listToMaybe <$> MP.listProjects mPname
+          return pid
 
 authenticate _ _ _ = return $ Left "Method is not supported."
 
