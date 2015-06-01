@@ -1,0 +1,5 @@
+explain A, F, C notation
+recover from transaction failure
+add roles and catalog to the token
+add expireAfter index for tokens
+add unique index on role name
