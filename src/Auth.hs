@@ -126,14 +126,14 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
     liftIO $ debugM loggerName $ "Received roles " ++ (show mroles)
     let roles = catMaybes mroles
     return $ [ "project" .= (object [ "id"   .= pid
-                                   , "name" .= MP.name project
-                                   , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
-                                   , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                          , "id"   .= ("default" :: String)
-                                                          ]
-                                                 )
-                                   ]
-                           )
+                                    , "name" .= MP.name project
+                                    , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
+                                    , "domain" .= ( object [ "name" .= ("Default" :: String)
+                                                           , "id"   .= ("default" :: String)
+                                                           ]
+                                                  )
+                                    ]
+                            )
              , "roles" .= (Array $ fromList roles)
              ]
   endpoints <- MS.listServices
@@ -146,8 +146,8 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                           , "user"       .= (object [ "name"   .= MU.name u
                                                                     , "id"     .= (show user)
                                                                     , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                                                         , "id"   .= ("default" :: String)])
-                                                                  ] )
+                                                                                           , "id"   .= ("default" :: String)])
+                                                                    ] )
                                           , "catalog"  .= (Array $ fromList $ map serviceToValue endpoints)
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
