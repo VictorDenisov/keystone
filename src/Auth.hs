@@ -41,7 +41,9 @@ data AuthMethod = PasswordMethod
                 } deriving Show
 
 data AuthScope = ProjectIdScope
-               { projectId :: M.ObjectId
+               { projectId     :: Maybe M.ObjectId
+               , projectName   :: Maybe String
+               , scopeDomainId :: Maybe M.ObjectId
                } deriving Show
 
 instance FromJSON AuthRequest where
@@ -61,8 +63,12 @@ instance FromJSON AuthRequest where
     scope <- runMaybeT $ do
       s <- MaybeT $ identity .:? "scope"
       p <- MaybeT $ s .:? "project"
-      i <- MaybeT $ p .:? "id"
-      return $ ProjectIdScope i
+      i <- lift $ p .:? "id"
+      n <- lift $ p .:? "name"
+      di <- MaybeT $ runMaybeT $ do
+        d <- MaybeT $ p .:? "domain"
+        MaybeT $ d .:? "id"
+      return $ ProjectIdScope i n di
     return $ AuthRequest ms scope
 
 authenticate :: (MonadBaseControl IO m, MonadIO m)
@@ -85,15 +91,15 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
             if verifyPassword (pack password) (pack p)
               then do
                 currentTime <- liftIO getCurrentTime
-                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId scopeProjectId
+                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId $ fromJust scopeProjectId
                 mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
           Nothing -> return $ Left "User exists, but doesn't have any password."
   where
     calcProjectId mScope = runMaybeT $ do
-      (ProjectIdScope pid) <- MaybeT $ return mScope
-      project <- MaybeT $ MP.findProjectById pid
+      (ProjectIdScope pid _ _) <- MaybeT $ return mScope
+      project <- MaybeT $ MP.findProjectById $ fromJust pid
       return pid
 
 authenticate _ _ _ = return $ Left "Method is not supported."
