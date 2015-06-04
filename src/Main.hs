@@ -13,7 +13,6 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
-import Crypto.PasswordStore (makePassword)
 import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
@@ -228,19 +227,10 @@ application config = do
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest
-    cryptedPassword <- runMaybeT $ do
-      p <- MaybeT $ return $ U.password d
-      p1 <- liftIO $ makePassword (pack p) 17
-      return $ unpack p1
-    let user = MU.User
-                (U.description d)
-                (U.email d)
-                (U.enabled d)
-                (U.name d)
-                (cryptedPassword)
+    user <- liftIO $ U.newRequestToUser d
     uid <- CD.withDB (database config) $ MU.createUser user
     S.status status201
-    with_host_url config $ MU.produceUserReply user uid
+    with_host_url config $ MU.produceUserReply user
   S.get "/v3/users" $ do
     userName <- parseMaybeString "name"
     liftIO $ putStrLn $ show userName
@@ -256,7 +246,7 @@ application config = do
         S.json $ E.notFound "User not found"
       Just user -> do
         S.status status200
-        with_host_url config $ MU.produceUserReply user uid
+        with_host_url config $ MU.produceUserReply user
   S.patch "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
@@ -267,7 +257,7 @@ application config = do
         S.json $ E.notFound "User not found"
       Just user -> do
         S.status status200
-        with_host_url config $ MU.produceUserReply user uid
+        with_host_url config $ MU.produceUserReply user
   S.delete "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
     st <- CD.withDB (database config) $ MU.deleteUser uid

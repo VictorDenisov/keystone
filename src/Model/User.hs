@@ -7,7 +7,7 @@
 module Model.User
 where
 
-import Common (fromObject)
+import Common (fromObject, skipUnderscoreOptions)
 import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC, setC)
 import Control.Applicative ((<$>))
 import Control.Monad (mapM)
@@ -33,7 +33,8 @@ import qualified Data.Text as T
 collectionName :: M.Collection
 collectionName = "user"
 
-data User = User { description :: Maybe String
+data User = User { _id :: M.ObjectId
+                 , description :: Maybe String
                  , email :: Maybe String
                  , enabled :: Bool
                  , name :: String
@@ -52,20 +53,19 @@ instance M.Val UserId where
 
 $(deriveBson id ''User)
 
-$(deriveJSON defaultOptions ''User)
+$(deriveJSON skipUnderscoreOptions ''User)
 
-produceUserJson :: User -> M.ObjectId -> String -> Value
-produceUserJson (u@User{..}) uid baseUrl
+produceUserJson :: User -> String -> Value
+produceUserJson (u@User{..}) baseUrl
   = Object
-    $ insert "id" (String $ T.pack $ show uid)
-    $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/users/" ++ (show uid)) ])
+    $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/users/" ++ (show _id)) ])
     $ fromObject $ toJSON u
 
-produceUserReply :: User -> M.ObjectId -> String -> Value
-produceUserReply (user@User{..}) uid baseUrl
-  = object [ "user" .= produceUserJson user uid baseUrl ]
+produceUserReply :: User -> String -> Value
+produceUserReply (user@User{..}) baseUrl
+  = object [ "user" .= produceUserJson user baseUrl ]
 
-produceUsersReply :: [(M.ObjectId, User)] -> String -> Value
+produceUsersReply :: [User] -> String -> Value
 produceUsersReply users baseUrl
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
@@ -75,7 +75,7 @@ produceUsersReply users baseUrl
            , "users" .= usersEntry
            ]
   where
-    usersEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceUserJson s i) users
+    usersEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceUserJson users
 
 
 createUser :: MonadIO m => User -> M.Action m M.ObjectId
@@ -84,16 +84,14 @@ createUser u = do
   return oid
 
 listUsers :: (MonadIO m, MonadBaseControl IO m)
-          => (Maybe String) -> M.Action m [(M.ObjectId, User)]
+          => (Maybe String) -> M.Action m [User]
 listUsers mName = do
   let nameFilter = case mName of
                       Nothing -> []
                       Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
   cursor <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cursor
-  users <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
-  return $ zip ids users
+  mapM fromBson docs
 
 findUserById :: (MonadIO m) => ObjectId -> M.Action m (Maybe User)
 findUserById uid = runMaybeT $ do

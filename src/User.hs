@@ -7,8 +7,11 @@ module User
 ) where
 
 import Common (underscoreOptions, dropOptions, (<.>))
-import Control.Monad (mzero)
 import Control.Applicative ((<*>), (<$>))
+import Control.Monad (mzero)
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Maybe (MaybeT(..))
+import Crypto.PasswordStore (makePassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 import Data.Aeson.TH (mkParseJSON, defaultOptions)
 import Data.Aeson.Types (typeMismatch)
@@ -17,8 +20,24 @@ import Language.Haskell.TH.Syntax (nameBase)
 
 import User.Types (UserCreateRequest(..), UserUpdateRequest(..))
 
+import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
+
+newRequestToUser :: UserCreateRequest -> IO MU.User
+newRequestToUser UserCreateRequest{..} = do
+    cryptedPassword <- runMaybeT $ do
+      p <- MaybeT $ return $ password
+      p1 <- liftIO $ makePassword (BS8.pack p) 17
+      return $ BS8.unpack p1
+    userId <- M.genObjectId
+    return $ MU.User
+                  userId
+                  description
+                  email
+                  enabled
+                  name
+                  cryptedPassword
 
 updateRequestToDocument :: UserUpdateRequest -> M.Document
 updateRequestToDocument UserUpdateRequest{..} = concat

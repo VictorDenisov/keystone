@@ -77,17 +77,15 @@ authenticate :: (MonadBaseControl IO m, MonadIO m)
              => (Maybe AuthScope) -> M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
 authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) = do
     mu <- case mUserId of
-              Just userId ->
-                runMaybeT $ do
-                  mu <- MaybeT $ CD.runDB pipe $ MU.findUserById userId
-                  return (userId, mu)
+              Just userId -> CD.runDB pipe $ MU.findUserById userId
               Nothing -> do
                 users <- CD.runDB pipe $ MU.listUsers mUserName
                 return $ listToMaybe users
     scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
       Nothing -> return $ Left "User is not found."
-      Just (userId, u)  ->
+      Just u  ->
+        let userId = MU._id u in
         case MU.password u of
           Just p ->
             if verifyPassword (pack password) (pack p)
