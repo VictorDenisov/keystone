@@ -6,7 +6,7 @@
 module Model.Role
 where
 
-import Common (capitalize, fromObject, loggerName)
+import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
 import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC)
 
 import Control.Monad.IO.Class (MonadIO(..))
@@ -32,7 +32,8 @@ collectionName :: M.Collection
 collectionName = "role"
 
 data Role = Role
-          { name        :: String
+          { _id         :: M.ObjectId
+          , name        :: String
           , description :: Maybe String
           , enabled     :: Bool
           } deriving (Show, Read, Eq, Ord, Typeable)
@@ -49,20 +50,19 @@ instance M.Val RoleId where
 
 $(deriveBson id ''Role)
 
-$(deriveJSON defaultOptions ''Role)
+$(deriveJSON skipUnderscoreOptions ''Role)
 
-produceRoleJson :: Role -> M.ObjectId -> String -> Value
-produceRoleJson (role@Role{..}) rid baseUrl
+produceRoleJson :: Role -> String -> Value
+produceRoleJson (role@Role{..}) baseUrl
       = Object
-        $ insert "id" (String $ T.pack $ show rid)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/roles/" ++ (show rid)) ])
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/roles/" ++ (show _id)) ])
         $ fromObject $ toJSON role
 
-produceRoleReply :: Role -> M.ObjectId -> String -> Value
-produceRoleReply role rid baseUrl
-      = object [ "role" .= produceRoleJson role rid baseUrl ]
+produceRoleReply :: Role -> String -> Value
+produceRoleReply role baseUrl
+      = object [ "role" .= produceRoleJson role baseUrl ]
 
-produceRolesReply :: [(M.ObjectId, Role)] -> String -> Value
+produceRolesReply :: [Role] -> String -> Value
 produceRolesReply roles baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
@@ -72,7 +72,7 @@ produceRolesReply roles baseUrl
              , "roles" .= rolesEntry
              ]
   where
-    rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceRoleJson s i) roles
+    rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceRoleJson roles
 
 createRole :: MonadIO m => Role -> M.Action m M.ObjectId
 createRole r = do
@@ -80,16 +80,14 @@ createRole r = do
   return rid
 
 listRoles :: (MonadIO m, MonadBaseControl IO m)
-          => (Maybe String) -> M.Action m [(M.ObjectId, Role)]
+          => (Maybe String) -> M.Action m [Role]
 listRoles mName = do
   let nameFilter = case mName of
                       Nothing -> []
                       Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
   cur <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cur
-  roles <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
-  return $ zip ids roles
+  mapM fromBson docs
 
 findRoleById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Role)
 findRoleById rid = runMaybeT $ do

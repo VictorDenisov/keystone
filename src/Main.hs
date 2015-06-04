@@ -272,10 +272,10 @@ application config = do
   -- Role API
   S.post "/v3/roles" $ do
     (rcr :: R.RoleCreateRequest) <- parseRequest
-    let role = R.newRequestToRole rcr
+    role <- liftIO $ R.newRequestToRole rcr
     rid <- CD.withDB (database config) $ MR.createRole role
     S.status status201
-    with_host_url config $ MR.produceRoleReply role rid
+    with_host_url config $ MR.produceRoleReply role
   S.get "/v3/roles" $ do
     roleName <- parseMaybeString "name"
     roles <- CD.withDB (database config) $ MR.listRoles roleName
@@ -290,7 +290,7 @@ application config = do
         S.json $ E.notFound "Role not found"
       Just role -> do
         S.status status200
-        with_host_url config $ MR.produceRoleReply role rid
+        with_host_url config $ MR.produceRoleReply role
   S.get "/v3/role_assignments" $ do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"

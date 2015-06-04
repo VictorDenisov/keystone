@@ -17,9 +17,10 @@ import Language.Haskell.TH.Syntax (nameBase)
 import qualified Database.MongoDB as M
 import qualified Model.Role as MR
 
-newRequestToRole :: RoleCreateRequest -> MR.Role
-newRequestToRole RoleCreateRequest{..} =
-  MR.Role name description (fromMaybe True enabled)
+newRequestToRole :: RoleCreateRequest -> IO MR.Role
+newRequestToRole RoleCreateRequest{..} = do
+  roleId <- M.genObjectId
+  return $ MR.Role roleId name description (fromMaybe True enabled)
 
 instance FromJSON RoleCreateRequest where
   parseJSON (Object v) = do

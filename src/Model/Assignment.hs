@@ -88,15 +88,12 @@ listAssignments mPid mUid = do
                          )) assignments
 
 listUserRoles :: (MonadIO m, MonadBaseControl IO m)
-              => MP.ProjectId -> MU.UserId -> M.Action m [(M.ObjectId, MR.Role)]
+              => MP.ProjectId -> MU.UserId -> M.Action m [MR.Role]
 listUserRoles pid uid = do
   assignments <- listAssignments (Just pid) (Just uid)
-  mRoles <- mapM searchRole $ map ((\(MR.RoleId rid) -> rid) . roleId) assignments
+  mRoles <- mapM MR.findRoleById
+              $ map ((\(MR.RoleId rid) -> rid) . roleId) assignments
   return $ catMaybes mRoles
-  where
-    searchRole rid = runMaybeT $ do
-      role <- MaybeT $ MR.findRoleById rid
-      return (rid, role)
 
 addAssignment :: (MonadIO m)
               => Assignment -> M.Action m M.ObjectId
