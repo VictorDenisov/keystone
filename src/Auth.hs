@@ -106,7 +106,7 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
           project <- MaybeT $ MP.findProjectById pid
           return pid
         Nothing -> do
-          (pid, _) <- MaybeT $ listToMaybe <$> MP.listProjects mPname
+          (MP.Project pid _ _ _) <- MaybeT $ listToMaybe <$> MP.listProjects mPname
           return pid
 
 authenticate _ _ _ = return $ Left "Method is not supported."

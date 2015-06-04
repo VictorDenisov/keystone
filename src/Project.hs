@@ -17,9 +17,10 @@ import Language.Haskell.TH.Syntax (nameBase)
 import qualified Database.MongoDB as M
 import qualified Model.Project as MP
 
-newRequestToProject :: ProjectCreateRequest -> MP.Project
-newRequestToProject ProjectCreateRequest{..} =
-  MP.Project name description (fromMaybe True enabled)
+newRequestToProject :: ProjectCreateRequest -> IO MP.Project
+newRequestToProject ProjectCreateRequest{..} = do
+  projectId <- M.genObjectId
+  return $ MP.Project projectId name description (fromMaybe True enabled)
 
 instance FromJSON ProjectCreateRequest where
   parseJSON (Object v) = do

@@ -194,10 +194,10 @@ application config = do
   -- Project API
   S.post "/v3/projects" $ do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
-    let project = P.newRequestToProject pcr
+    project <- liftIO $ P.newRequestToProject pcr
     pid <- CD.withDB (database config) $ MP.createProject project
     S.status status201
-    with_host_url config $ MP.produceProjectReply project pid
+    with_host_url config $ MP.produceProjectReply project
   S.get "/v3/projects" $ do
     projectName <- parseMaybeString "name"
     projects <- CD.withDB (database config) $ MP.listProjects projectName
@@ -212,7 +212,7 @@ application config = do
         S.json $ E.notFound "Project not found"
       Just project -> do
         S.status status200
-        with_host_url config $ MP.produceProjectReply project pid
+        with_host_url config $ MP.produceProjectReply project
   S.get "/v3/projects/:pid/users/:uid/roles" $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"

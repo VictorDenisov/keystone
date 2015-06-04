@@ -34,6 +34,8 @@ instance MonadThrow m => MonadThrow (S.ActionT E.Error m) where
 
 skipTickOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
 
+skipUnderscoreOptions = defaultOptions { fieldLabelModifier = filter (/= '_') }
+
 dropOptions size = defaultOptions { fieldLabelModifier = drop size }
 
 underscoreOptions = defaultOptions { fieldLabelModifier = camelToUnderscore}

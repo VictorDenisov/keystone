@@ -6,7 +6,7 @@
 module Model.Project
 where
 
-import Common (capitalize, fromObject, loggerName)
+import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
 import Common.Database ( affectedDocs, currentDateC, idF, inC, matchC, neC, pullC
                        , pushC, setC, unwindC, (+.+), (+++))
 
@@ -41,7 +41,8 @@ collectionName :: M.Collection
 collectionName = "project"
 
 data Project = Project
-             { name :: String
+             { _id  :: M.ObjectId
+             , name :: String
              , description :: Maybe String
              , enabled :: Bool
              } deriving (Show, Read, Eq, Ord, Typeable)
@@ -69,20 +70,19 @@ instance M.Val ProjectId where
 
 $(deriveBson id ''Project)
 
-$(deriveJSON defaultOptions ''Project)
+$(deriveJSON skipUnderscoreOptions ''Project)
 
-produceProjectJson :: Project -> M.ObjectId -> String -> Value
-produceProjectJson (project@Project{..}) pid baseUrl
+produceProjectJson :: Project -> String -> Value
+produceProjectJson (project@Project{..}) baseUrl
       = Object
-        $ insert "id" (String $ T.pack $ show pid)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show _id)) ])
         $ fromObject $ toJSON project
 
-produceProjectReply :: Project -> M.ObjectId -> String -> Value
-produceProjectReply project pid baseUrl
-      = object [ "project" .= produceProjectJson project pid baseUrl ]
+produceProjectReply :: Project -> String -> Value
+produceProjectReply project baseUrl
+      = object [ "project" .= produceProjectJson project baseUrl ]
 
-produceProjectsReply :: [(M.ObjectId, Project)] -> String -> Value
+produceProjectsReply :: [Project] -> String -> Value
 produceProjectsReply projects baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
@@ -92,24 +92,22 @@ produceProjectsReply projects baseUrl
              , "projects" .= projectsEntry
              ]
   where
-    projectsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceProjectJson s i) projects
+    projectsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceProjectJson projects
 
-createProject :: MonadIO m => Project -> M.Action m M.ObjectId
+createProject ::  MonadIO m => Project -> M.Action m M.ObjectId
 createProject p = do
   M.ObjId pid <- M.insert collectionName $ toBson p
   return pid
 
 listProjects :: (MonadIO m, MonadBaseControl IO m)
-             => (Maybe String) -> M.Action m [(M.ObjectId, Project)]
+             => (Maybe String) -> M.Action m [Project]
 listProjects mName = do
   let nameFilter = case mName of
                       Nothing -> []
                       Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
   cur <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cur
-  projects <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
-  return $ zip ids projects
+  mapM fromBson docs
 
 findProjectById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Project)
 findProjectById pid = runMaybeT $ do
