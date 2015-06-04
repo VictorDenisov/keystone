@@ -81,7 +81,6 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
               Nothing -> do
                 users <- CD.runDB pipe $ MU.listUsers mUserName
                 return $ listToMaybe users
-    scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
       Nothing -> return $ Left "User is not found."
       Just user  ->
@@ -89,53 +88,57 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
           Just p ->
             if verifyPassword (pack password) (pack p)
               then do
-                currentTime <- liftIO getCurrentTime
-                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) user scopeProjectId
+                currentTime  <- liftIO getCurrentTime
+                scopeProject <- CD.runDB pipe $ calcProject mScope
+                scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
+                let token = MT.Token
+                                  currentTime
+                                  (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
+                                  user
+                                  scopeProject
+                                  scopeRoles
                 mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
           Nothing -> return $ Left "User exists, but doesn't have any password."
   where
-    calcProjectId mScope = runMaybeT $ do
+    calcProject mScope = runMaybeT $ do
       (ProjectIdScope mPid mPname _) <- MaybeT $ return mScope
-      case mPid of
-        Just pid -> do
-          project <- MaybeT $ MP.findProjectById pid
-          return $ MP.ProjectId pid
-        Nothing -> do
-          (MP.Project pid _ _ _) <- MaybeT $ listToMaybe <$> MP.listProjects mPname
-          return $ MP.ProjectId pid
+      MaybeT $ case mPid of
+        Just pid -> MP.findProjectById pid
+        Nothing  -> listToMaybe <$> MP.listProjects mPname
+
+    calcRoles mProject user = do
+      list <- runMaybeT $ do
+        project <- MaybeT $ return mProject
+        lift $ MA.listUserRoles (MP.ProjectId $ MP._id project) (MU.UserId $ MU._id user)
+      return $ concat $ maybeToList list
+
 
 authenticate _ _ _ = return $ Left "Method is not supported."
 
 
-calcProjectScope :: (MonadIO m)
-                 => MP.ProjectId -> String -> MaybeT (M.Action m) Value
-calcProjectScope (MP.ProjectId pid) baseUrl = do
-  project <- MaybeT $ MP.findProjectById pid
-  return $ (object [ "id"   .= pid
-                   , "name" .= MP.name project
-                   , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
-                   , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                          , "id"   .= ("default" :: String)
-                                          ]
-                                 )
+calcProjectScope :: MP.Project -> String -> Value
+calcProjectScope project baseUrl
+          = object [ "id"     .= MP._id project
+                   , "name"   .= MP.name project
+                   , "links"  .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show $ MP._id project)) ])
+                   , "domain" .= (object [ "name" .= ("Default" :: String)
+                                         , "id"   .= ("default" :: String)
+                                         ])
                    ]
-            )
 
-produceTokenResponse :: (MonadBaseControl IO m, MonadIO m) => MT.Token -> String -> M.Action m Value
-produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
+produceTokenResponse :: (MonadBaseControl IO m, MonadIO m)
+                     => MT.Token -> String -> M.Action m Value
+produceTokenResponse (MT.Token issued expires user mProject roles) baseUrl = do
   liftIO $ debugM loggerName $ "Producing token response"
   scopeFields <- runMaybeT $ do
-    pid <- MaybeT $ return mProjectId
-    projectValue <- calcProjectScope pid baseUrl
-    roles <- lift $ MA.listUserRoles pid (MU.UserId $ MU._id user)
+    project <- MaybeT $ return mProject
+    let projectValue = calcProjectScope project baseUrl
     return $ [ "project" .= projectValue
              , "roles"   .= (Array $ fromList $ map toRoleReply roles)
              ]
   services <- MS.listServices
-  liftIO $ debugM loggerName $ "Scope fields are: " ++ (show scopeFields)
-
   return $ object [ "token" .= ( object $ [ "expires_at" .= expires
                                           , "issued_at"  .= issued
                                           , "methods"    .= [ "password" :: String ]

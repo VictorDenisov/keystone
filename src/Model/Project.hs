@@ -62,10 +62,8 @@ newtype ProjectId = ProjectId M.ObjectId
                     deriving (Show, Typeable, Eq)
 
 instance M.Val ProjectId where
-  val (ProjectId pid) = M.String $ T.pack $ show pid
-  cast' (M.String s) = do
-    pid <- readMaybe $ T.unpack s
-    return $ ProjectId pid
+  val (ProjectId pid) = M.ObjId pid
+  cast' (M.ObjId pid) = return $ ProjectId pid
   cast' _ = Nothing
 
 $(deriveBson id ''Project)

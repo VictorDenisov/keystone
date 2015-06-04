@@ -45,10 +45,8 @@ newtype UserId = UserId M.ObjectId
                  deriving (Show, Typeable, Eq)
 
 instance M.Val UserId where
-  val (UserId uid) = M.String $ T.pack $ show uid
-  cast' (M.String s) = do
-    uid <- readMaybe $ T.unpack s
-    return $ UserId uid
+  val (UserId uid) = M.ObjId uid
+  cast' (M.ObjId uid) = return $ UserId uid
   cast' _ = Nothing
 
 $(deriveBson id ''User)

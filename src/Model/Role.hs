@@ -42,10 +42,8 @@ newtype RoleId = RoleId M.ObjectId
                  deriving (Show, Typeable, Eq)
 
 instance M.Val RoleId where
-  val (RoleId rid) = M.String $ T.pack $ show rid
-  cast' (M.String s) = do
-    rid <- readMaybe $ T.unpack s
-    return $ RoleId rid
+  val (RoleId rid) = M.ObjId rid
+  cast' (M.ObjId rid) = return $ RoleId rid
   cast' _ = Nothing
 
 $(deriveBson id ''Role)
