@@ -137,10 +137,10 @@ application config = do
   -- Service API
   S.post "/v3/services" $ do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
-    let service = Srv.newRequestToService scr
+    service <- liftIO $ Srv.newRequestToService scr
     sid <- CD.withDB (database config) $ MS.createService service
     S.status status201
-    with_host_url config $ MS.produceServiceReply service sid
+    with_host_url config $ MS.produceServiceReply service
   S.get "/v3/services" $ do
     services <- CD.withDB (database config) $ MS.listServices
     S.status status200
@@ -154,7 +154,7 @@ application config = do
         S.json $ E.notFound "Service not found"
       Just service -> do
         S.status status200
-        with_host_url config $ MS.produceServiceReply service sid
+        with_host_url config $ MS.produceServiceReply service
   S.patch "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
@@ -165,7 +165,7 @@ application config = do
         S.json $ E.notFound "Service not found"
       Just service -> do
         S.status status200
-        with_host_url config $ MS.produceServiceReply service sid
+        with_host_url config $ MS.produceServiceReply service
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     n <- CD.withDB (database config) $ MS.deleteService sid

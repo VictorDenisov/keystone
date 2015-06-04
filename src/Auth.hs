@@ -135,7 +135,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                             )
              , "roles" .= (Array $ fromList roles)
              ]
-  endpoints <- MS.listServices
+  services <- MS.listServices
   liftIO $ debugM loggerName $ "Scope fields are: " ++ (show scopeFields)
 
   return $ object [ "token" .= ( object $ [ "expires_at" .= expires
@@ -147,7 +147,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                                                     , "domain" .= ( object [ "name" .= ("Default" :: String)
                                                                                            , "id"   .= ("default" :: String)])
                                                                     ] )
-                                          , "catalog"  .= (Array $ fromList $ map serviceToValue endpoints)
+                                          , "catalog"  .= (Array $ fromList $ map serviceToValue services)
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
   where
@@ -158,9 +158,9 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                       , "name" .= MR.name role
                       ]
 
-    serviceToValue :: (M.ObjectId, MS.Service) -> Value
-    serviceToValue (serviceId, service) =
-               object [ "id"        .= serviceId
+    serviceToValue :: MS.Service -> Value
+    serviceToValue service =
+               object [ "id"        .= MS._id service
                       , "name"      .= MS.name service
                       , "type"      .= MS.type' service
                       , "endpoints" .= (map endpointToValue $ MS.endpoints service)

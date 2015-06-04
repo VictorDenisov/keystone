@@ -20,9 +20,10 @@ import Language.Haskell.TH.Syntax (nameBase)
 import qualified Database.MongoDB as M
 import qualified Model.Service as MS
 
-newRequestToService :: ServiceCreateRequest -> MS.Service
-newRequestToService ServiceCreateRequest{..} =
-  MS.Service description (maybe True id enabled) name type' []
+newRequestToService :: ServiceCreateRequest -> IO MS.Service
+newRequestToService ServiceCreateRequest{..} = do
+  serviceId <- M.genObjectId
+  return $ MS.Service serviceId description (maybe True id enabled) name type' []
 
 newRequestToEndpoint :: EndpointCreateRequest -> IO MS.Endpoint
 newRequestToEndpoint EndpointCreateRequest{..} = do

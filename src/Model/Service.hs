@@ -6,7 +6,8 @@
 module Model.Service
 where
 
-import Common (skipTickOptions, capitalize, fromObject, dropOptions)
+import Common ( capitalize, dropOptions, fromObject, skipTickOptions
+              , skipUnderscoreOptions, (<.>))
 import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
                        , (+++))
 import Control.Monad.IO.Class (MonadIO(..))
@@ -33,7 +34,8 @@ collectionName :: M.Collection
 collectionName = "service"
 
 data Service = Service
-             { description :: Maybe String
+             { _id         :: M.ObjectId
+             , description :: Maybe String
              , enabled     :: Bool
              , name        :: Maybe String
              , type'       :: ServiceType
@@ -78,7 +80,7 @@ instance Val ServiceType where
 
 $(deriveBson id ''Service)
 
-$(deriveJSON skipTickOptions ''Service)
+$(deriveJSON (skipTickOptions <.> skipUnderscoreOptions) ''Service)
 
 instance FromJSON Interface where
   parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
@@ -98,16 +100,15 @@ $(deriveBson (drop 1) ''Endpoint)
 
 $(deriveJSON (dropOptions 1) ''Endpoint)
 
-produceServiceJson :: Service -> M.ObjectId -> String -> Value
-produceServiceJson (s@Service{..}) oid baseUrl
+produceServiceJson :: Service -> String -> Value
+produceServiceJson (s@Service{..}) baseUrl
       = Object
-        $ insert "id" (String $ T.pack $ show oid)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show oid)) ])
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show _id)) ])
         $ fromObject $ toJSON s
 
-produceServiceReply :: Service -> M.ObjectId -> String -> Value
-produceServiceReply (service@Service{..}) oid baseUrl
-      = object [ "service" .= produceServiceJson service oid baseUrl ]
+produceServiceReply :: Service -> String -> Value
+produceServiceReply (service@Service{..}) baseUrl
+      = object [ "service" .= produceServiceJson service baseUrl ]
 
 produceEndpointJson :: Endpoint -> M.ObjectId -> String -> Value
 produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
@@ -133,7 +134,7 @@ produceEndpointsReply endpoints baseUrl
   where
     endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
 
-produceServicesReply :: [(M.ObjectId, Service)] -> String -> Value
+produceServicesReply :: [Service] -> String -> Value
 produceServicesReply services baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
@@ -143,7 +144,9 @@ produceServicesReply services baseUrl
              , "services" .= servicesEntry
              ]
   where
-    servicesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceServiceJson s i) services
+    servicesEntry = Array $ fromList
+                              $ map (\f -> f baseUrl)
+                                  $ map produceServiceJson services
 
 createService :: MonadIO m => Service -> M.Action m M.ObjectId
 createService s = do
@@ -151,13 +154,11 @@ createService s = do
   return oid
 
 listServices :: (MonadIO m, MonadBaseControl IO m)
-             => M.Action m [(M.ObjectId, Service)]
+             => M.Action m [Service]
 listServices = do
   cur <- M.find $ M.select [] collectionName
   docs <- M.rest cur
-  services <- mapM fromBson docs
-  let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
-  return $ zip ids services
+  mapM fromBson docs
 
 findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)
 findServiceById sid = runMaybeT $ do
