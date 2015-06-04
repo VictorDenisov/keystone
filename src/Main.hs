@@ -46,6 +46,7 @@ import qualified Common.Database as CD
 import qualified Data.Text.Lazy as T
 import qualified Database.MongoDB as M
 import qualified Error as E
+import qualified Model.Assignment as MA
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
@@ -215,14 +216,14 @@ application config = do
   S.get "/v3/projects/:pid/users/:uid/roles" $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
-    roles <- CD.withDB (database config) $ MP.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
+    roles <- CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
     S.status status200
     with_host_url config $ MR.produceRolesReply roles -- TODO base url should be revised here
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     (rid :: M.ObjectId) <- parseId "rid"
-    res <- CD.withDB (database config) $ MP.addUserWithRole (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid)
+    res <- CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
     S.status status204
   -- User API
   S.post "/v3/users" $ do
@@ -286,7 +287,8 @@ application config = do
     S.status status201
     with_host_url config $ MR.produceRoleReply role rid
   S.get "/v3/roles" $ do
-    roles <- CD.withDB (database config) $ MR.listRoles
+    roleName <- parseMaybeString "name"
+    roles <- CD.withDB (database config) $ MR.listRoles roleName
     S.status status200
     with_host_url config $ MR.produceRolesReply roles
   S.get "/v3/roles/:rid" $ do
@@ -302,9 +304,9 @@ application config = do
   S.get "/v3/role_assignments" $ do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
-    roles <- CD.withDB (database config) $ MP.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
+    roles <- CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
     S.status status200
-    with_host_url config $ MP.produceAssignmentsReply roles -- TODO base url should be revised here
+    with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
 
 parseMaybeString :: T.Text -> ActionM (Maybe String)
 parseMaybeString paramName =

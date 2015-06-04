@@ -7,7 +7,7 @@ module Model.Role
 where
 
 import Common (capitalize, fromObject, loggerName)
-import Common.Database (affectedDocs, decC, idF, incC, neC, pullC, pushC)
+import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC)
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -20,6 +20,7 @@ import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
 import Data.Vector (fromList)
+import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (TransactionId(..), CaptureStatus(..))
 import System.Log.Logger (criticalM)
 import Text.Read (readMaybe)
@@ -36,12 +37,15 @@ data Role = Role
           , enabled     :: Bool
           } deriving (Show, Read, Eq, Ord, Typeable)
 
--- aux fields
-pendingTransactions = "pendingTransactions"
-refCount = "refCount"
-
 newtype RoleId = RoleId M.ObjectId
-                 deriving (Show)
+                 deriving (Show, Typeable, Eq)
+
+instance M.Val RoleId where
+  val (RoleId rid) = M.String $ T.pack $ show rid
+  cast' (M.String s) = do
+    rid <- readMaybe $ T.unpack s
+    return $ RoleId rid
+  cast' _ = Nothing
 
 $(deriveBson id ''Role)
 
@@ -72,13 +76,16 @@ produceRolesReply roles baseUrl
 
 createRole :: MonadIO m => Role -> M.Action m M.ObjectId
 createRole r = do
-  M.ObjId rid <- M.insert collectionName $ [refCount =: (M.Int32 0), pendingTransactions =: (M.Array [])]  ++ toBson r
+  M.ObjId rid <- M.insert collectionName $ toBson r
   return rid
 
 listRoles :: (MonadIO m, MonadBaseControl IO m)
-          => M.Action m [(M.ObjectId, Role)]
-listRoles = do
-  cur <- M.find $ M.select [] collectionName
+          => (Maybe String) -> M.Action m [(M.ObjectId, Role)]
+listRoles mName = do
+  let nameFilter = case mName of
+                      Nothing -> []
+                      Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
+  cur <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cur
   roles <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
@@ -89,39 +96,9 @@ findRoleById rid = runMaybeT $ do
   mRole <- MaybeT $ M.findOne (M.select [idF =: rid] collectionName)
   fromBson mRole
 
-captureRole :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
-captureRole rid (TransactionId tid) = do
-  M.modify (M.select [idF =: rid, pendingTransactions =: [neC =: tid] ] collectionName)
-                                      [ incC  =: [refCount =: (M.Int32 1)]
-                                      , pushC =: [pendingTransactions =: tid]
-                                      ]
-  count <- affectedDocs
-  if count == 1
-    then return Captured
-    else return CaptureFailed
-
-rollbackCaptureRole :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
-rollbackCaptureRole rid (TransactionId tid) = do
-  M.modify (M.select [idF =: rid, pendingTransactions =: tid] collectionName)
-                                      [ decC  =: [refCount =: (M.Int32 1)]
-                                      , pullC =: [pendingTransactions =: tid]
-                                      ]
-  count <- affectedDocs
-  if count == 1
-    then return Captured
-    else return CaptureFailed
-
-pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
-pullTransaction rid (TransactionId tid) = do
-  M.modify (M.select [idF =: rid, pendingTransactions =: tid] collectionName)
-                                      [pullC =: [pendingTransactions =: tid]]
-
-releaseRole :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
-releaseRole rid (TransactionId tid) = do
-  M.modify (M.select [idF =: rid] collectionName) [ decC  =: [refCount =: (M.Int32 1)]
-                                                  , pushC =: [pendingTransactions =: tid]
-                                                  ]
-  count <- affectedDocs
-  if count == 1
-    then return ()
-    else liftIO $ criticalM loggerName $ "Couldn't find role " ++ (show rid) ++ " to release"
+listExistingRoleIds :: (MonadIO m, MonadBaseControl IO m)
+                    => [M.ObjectId] -> M.Action m [M.ObjectId]
+listExistingRoleIds roleIds = do
+  cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId roleIds)] ] collectionName)
+  docs <- M.rest cur
+  return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs

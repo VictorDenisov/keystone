@@ -22,6 +22,7 @@ import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
 import qualified Database.MongoDB as M
+import qualified Model.Assignment as MA
 import qualified Model.User as MU
 import qualified Model.Token as MT
 import qualified Model.Project as MP
@@ -119,7 +120,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
     liftIO $ debugM loggerName $ "pid" ++ (show pid)
     project <- MaybeT $ MP.findProjectById pid
     liftIO $ debugM loggerName $ "project" ++ (show project)
-    assignments <- lift $ MP.listAssignments (Just $ MP.ProjectId pid)
+    assignments <- lift $ MA.listAssignments (Just $ MP.ProjectId pid)
                                              (Just $ MU.UserId user)
     liftIO $ debugM loggerName $ "Received assignments " ++ (show assignments)
     mroles <- lift $ mapM assignmentToRoleReply assignments
@@ -152,8 +153,8 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
   where
-    assignmentToRoleReply :: MonadIO m => MP.Assignment -> M.Action m (Maybe Value)
-    assignmentToRoleReply (MP.Assignment _ (MR.RoleId roleId) _) = runMaybeT $ do
+    assignmentToRoleReply :: MonadIO m => MA.Assignment -> M.Action m (Maybe Value)
+    assignmentToRoleReply (MA.Assignment _ _ (MR.RoleId roleId)) = runMaybeT $ do
       role <- MaybeT $ MR.findRoleById roleId
       return $ object [ "id" .= roleId
                       , "name" .= MR.name role

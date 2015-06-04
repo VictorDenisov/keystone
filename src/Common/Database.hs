@@ -77,6 +77,7 @@ idF :: Text
 -- Common database commands that are user around.
 currentDateC = "$currentDate"
 decC         = "$dec"
+inC          = "$in"
 incC         = "$inc"
 matchC       = "$match"
 neC          = "$ne"
@@ -88,6 +89,7 @@ unwindC      = "$unwind"
 
 currentDateC :: Text
 decC         :: Text
+inC          :: Text
 incC         :: Text
 matchC       :: Text
 neC          :: Text

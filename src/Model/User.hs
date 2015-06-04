@@ -8,7 +8,7 @@ module Model.User
 where
 
 import Common (fromObject)
-import Common.Database (affectedDocs, decC, idF, incC, neC, pullC, pushC, setC)
+import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC, setC)
 import Control.Applicative ((<$>))
 import Control.Monad (mapM)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -40,12 +40,15 @@ data User = User { description :: Maybe String
                  , password :: Maybe String -- hash of the password
                  } deriving (Show, Read, Eq, Ord, Typeable)
 
--- aux fields
-pendingTransactions = "pendingTransactions"
-refCount = "refCount"
-
 newtype UserId = UserId M.ObjectId
-                 deriving (Show)
+                 deriving (Show, Typeable, Eq)
+
+instance M.Val UserId where
+  val (UserId uid) = M.String $ T.pack $ show uid
+  cast' (M.String s) = do
+    uid <- readMaybe $ T.unpack s
+    return $ UserId uid
+  cast' _ = Nothing
 
 $(deriveBson id ''User)
 
@@ -80,12 +83,13 @@ createUser u = do
   M.ObjId oid <- M.insert collectionName $ toBson u
   return oid
 
-listUsers :: (MonadIO m, MonadBaseControl IO m) => (Maybe String) -> M.Action m [(M.ObjectId, User)]
+listUsers :: (MonadIO m, MonadBaseControl IO m)
+          => (Maybe String) -> M.Action m [(M.ObjectId, User)]
 listUsers mName = do
   let nameFilter = case mName of
                       Nothing -> []
                       Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
-  cursor <- M.find (M.select nameFilter collectionName)
+  cursor <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cursor
   users <- mapM fromBson docs
   let ids = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
@@ -103,59 +107,17 @@ updateUser uid userUpdate = do
   -- If the user is deleted between these commands we assume it's never been updated
   findUserById uid
 
-getRefCount :: M.Document -> Int
-getRefCount doc = case (M.look refCount doc) of
-  Nothing -> 0
-  Just (M.Int32 v) -> fromIntegral v
-  Just v -> error $ (T.unpack refCount) ++ " field in user should be an int."
-
-getPendingTransactions :: M.Document -> [M.Value]
-getPendingTransactions doc =
-  case M.look pendingTransactions doc of
-    Nothing -> []
-    Just (M.Array xs) -> xs
-    Just v -> error $ (T.unpack pendingTransactions) ++ " field in user should be an array."
-
 deleteUser :: (MonadIO m) => ObjectId -> M.Action m OpStatus
 deleteUser uid = do
-  mUserDoc <- M.findOne (M.select [idF =: uid] collectionName)
-  case mUserDoc of
-    Nothing -> return NotFound
-    Just userDoc ->
-      if ((getRefCount userDoc) /= 0) || (not $ null $ getPendingTransactions userDoc)
-        then
-          return Busy
-        else do
-          M.delete $ M.select [idF =: uid] collectionName
-          ad <- affectedDocs
-          if ad == 0
-            then return NotFound
-            else return Success
+  M.delete $ M.select [idF =: uid] collectionName
+  ad <- affectedDocs
+  if ad == 0
+    then return NotFound
+    else return Success
 
-captureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
-captureUser uid (TransactionId tid) = do
-  M.modify (M.select [idF =: uid, pendingTransactions =: [neC =: tid] ] collectionName)
-                                      [ incC  =: [refCount =: (M.Int32 1)]
-                                      , pushC =: [pendingTransactions =: tid]
-                                      ]
-  count <- affectedDocs
-  if count == 1
-    then return Captured
-    else return CaptureFailed
-
-rollbackCaptureUser :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m CaptureStatus
-rollbackCaptureUser uid (TransactionId tid) = do
-  M.modify (M.select [idF =: uid, pendingTransactions =: tid] collectionName)
-                                      [ decC  =: [refCount =: (M.Int32 1)]
-                                      , pullC =: [pendingTransactions =: tid]
-                                      ]
-  count <- affectedDocs
-  if count == 1
-    then return Captured
-    else return CaptureFailed
-
-pullTransaction :: (MonadIO m) => M.ObjectId -> TransactionId -> M.Action m ()
-pullTransaction uid (TransactionId tid) = do
-  M.modify (M.select [idF =: uid, pendingTransactions =: tid] collectionName)
-                                      [pullC =: [pendingTransactions =: tid]]
-
+listExistingUserIds :: (MonadIO m, MonadBaseControl IO m)
+                    => [M.ObjectId] -> M.Action m [M.ObjectId]
+listExistingUserIds userIds = do
+  cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId userIds)] ] collectionName)
+  docs <- M.rest cur
+  return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
