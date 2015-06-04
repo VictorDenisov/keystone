@@ -84,14 +84,13 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
     scopeProjectId <- CD.runDB pipe $ calcProjectId mScope
     case mu of
       Nothing -> return $ Left "User is not found."
-      Just u  ->
-        let userId = MU._id u in
-        case MU.password u of
+      Just user  ->
+        case MU.password user of
           Just p ->
             if verifyPassword (pack password) (pack p)
               then do
                 currentTime <- liftIO getCurrentTime
-                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) userId scopeProjectId
+                let token = MT.Token currentTime (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime) user scopeProjectId
                 mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
@@ -125,13 +124,12 @@ calcProjectScope (MP.ProjectId pid) baseUrl = do
             )
 
 produceTokenResponse :: (MonadBaseControl IO m, MonadIO m) => MT.Token -> String -> M.Action m Value
-produceTokenResponse (MT.Token issued expires userId mProjectId) baseUrl = do
+produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
   liftIO $ debugM loggerName $ "Producing token response"
-  u <- fromJust `liftM` MU.findUserById userId
   scopeFields <- runMaybeT $ do
     pid <- MaybeT $ return mProjectId
     projectValue <- calcProjectScope pid baseUrl
-    roles <- lift $ MA.listUserRoles pid (MU.UserId userId)
+    roles <- lift $ MA.listUserRoles pid (MU.UserId $ MU._id user)
     return $ [ "project" .= projectValue
              , "roles"   .= (Array $ fromList $ map toRoleReply roles)
              ]
@@ -142,8 +140,8 @@ produceTokenResponse (MT.Token issued expires userId mProjectId) baseUrl = do
                                           , "issued_at"  .= issued
                                           , "methods"    .= [ "password" :: String ]
                                           , "extras"     .= (object [])
-                                          , "user"       .= (object [ "name"   .= MU.name u
-                                                                    , "id"     .= (show userId)
+                                          , "user"       .= (object [ "name"   .= MU.name user
+                                                                    , "id"     .= (show $ MU._id user)
                                                                     , "domain" .= ( object [ "name" .= ("Default" :: String)
                                                                                            , "id"   .= ("default" :: String)])
                                                                     ] )

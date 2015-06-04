@@ -28,7 +28,7 @@ collectionName = "token"
 
 data Token = Token { issuedAt  :: UTCTime
                    , expiresAt :: UTCTime
-                   , user      :: M.ObjectId
+                   , user      :: MU.User
                    , project   :: Maybe MP.ProjectId -- currently only project scope is available
                    } deriving (Show, Eq, Typeable)
 
