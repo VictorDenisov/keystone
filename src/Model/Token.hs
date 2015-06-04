@@ -21,6 +21,7 @@ import Data.Time.Clock (UTCTime)
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
+import qualified Model.Project as MP
 
 collectionName :: M.Collection
 collectionName = "token"
@@ -28,8 +29,8 @@ collectionName = "token"
 data Token = Token { issuedAt  :: UTCTime
                    , expiresAt :: UTCTime
                    , user      :: M.ObjectId
-                   , project   :: Maybe M.ObjectId -- currently only project scope is available
-                   } deriving (Show, Read, Eq, Ord, Typeable)
+                   , project   :: Maybe MP.ProjectId -- currently only project scope is available
+                   } deriving (Show, Eq, Typeable)
 
 $(deriveBson id ''Token)
 

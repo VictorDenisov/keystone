@@ -102,38 +102,38 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
       case mPid of
         Just pid -> do
           project <- MaybeT $ MP.findProjectById pid
-          return pid
+          return $ MP.ProjectId pid
         Nothing -> do
           (MP.Project pid _ _ _) <- MaybeT $ listToMaybe <$> MP.listProjects mPname
-          return pid
+          return $ MP.ProjectId pid
 
 authenticate _ _ _ = return $ Left "Method is not supported."
 
+
+calcProjectScope :: (MonadIO m)
+                 => MP.ProjectId -> String -> MaybeT (M.Action m) Value
+calcProjectScope (MP.ProjectId pid) baseUrl = do
+  project <- MaybeT $ MP.findProjectById pid
+  return $ (object [ "id"   .= pid
+                   , "name" .= MP.name project
+                   , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
+                   , "domain" .= ( object [ "name" .= ("Default" :: String)
+                                          , "id"   .= ("default" :: String)
+                                          ]
+                                 )
+                   ]
+            )
+
 produceTokenResponse :: (MonadBaseControl IO m, MonadIO m) => MT.Token -> String -> M.Action m Value
-produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
+produceTokenResponse (MT.Token issued expires userId mProjectId) baseUrl = do
   liftIO $ debugM loggerName $ "Producing token response"
-  u <- fromJust `liftM` MU.findUserById user
+  u <- fromJust `liftM` MU.findUserById userId
   scopeFields <- runMaybeT $ do
     pid <- MaybeT $ return mProjectId
-    liftIO $ debugM loggerName $ "pid" ++ (show pid)
-    project <- MaybeT $ MP.findProjectById pid
-    liftIO $ debugM loggerName $ "project" ++ (show project)
-    assignments <- lift $ MA.listAssignments (Just $ MP.ProjectId pid)
-                                             (Just $ MU.UserId user)
-    liftIO $ debugM loggerName $ "Received assignments " ++ (show assignments)
-    mroles <- lift $ mapM assignmentToRoleReply assignments
-    liftIO $ debugM loggerName $ "Received roles " ++ (show mroles)
-    let roles = catMaybes mroles
-    return $ [ "project" .= (object [ "id"   .= pid
-                                    , "name" .= MP.name project
-                                    , "links" .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show pid)) ])
-                                    , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                           , "id"   .= ("default" :: String)
-                                                           ]
-                                                  )
-                                    ]
-                            )
-             , "roles" .= (Array $ fromList roles)
+    projectValue <- calcProjectScope pid baseUrl
+    roles <- lift $ MA.listUserRoles pid (MU.UserId userId)
+    return $ [ "project" .= projectValue
+             , "roles"   .= (Array $ fromList $ map toRoleReply roles)
              ]
   services <- MS.listServices
   liftIO $ debugM loggerName $ "Scope fields are: " ++ (show scopeFields)
@@ -143,7 +143,7 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                           , "methods"    .= [ "password" :: String ]
                                           , "extras"     .= (object [])
                                           , "user"       .= (object [ "name"   .= MU.name u
-                                                                    , "id"     .= (show user)
+                                                                    , "id"     .= (show userId)
                                                                     , "domain" .= ( object [ "name" .= ("Default" :: String)
                                                                                            , "id"   .= ("default" :: String)])
                                                                     ] )
@@ -151,16 +151,15 @@ produceTokenResponse (MT.Token issued expires user mProjectId) baseUrl = do
                                         ] ++ (concat $ maybeToList scopeFields))
                   ]
   where
-    assignmentToRoleReply :: MonadIO m => MA.Assignment -> M.Action m (Maybe Value)
-    assignmentToRoleReply (MA.Assignment _ _ (MR.RoleId roleId)) = runMaybeT $ do
-      role <- MaybeT $ MR.findRoleById roleId
-      return $ object [ "id" .= roleId
-                      , "name" .= MR.name role
-                      ]
+    toRoleReply :: MR.Role -> Value
+    toRoleReply (MR.Role roleId roleName _ _)
+                      = object [ "id"   .= roleId
+                               , "name" .= roleName
+                               ]
 
     serviceToValue :: MS.Service -> Value
-    serviceToValue service =
-               object [ "id"        .= MS._id service
+    serviceToValue service
+             = object [ "id"        .= MS._id service
                       , "name"      .= MS.name service
                       , "type"      .= MS.type' service
                       , "endpoints" .= (map endpointToValue $ MS.endpoints service)
