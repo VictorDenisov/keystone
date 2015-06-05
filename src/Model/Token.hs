@@ -22,6 +22,7 @@ import qualified Data.Text as T
 import qualified Database.MongoDB as M
 import qualified Model.Project as MP
 import qualified Model.Role as MR
+import qualified Model.Service as MS
 import qualified Model.User as MU
 
 collectionName :: M.Collection
@@ -32,6 +33,7 @@ data Token = Token { issuedAt  :: UTCTime
                    , user      :: MU.User
                    , project   :: Maybe MP.Project -- currently only project scope is available
                    , roles     :: [MR.Role]
+                   , services  :: [MS.Service]
                    } deriving (Show, Eq, Typeable)
 
 $(deriveBson id ''Token)

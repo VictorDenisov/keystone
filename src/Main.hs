@@ -98,7 +98,7 @@ application config = do
       res <- mapM (A.authenticate (A.scope au) pipe) (A.methods au)
       case head res of
         Right (tokenId, t) -> lift $ do
-          resp <- CD.runDB pipe $ A.produceTokenResponse t baseUrl
+          let resp = A.produceTokenResponse t baseUrl
           S.json resp
           S.addHeader "X-Subject-Token" (T.pack tokenId)
           S.status status200
@@ -124,8 +124,8 @@ application config = do
         currentTime <- liftIO getCurrentTime
 
         when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ (show st) ++ "."
-        lift $ CD.runDB pipe $ A.produceTokenResponse token baseUrl
         lift $ release releaseKey
+        return $ A.produceTokenResponse token baseUrl
 
     case res of
       Left errorMessage -> do

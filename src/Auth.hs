@@ -91,12 +91,14 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
                 currentTime  <- liftIO getCurrentTime
                 scopeProject <- CD.runDB pipe $ calcProject mScope
                 scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
+                services     <- CD.runDB pipe $ MS.listServices
                 let token = MT.Token
                                   currentTime
                                   (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
                                   user
                                   scopeProject
                                   scopeRoles
+                                  services
                 mt <- CD.runDB pipe $ MT.createToken token
                 return $ Right (show mt, token)
               else return $ Left "Passwords don't match."
@@ -128,30 +130,27 @@ calcProjectScope project baseUrl
                                          ])
                    ]
 
-produceTokenResponse :: (MonadBaseControl IO m, MonadIO m)
-                     => MT.Token -> String -> M.Action m Value
-produceTokenResponse (MT.Token issued expires user mProject roles) baseUrl = do
-  liftIO $ debugM loggerName $ "Producing token response"
-  scopeFields <- runMaybeT $ do
-    project <- MaybeT $ return mProject
-    let projectValue = calcProjectScope project baseUrl
-    return $ [ "project" .= projectValue
-             , "roles"   .= (Array $ fromList $ map toRoleReply roles)
-             ]
-  services <- MS.listServices
-  return $ object [ "token" .= ( object $ [ "expires_at" .= expires
-                                          , "issued_at"  .= issued
-                                          , "methods"    .= [ "password" :: String ]
-                                          , "extras"     .= (object [])
-                                          , "user"       .= (object [ "name"   .= MU.name user
-                                                                    , "id"     .= (show $ MU._id user)
-                                                                    , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                                                           , "id"   .= ("default" :: String)])
-                                                                    ] )
-                                          , "catalog"  .= (Array $ fromList $ map serviceToValue services)
-                                        ] ++ (concat $ maybeToList scopeFields))
-                  ]
+produceTokenResponse :: MT.Token -> String -> Value
+produceTokenResponse (MT.Token issued expires user mProject roles services) baseUrl =
+  object [ "token" .= (object $ [ "expires_at" .= expires
+                                , "issued_at"  .= issued
+                                , "methods"    .= [ "password" :: String ]
+                                , "extras"     .= (object [])
+                                , "user"       .= (object [ "name"   .= MU.name user
+                                                          , "id"     .= (show $ MU._id user)
+                                                          , "domain" .= ( object [ "name" .= ("Default" :: String)
+                                                                                 , "id"   .= ("default" :: String)])
+                                                          ] )
+                                , "catalog"  .= (Array $ fromList $ map serviceToValue services)
+                                ] ++ (concat $ maybeToList scopeFields))
+         ]
   where
+    scopeFields = do
+      project <- mProject
+      let projectValue = calcProjectScope project baseUrl
+      return $ [ "project" .= projectValue
+               , "roles"   .= (Array $ fromList $ map toRoleReply roles)
+               ]
     toRoleReply :: MR.Role -> Value
     toRoleReply (MR.Role roleId roleName _ _)
                       = object [ "id"   .= roleId
