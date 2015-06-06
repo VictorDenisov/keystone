@@ -7,11 +7,11 @@ import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
 import Control.Applicative ((<*>), (<$>))
 import Control.Exception (bracket)
-import Control.Monad (when)
+import Control.Monad (when, MonadPlus(mzero))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Except (ExceptT, runExceptT, MonadError(throwError))
 import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
 import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Bson ((=:))
@@ -22,6 +22,7 @@ import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
 import Network.HTTP.Types (methodGet, methodPost)
 import Network.HTTP.Types.Header (HeaderName)
+import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, status409, status500, statusCode)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
@@ -89,6 +90,7 @@ application config = do
     with_host_url config apiVersions
   S.get "/v3" $ do
     with_host_url config apiV3Reply
+  -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
     liftIO $ debugM loggerName $ show au
@@ -106,24 +108,24 @@ application config = do
           S.json $ E.unauthorized errorMessage
           S.status status401
       release releaseKey
-  S.get "/v3/auth/tokens" $ do
+  S.addroute GET "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
     baseUrl <- getBaseUrl config
     res <- runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
       runExceptT $ do
-        when (isNothing mSubjectToken) $ fail "Could not find token, ."
+        when (isNothing mSubjectToken) $ throwError "Could not find token, ."
         let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
 
-        when (isNothing mst) $ fail "Token is not an object id"
+        when (isNothing mst) $ throwError "Token is not an object id"
         let st = fromJust mst
         mToken <- lift $ CD.runDB pipe $ MT.findTokenById st
 
-        when (isNothing mToken) $ fail $ "Could not find token, " ++ (show st) ++ "."
+        when (isNothing mToken) $ throwError $ "Could not find token, " ++ (show st) ++ "."
         let token = fromJust mToken
         currentTime <- liftIO getCurrentTime
 
-        when (currentTime > (MT.expiresAt token)) $ fail $ "Could not find token, " ++ (show st) ++ "."
+        when (currentTime > (MT.expiresAt token)) $ throwError $ "Could not find token, " ++ (show st) ++ "."
         lift $ release releaseKey
         return $ A.produceTokenResponse token baseUrl
 
@@ -134,6 +136,20 @@ application config = do
       Right resp -> do
         S.status status200
         S.json resp
+  S.addroute HEAD "/v3/auth/tokens" $ do
+    mSubjectToken <- S.header hXSubjectToken
+    res <- runMaybeT $ do
+      subjectToken <- MaybeT $ return mSubjectToken
+      st <- MaybeT $ return $ readMaybe $ T.unpack subjectToken
+      isValid <- lift $ CD.withDB (database config) $ MT.validateToken st
+      when (not isValid) mzero
+      return st
+
+    case res of
+      Nothing -> do
+        S.status status404
+      Just _ -> do
+        S.status status204
   -- Service API
   S.post "/v3/services" $ do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest

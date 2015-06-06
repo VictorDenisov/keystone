@@ -16,7 +16,9 @@ import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.Maybe (fromJust)
-import Data.Time.Clock (UTCTime)
+import Data.Time.Clock (getCurrentTime, UTCTime)
+
+import Language.Haskell.TH.Syntax (nameBase)
 
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
@@ -46,3 +48,20 @@ findTokenById :: MonadIO m => ObjectId -> M.Action m (Maybe Token)
 findTokenById tid = runMaybeT $ do
   mToken <- MaybeT $ M.findOne (M.select [idF =: tid] collectionName)
   fromBson mToken
+
+validateToken :: MonadIO m => ObjectId -> M.Action m Bool
+validateToken tid = do
+  currentTime <- liftIO getCurrentTime
+  res <- runMaybeT $ do
+    token <- MaybeT $ M.findOne
+                          $ (M.select [idF =: tid] collectionName)
+                {M.project = [ (T.pack $ nameBase 'expiresAt) =: (M.Int32 1) ]}
+    (M.UTC time) <- MaybeT $ return $ M.look
+                                          (T.pack $ nameBase 'expiresAt)
+                                          token
+    if currentTime > time
+      then return False
+      else return True
+  case res of
+    Just v  -> return v
+    Nothing -> return False

@@ -14,4 +14,5 @@ else
 fi
 
 
+#curl -v -k -I -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" $protocol://localhost:35357/v3/auth/tokens
 curl -v -k -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" $protocol://localhost:35357/v3/auth/tokens
