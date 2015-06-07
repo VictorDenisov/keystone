@@ -163,12 +163,18 @@ produceV2TokenResponse (MT.Token tid issued expires user mProject roles services
                            , "tenant"     .= (projectObject mProject)
                            ])
                       , "serviceCatalog" .= (Array $ fromList $ map serviceToValue services)
-                      , "user"           .= (object [ "username" .= (MU.name user)
-                                                    , "id"       .= (show $ MU._id user)
+                      , "user"           .= (object [ "username"   .= (MU.name user)
+                                                    , "name"       .= (MU.name user)
+                                                    , "id"         .= (show $ MU._id user)
+                                                    , "roles"      .= (Array $ fromList $ map toRoleReply roles)
                                                     ] )
                       ]
          ]
   where
+    toRoleReply :: MR.Role -> Value
+    toRoleReply (MR.Role roleId roleName _ _)
+                      = object ["name" .= roleName]
+
     projectObject :: Maybe MP.Project -> Maybe Value
     projectObject mP = do
       p <- mP
@@ -182,7 +188,6 @@ produceV2TokenResponse (MT.Token tid issued expires user mProject roles services
     serviceToValue service
              = object [ "name"            .= MS.name service
                       , "type"            .= MS.type' service
-                      , "endpoints_links" .= (Array $ fromList [])
                       , "endpoints"       .= (Array $ fromList [(object $ (concat $ map endpointToValue $ MS.endpoints service)
                                                     ++ [ "region" .= Null
                                                        , "id"     .= (endpointId $ MS.endpoints service)
