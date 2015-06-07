@@ -8,3 +8,4 @@ add unique index on role name
 don't restrict the types of services when creating services ?? it gives more flexibility but can cause more errors
 
 retry one more time in case of network failure (valid for replica set)
+implement authentication with token

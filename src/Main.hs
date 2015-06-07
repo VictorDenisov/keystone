@@ -47,6 +47,7 @@ import qualified Data.Text.Lazy as T
 import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Assignment as MA
+import qualified Model.Domain as MD
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
@@ -92,6 +93,35 @@ application config = do
     with_host_url config apiV3Reply
   S.get "/v2.0" $ do
     with_host_url config apiV2Reply
+  -- Token v2.0 API
+  S.post "/v2.0/tokens" $ do
+    (au :: A.AuthRequestV2) <- parseRequest
+    liftIO $ debugM loggerName $ show au
+    baseUrl <- getBaseUrl config
+    runResourceT $ do
+      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
+      res <- A.authenticate (Just $ A.ProjectIdScope
+                                (A.tenantId au)
+                                (A.tenantName au)
+                                (Just $ MD.defaultDomainId)
+                            )
+                            pipe
+                            (A.PasswordMethod
+                                Nothing
+                                (Just $ A.usernamev2 au)
+                                (Just $ MD.defaultDomainId)
+                                (A.passwordv2 au)
+                            )
+      release releaseKey
+      case res of
+        Right (tokenId, t) -> lift $ do
+          let resp = A.produceV2TokenResponse t baseUrl
+          S.json resp
+          S.addHeader "X-Subject-Token" (T.pack tokenId)
+          S.status status200
+        Left errorMessage -> lift $ do
+          S.json $ E.unauthorized errorMessage
+          S.status status401
   -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
@@ -100,6 +130,7 @@ application config = do
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
       res <- mapM (A.authenticate (A.scope au) pipe) (A.methods au)
+      release releaseKey
       case head res of
         Right (tokenId, t) -> lift $ do
           let resp = A.produceTokenResponse t baseUrl
@@ -109,7 +140,6 @@ application config = do
         Left errorMessage -> lift $ do
           S.json $ E.unauthorized errorMessage
           S.status status401
-      release releaseKey
   S.addroute GET "/v3/auth/tokens" $ do
     mSubjectToken <- S.header hXSubjectToken
     baseUrl <- getBaseUrl config
@@ -346,7 +376,8 @@ withAuth :: KeystoneConfig -> Middleware
 withAuth config app req respond = do
   let adminToken = Config.adminToken config
   liftIO $ debugM loggerName $ unpack $ rawPathInfo req
-  if ((requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens"))
+  if ((requestMethod req == methodPost) && ( (rawPathInfo req == "/v3/auth/tokens")
+                                          || (rawPathInfo req == "/v2.0/tokens")))
     || ((requestMethod req == methodGet) && (   (rawPathInfo req == "/v3")
                                              || (rawPathInfo req == "/v2.0")
                                              || (rawPathInfo req == "/")

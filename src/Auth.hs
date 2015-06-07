@@ -1,6 +1,7 @@
 {-# Language FlexibleContexts #-}
-{-# Language ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# Language ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Auth
 where
 import Common (loggerName)
@@ -12,11 +13,12 @@ import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
-import Data.Aeson.Types (Value(..), (.=), object, ToJSON(..))
+import Data.Aeson.Types (Value(..), (.=), object, Pair, ToJSON(..), typeMismatch)
 import Data.ByteString.Char8 (pack)
 import Data.Maybe (fromJust, maybeToList, catMaybes, listToMaybe)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 import Data.Vector (fromList)
+import Language.Haskell.TH.Syntax (nameBase)
 import System.Log.Logger (debugM)
 import Text.Read (readMaybe)
 
@@ -48,6 +50,13 @@ data AuthScope = ProjectIdScope
                , scopeDomainId :: Maybe String
                } deriving Show
 
+data AuthRequestV2 = AuthRequestV2
+                 { tenantName :: Maybe String
+                 , tenantId   :: Maybe M.ObjectId
+                 , usernamev2 :: String
+                 , passwordv2 :: String
+                 } deriving Show
+
 instance FromJSON AuthRequest where
   parseJSON (Object v) = do
     auth <- v .: "auth"
@@ -72,6 +81,18 @@ instance FromJSON AuthRequest where
         MaybeT $ d .:? "id"
       return $ ProjectIdScope i n di
     return $ AuthRequest ms scope
+  parseJSON v = typeMismatch (nameBase ''AuthRequest) v
+
+instance FromJSON AuthRequestV2 where
+  parseJSON (Object v) = do
+    auth <- v .: "auth"
+    tn <- auth .:? "tenantName"
+    ti <- auth .:? "tenantId"
+    creds <- auth .: "passwordCredentials"
+    un <- creds .: "username"
+    up <- creds .: "password"
+    return $ AuthRequestV2 tn ti un up
+  parseJSON v = typeMismatch (nameBase ''AuthRequestV2) v
 
 authenticate :: (MonadBaseControl IO m, MonadIO m)
              => (Maybe AuthScope) -> M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
@@ -92,7 +113,9 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
                 scopeProject <- CD.runDB pipe $ calcProject mScope
                 scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
                 services     <- CD.runDB pipe $ MS.listServices
+                tokenId <- liftIO $ M.genObjectId
                 let token = MT.Token
+                                  tokenId
                                   currentTime
                                   (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
                                   user
@@ -130,8 +153,56 @@ calcProjectScope project baseUrl
                                          ])
                    ]
 
+produceV2TokenResponse :: MT.Token -> String -> Value
+produceV2TokenResponse (MT.Token tid issued expires user mProject roles services) baseUrl =
+  object [ "access"
+            .= object [ "token" .= (object $
+                           [ "expires"    .= expires
+                           , "issued_at"  .= issued
+                           , "id"         .= tid
+                           , "tenant"     .= (projectObject mProject)
+                           ])
+                      , "serviceCatalog" .= (Array $ fromList $ map serviceToValue services)
+                      , "user"           .= (object [ "username" .= (MU.name user)
+                                                    , "id"       .= (show $ MU._id user)
+                                                    ] )
+                      ]
+         ]
+  where
+    projectObject :: Maybe MP.Project -> Maybe Value
+    projectObject mP = do
+      p <- mP
+      return $ object [ "name"        .= (MP.name        p)
+                      , "id"          .= (MP._id         p)
+                      , "description" .= (MP.description p)
+                      , "enabled"     .= (MP.enabled     p)
+                      ]
+
+    serviceToValue :: MS.Service -> Value
+    serviceToValue service
+             = object [ "name"            .= MS.name service
+                      , "type"            .= MS.type' service
+                      , "endpoints_links" .= (Array $ fromList [])
+                      , "endpoints"       .= (Array $ fromList [(object $ (concat $ map endpointToValue $ MS.endpoints service)
+                                                    ++ [ "region" .= Null
+                                                       , "id"     .= (endpointId $ MS.endpoints service)
+                                                       ]
+                                             )])
+                      ]
+
+    endpointId :: [MS.Endpoint] -> Maybe M.ObjectId
+    endpointId [] = Nothing
+    endpointId (endpoint:xs) = Just $ MS.eid endpoint
+
+    endpointToValue :: MS.Endpoint -> [Pair]
+    endpointToValue endpoint =
+      case MS.einterface endpoint of
+        MS.Admin    -> ["adminURL"    .= (MS.eurl endpoint)]
+        MS.Internal -> ["internalURL" .= (MS.eurl endpoint)]
+        MS.Public   -> ["publicURL"   .= (MS.eurl endpoint)]
+
 produceTokenResponse :: MT.Token -> String -> Value
-produceTokenResponse (MT.Token issued expires user mProject roles services) baseUrl =
+produceTokenResponse (MT.Token _ issued expires user mProject roles services) baseUrl =
   object [ "token" .= (object $ [ "expires_at" .= expires
                                 , "issued_at"  .= issued
                                 , "methods"    .= [ "password" :: String ]
@@ -151,6 +222,7 @@ produceTokenResponse (MT.Token issued expires user mProject roles services) base
       return $ [ "project" .= projectValue
                , "roles"   .= (Array $ fromList $ map toRoleReply roles)
                ]
+
     toRoleReply :: MR.Role -> Value
     toRoleReply (MR.Role roleId roleName _ _)
                       = object [ "id"   .= roleId

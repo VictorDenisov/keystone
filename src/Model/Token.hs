@@ -30,7 +30,8 @@ import qualified Model.User as MU
 collectionName :: M.Collection
 collectionName = "token"
 
-data Token = Token { issuedAt  :: UTCTime
+data Token = Token { _id       :: M.ObjectId
+                   , issuedAt  :: UTCTime
                    , expiresAt :: UTCTime
                    , user      :: MU.User
                    , project   :: Maybe MP.Project -- currently only project scope is available
