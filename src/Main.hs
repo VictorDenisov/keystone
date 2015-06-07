@@ -38,7 +38,7 @@ import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
 
-import Version (apiV3Reply, apiVersions)
+import Version (apiV2Reply, apiV3Reply, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
@@ -90,6 +90,8 @@ application config = do
     with_host_url config apiVersions
   S.get "/v3" $ do
     with_host_url config apiV3Reply
+  S.get "/v2.0" $ do
+    with_host_url config apiV2Reply
   -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
@@ -345,7 +347,10 @@ withAuth config app req respond = do
   let adminToken = Config.adminToken config
   liftIO $ debugM loggerName $ unpack $ rawPathInfo req
   if ((requestMethod req == methodPost) && (rawPathInfo req == "/v3/auth/tokens"))
-    || ((requestMethod req == methodGet) && ((rawPathInfo req == "/v3") || (rawPathInfo req == "/")))
+    || ((requestMethod req == methodGet) && (   (rawPathInfo req == "/v3")
+                                             || (rawPathInfo req == "/v2.0")
+                                             || (rawPathInfo req == "/")
+                                            ))
     then
       app req respond
     else do
