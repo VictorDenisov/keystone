@@ -38,7 +38,7 @@ import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
 
-import Version (apiV2Reply, apiV3Reply, apiVersions)
+import Version (apiV3Reply, apiVersions)
 import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
@@ -91,37 +91,6 @@ application config = do
     with_host_url config apiVersions
   S.get "/v3" $ do
     with_host_url config apiV3Reply
-  S.get "/v2.0" $ do
-    with_host_url config apiV2Reply
-  -- Token v2.0 API
-  S.post "/v2.0/tokens" $ do
-    (au :: A.AuthRequestV2) <- parseRequest
-    liftIO $ debugM loggerName $ show au
-    baseUrl <- getBaseUrl config
-    runResourceT $ do
-      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- A.authenticate (Just $ A.ProjectIdScope
-                                (A.tenantId au)
-                                (A.tenantName au)
-                                (Just $ MD.defaultDomainId)
-                            )
-                            pipe
-                            (A.PasswordMethod
-                                Nothing
-                                (Just $ A.usernamev2 au)
-                                (Just $ MD.defaultDomainId)
-                                (A.passwordv2 au)
-                            )
-      release releaseKey
-      case res of
-        Right (tokenId, t) -> lift $ do
-          let resp = A.produceV2TokenResponse t baseUrl
-          S.json resp
-          S.addHeader "X-Subject-Token" (T.pack tokenId)
-          S.status status200
-        Left errorMessage -> lift $ do
-          S.json $ E.unauthorized errorMessage
-          S.status status401
   -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
@@ -376,10 +345,8 @@ withAuth :: KeystoneConfig -> Middleware
 withAuth config app req respond = do
   let adminToken = Config.adminToken config
   liftIO $ debugM loggerName $ unpack $ rawPathInfo req
-  if ((requestMethod req == methodPost) && ( (rawPathInfo req == "/v3/auth/tokens")
-                                          || (rawPathInfo req == "/v2.0/tokens")))
+  if ((requestMethod req == methodPost) && ( (rawPathInfo req == "/v3/auth/tokens") ))
     || ((requestMethod req == methodGet) && (   (rawPathInfo req == "/v3")
-                                             || (rawPathInfo req == "/v2.0")
                                              || (rawPathInfo req == "/")
                                             ))
     then
