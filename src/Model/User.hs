@@ -28,6 +28,7 @@ import Model.Common (CaptureStatus(..), TransactionId(..), OpStatus(..))
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MA
 import qualified Data.Text as T
 
 collectionName :: M.Collection
@@ -117,3 +118,9 @@ listExistingUserIds userIds = do
   cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId userIds)] ] collectionName)
   docs <- M.rest cur
   return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
+
+verifyDatabase :: MonadIO m => M.Action m ()
+verifyDatabase = MA.ensureIndex
+                    $ MA.index
+                          collectionName
+                          [(T.pack $ nameBase 'name) =: (M.Int32 1)]

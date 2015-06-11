@@ -20,7 +20,6 @@ import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe, fromJust)
 import Data.Time.Clock (getCurrentTime)
-import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(..))
 import Network.HTTP.Types (methodGet, methodPost)
 import Network.HTTP.Types.Header (HeaderName)
@@ -45,10 +44,8 @@ import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy as TL
 import qualified Database.MongoDB as M
-import qualified Database.MongoDB.Admin as MongoAdmin
 import qualified Error as E
 import qualified Model.Assignment as MA
 import qualified Model.Domain as MD
@@ -108,7 +105,7 @@ application config = do
         Right (tokenId, t) -> lift $ do
           let resp = A.produceTokenResponse t baseUrl
           S.json resp
-          S.addHeader "X-Subject-Token" (LT.pack tokenId)
+          S.addHeader "X-Subject-Token" (TL.pack tokenId)
           S.status status200
         Left errorMessage -> lift $ do
           S.json $ E.unauthorized errorMessage
@@ -120,7 +117,7 @@ application config = do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
       runExceptT $ do
         when (isNothing mSubjectToken) $ throwError "Could not find token, ."
-        let mst = readMaybe $ LT.unpack $ fromJust mSubjectToken
+        let mst = readMaybe $ TL.unpack $ fromJust mSubjectToken
 
         when (isNothing mst) $ throwError "Token is not an object id"
         let st = fromJust mst
@@ -145,7 +142,7 @@ application config = do
     mSubjectToken <- S.header hXSubjectToken
     res <- runMaybeT $ do
       subjectToken <- MaybeT $ return mSubjectToken
-      st <- MaybeT $ return $ readMaybe $ LT.unpack subjectToken
+      st <- MaybeT $ return $ readMaybe $ TL.unpack subjectToken
       isValid <- lift $ CD.withDB (database config) $ MT.validateToken st
       when (not isValid) mzero
       return st
@@ -319,25 +316,25 @@ application config = do
     S.status status200
     with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
 
-parseMaybeString :: LT.Text -> ActionM (Maybe String)
+parseMaybeString :: TL.Text -> ActionM (Maybe String)
 parseMaybeString paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
     return $ Just value
 
-parseMaybeParam :: Read a => LT.Text -> ActionM (Maybe a)
+parseMaybeParam :: Read a => TL.Text -> ActionM (Maybe a)
 parseMaybeParam paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
     case readMaybe value of
-      Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (LT.unpack paramName)
+      Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (TL.unpack paramName)
       Just v  -> return $ Just v
 
-parseId :: Read a => LT.Text -> ActionM a
+parseId :: Read a => TL.Text -> ActionM a
 parseId paramName = do
   s <- S.param paramName
   case readMaybe s of
-    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (LT.unpack paramName)
+    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (TL.unpack paramName)
     Just v  -> return v
 
 parseRequest :: FromJSON a => ActionM a
@@ -377,7 +374,7 @@ withAuth config app req respond = do
 hXAuthToken :: HeaderName
 hXAuthToken = "X-Auth-Token"
 
-hXSubjectToken :: LT.Text
+hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"
 
 host_url :: ServerType -> ActionM (Maybe String)
@@ -387,7 +384,7 @@ host_url st = do
           case st of
             Plain -> "http"
             Tls   -> "https"
-  return $ fmap (\h -> protocol ++ "://" ++ (LT.unpack h)) mh
+  return $ fmap (\h -> protocol ++ "://" ++ (TL.unpack h)) mh
 
 getBaseUrl :: KeystoneConfig -> ActionM String
 getBaseUrl config = do
@@ -405,9 +402,4 @@ with_host_url config v = do
   S.json $ v url
 
 verifyDatabase :: Database -> IO ()
-verifyDatabase dbConf =
-  CD.withDB dbConf
-          $ MongoAdmin.ensureIndex
-                  $ MongoAdmin.index
-                        MU.collectionName
-                        [(T.pack $ nameBase 'MU.name) =: (M.Int32 1)]
+verifyDatabase dbConf = CD.withDB dbConf MU.verifyDatabase
