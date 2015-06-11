@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# Language TemplateHaskell #-}
 module Main
 where
 
@@ -19,6 +20,7 @@ import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
 import Data.Maybe (isNothing, maybe, fromJust)
 import Data.Time.Clock (getCurrentTime)
+import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(..))
 import Network.HTTP.Types (methodGet, methodPost)
 import Network.HTTP.Types.Header (HeaderName)
@@ -43,8 +45,10 @@ import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
-import qualified Data.Text.Lazy as T
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MongoAdmin
 import qualified Error as E
 import qualified Model.Assignment as MA
 import qualified Model.Domain as MD
@@ -61,7 +65,7 @@ import qualified Web.Scotty.Trans as S
 
 main = do
   config <- readConfig
-  CD.verifyDatabase $ database config
+  verifyDatabase $ database config
   updateGlobalLogger loggerName $ setLevel $ logLevel config
   fh <- fileHandler "keystone.log" DEBUG
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
@@ -104,7 +108,7 @@ application config = do
         Right (tokenId, t) -> lift $ do
           let resp = A.produceTokenResponse t baseUrl
           S.json resp
-          S.addHeader "X-Subject-Token" (T.pack tokenId)
+          S.addHeader "X-Subject-Token" (LT.pack tokenId)
           S.status status200
         Left errorMessage -> lift $ do
           S.json $ E.unauthorized errorMessage
@@ -116,7 +120,7 @@ application config = do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
       runExceptT $ do
         when (isNothing mSubjectToken) $ throwError "Could not find token, ."
-        let mst = readMaybe $ T.unpack $ fromJust mSubjectToken
+        let mst = readMaybe $ LT.unpack $ fromJust mSubjectToken
 
         when (isNothing mst) $ throwError "Token is not an object id"
         let st = fromJust mst
@@ -141,7 +145,7 @@ application config = do
     mSubjectToken <- S.header hXSubjectToken
     res <- runMaybeT $ do
       subjectToken <- MaybeT $ return mSubjectToken
-      st <- MaybeT $ return $ readMaybe $ T.unpack subjectToken
+      st <- MaybeT $ return $ readMaybe $ LT.unpack subjectToken
       isValid <- lift $ CD.withDB (database config) $ MT.validateToken st
       when (not isValid) mzero
       return st
@@ -315,25 +319,25 @@ application config = do
     S.status status200
     with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
 
-parseMaybeString :: T.Text -> ActionM (Maybe String)
+parseMaybeString :: LT.Text -> ActionM (Maybe String)
 parseMaybeString paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
     return $ Just value
 
-parseMaybeParam :: Read a => T.Text -> ActionM (Maybe a)
+parseMaybeParam :: Read a => LT.Text -> ActionM (Maybe a)
 parseMaybeParam paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
     case readMaybe value of
-      Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (T.unpack paramName)
+      Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (LT.unpack paramName)
       Just v  -> return $ Just v
 
-parseId :: Read a => T.Text -> ActionM a
+parseId :: Read a => LT.Text -> ActionM a
 parseId paramName = do
   s <- S.param paramName
   case readMaybe s of
-    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (T.unpack paramName)
+    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (LT.unpack paramName)
     Just v  -> return v
 
 parseRequest :: FromJSON a => ActionM a
@@ -373,7 +377,7 @@ withAuth config app req respond = do
 hXAuthToken :: HeaderName
 hXAuthToken = "X-Auth-Token"
 
-hXSubjectToken :: T.Text
+hXSubjectToken :: LT.Text
 hXSubjectToken = "X-Subject-Token"
 
 host_url :: ServerType -> ActionM (Maybe String)
@@ -383,7 +387,7 @@ host_url st = do
           case st of
             Plain -> "http"
             Tls   -> "https"
-  return $ fmap (\h -> protocol ++ "://" ++ (T.unpack h)) mh
+  return $ fmap (\h -> protocol ++ "://" ++ (LT.unpack h)) mh
 
 getBaseUrl :: KeystoneConfig -> ActionM String
 getBaseUrl config = do
@@ -399,3 +403,11 @@ with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
 with_host_url config v = do
   url <- getBaseUrl config
   S.json $ v url
+
+verifyDatabase :: Database -> IO ()
+verifyDatabase dbConf =
+  CD.withDB dbConf
+          $ MongoAdmin.ensureIndex
+                  $ MongoAdmin.index
+                        MU.collectionName
+                        [(T.pack $ nameBase 'MU.name) =: (M.Int32 1)]

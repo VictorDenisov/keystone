@@ -27,9 +27,6 @@ import qualified Data.Text as T
 dbName :: Text
 dbName = "keystone"
 
-verifyDatabase :: Database -> IO ()
-verifyDatabase dbConf = return ()
-
 connect :: Database -> IO M.Pipe
 connect dbConf = do
   infoM loggerName "Connecting to the database"

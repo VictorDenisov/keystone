@@ -1,10 +1,12 @@
 explain A, F, C notation
-add roles and catalog to the token
-
-clean up dangling role assignments from time to time
 
 add expireAfter index for tokens
 add unique index on role name
+
+use findAndModify command for updates
+
+clean up dangling role assignments from time to time
+
 don't restrict the types of services when creating services ?? it gives more flexibility but can cause more errors
 
 retry one more time in case of network failure (valid for replica set)
