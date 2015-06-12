@@ -2,6 +2,7 @@
 {-# Language FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Model.Role
 where
@@ -9,6 +10,8 @@ where
 import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
 import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC)
 
+import Control.Monad.Catch (MonadCatch(catch), SomeException)
+import Control.Monad.Except (MonadError(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -25,7 +28,9 @@ import Model.Common (TransactionId(..), CaptureStatus(..))
 import System.Log.Logger (criticalM)
 import Text.Read (readMaybe)
 
+import qualified Error as E
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MA
 import qualified Data.Text as T
 
 collectionName :: M.Collection
@@ -72,10 +77,20 @@ produceRolesReply roles baseUrl
   where
     rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceRoleJson roles
 
-createRole :: MonadIO m => Role -> M.Action m M.ObjectId
-createRole r = do
-  M.ObjId rid <- M.insert collectionName $ toBson r
-  return rid
+--createRole :: (MonadCatch m, MonadIO m) => Role -> M.Action m (Either String M.ObjectId)
+createRole :: Role -> M.Action IO (Either String M.ObjectId)
+createRole r = (do
+    M.ObjId rid <- M.insert collectionName $ toBson r
+    return $ Right rid
+  ) `catch` (\f -> do
+    liftIO $ putStrLn "Hello all"
+    case f of
+      M.WriteFailure code message ->
+        if (code == 11000)
+          then return $ Left "Duplicate key"
+          else return $ Left $ show f
+      _ -> return $ Left $ show f
+  )
 
 listRoles :: (MonadIO m, MonadBaseControl IO m)
           => (Maybe String) -> M.Action m [Role]
@@ -98,3 +113,10 @@ listExistingRoleIds roleIds = do
   cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId roleIds)] ] collectionName)
   docs <- M.rest cur
   return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
+
+verifyDatabase :: MonadIO m => M.Action m ()
+verifyDatabase = MA.ensureIndex
+                    $ (MA.index
+                          collectionName
+                          [(T.pack $ nameBase 'name) =: (M.Int32 1)])
+                      {MA.iUnique = True}

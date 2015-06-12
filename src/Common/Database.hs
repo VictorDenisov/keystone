@@ -43,7 +43,7 @@ withDB dbConf f = runResourceT $ do
   v <- lift $ runDB pipe f
   release releaseKey
   return v
-  where 
+  where
     host = dbHost dbConf
     port = dbPort dbConf
 

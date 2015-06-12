@@ -1,3 +1,4 @@
+{-# Language DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# Language TemplateHaskell #-}
@@ -8,13 +9,18 @@ import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
 import Control.Applicative ((<*>), (<$>))
 import Control.Exception (bracket)
+import Control.Exception.Base (throwIO)
 import Control.Monad (when, MonadPlus(mzero))
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Catch (MonadThrow(throwM), MonadCatch(catch), Exception, SomeException)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
-import Control.Monad.Except (ExceptT, runExceptT, MonadError(throwError))
+import Control.Monad.Except (ExceptT(..), runExceptT, MonadError(throwError))
+import Control.Monad.Reader (ReaderT(..), runReaderT)
+import Control.Monad.State (StateT(..), runStateT)
 import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
 import Data.Aeson.Types (Value, FromJSON(..))
+import Data.Data (Typeable)
 import Data.Bson ((=:))
 import Data.ByteString.Char8 (pack, unpack)
 import Data.List (lookup, or)
@@ -59,6 +65,14 @@ import qualified Role as R
 import qualified Service as Srv
 import qualified User as U
 import qualified Web.Scotty.Trans as S
+
+{-
+instance (S.ScottyError e, MonadThrow m) => MonadThrow (ActionT e m) where
+  throwM e = lift $ throwM e
+
+instance (S.ScottyError e, MonadCatch m) => MonadCatch (ActionT e m) where
+  catch (ActionT m) c = ActionT $ ExceptT $ ReaderT $ \r -> StateT $ \s -> catch (runStateT (runReaderT (runExceptT m) r) s) (\e -> runStateT (runReaderT (runExceptT $ runAM $ c e) r) s)
+  -}
 
 main = do
   config <- readConfig
@@ -291,9 +305,14 @@ application config = do
   S.post "/v3/roles" $ do
     (rcr :: R.RoleCreateRequest) <- parseRequest
     role <- liftIO $ R.newRequestToRole rcr
-    rid <- CD.withDB (database config) $ MR.createRole role
-    S.status status201
-    with_host_url config $ MR.produceRoleReply role
+    mRid <- liftIO $ CD.withDB (database config) $ MR.createRole role
+    case mRid of
+      Left message -> do
+        S.json $ E.conflict $ "Duplicate role name, " ++ message ++ "."
+        S.status status409
+      Right rid -> do
+        S.status status201
+        with_host_url config $ MR.produceRoleReply role
   S.get "/v3/roles" $ do
     roleName <- parseMaybeString "name"
     roles <- CD.withDB (database config) $ MR.listRoles roleName
@@ -402,4 +421,6 @@ with_host_url config v = do
   S.json $ v url
 
 verifyDatabase :: Database -> IO ()
-verifyDatabase dbConf = CD.withDB dbConf MU.verifyDatabase
+verifyDatabase dbConf = CD.withDB dbConf $ do
+  MU.verifyDatabase
+  MR.verifyDatabase
