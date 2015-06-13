@@ -11,6 +11,7 @@ import Common (fromObject, skipUnderscoreOptions)
 import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC, setC)
 import Control.Applicative ((<$>))
 import Control.Monad (mapM)
+import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -27,6 +28,7 @@ import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (CaptureStatus(..), TransactionId(..), OpStatus(..))
 import Text.Read (readMaybe)
 
+import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Database.MongoDB.Admin as MA
 import qualified Data.Text as T
@@ -77,10 +79,16 @@ produceUsersReply users baseUrl
     usersEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceUserJson users
 
 
-createUser :: MonadIO m => User -> M.Action m M.ObjectId
-createUser u = do
-  M.ObjId oid <- M.insert collectionName $ toBson u
-  return oid
+createUser :: User -> M.Action IO (Either E.Error M.ObjectId)
+createUser u = (do
+    M.ObjId oid <- M.insert collectionName $ toBson u
+    return $ Right oid
+  ) `catch` (\f -> do
+    case f of
+      M.WriteFailure 11000 message ->
+          return $ Left $ E.conflict $ "Insert of role with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
+      _ -> throwM f
+  )
 
 listUsers :: (MonadIO m, MonadBaseControl IO m)
           => (Maybe String) -> M.Action m [User]
@@ -121,6 +129,8 @@ listExistingUserIds userIds = do
 
 verifyDatabase :: MonadIO m => M.Action m ()
 verifyDatabase = MA.ensureIndex
-                    $ MA.index
+                    $ (MA.index
                           collectionName
-                          [(T.pack $ nameBase 'name) =: (M.Int32 1)]
+                          [(T.pack $ nameBase 'name) =: (M.Int32 1)])
+                      {MA.iUnique = True} -- TODO this should be modified as soon as domains are implemented
+                      -- different domains can have users with the same name

@@ -260,9 +260,14 @@ application config = do
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest
     user <- liftIO $ U.newRequestToUser d
-    uid <- liftIO $ CD.withDB (database config) $ MU.createUser user
-    S.status status201
-    with_host_url config $ MU.produceUserReply user
+    mUid <- liftIO $ CD.withDB (database config) $ MU.createUser user
+    case mUid of
+      Left err -> do
+        S.json err
+        S.status $ E.code err
+      Right rid -> do
+        S.status status201
+        with_host_url config $ MU.produceUserReply user
   S.get "/v3/users" $ do
     userName <- parseMaybeString "name"
     liftIO $ putStrLn $ show userName
