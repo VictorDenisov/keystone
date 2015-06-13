@@ -135,7 +135,7 @@ application config = do
 
         when (isNothing mst) $ throwError "Token is not an object id"
         let st = fromJust mst
-        mToken <- lift $ CD.runDB pipe $ MT.findTokenById st
+        mToken <- liftIO $ CD.runDB pipe $ MT.findTokenById st
 
         when (isNothing mToken) $ throwError $ "Could not find token, " ++ (show st) ++ "."
         let token = fromJust mToken

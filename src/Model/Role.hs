@@ -12,7 +12,6 @@ import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 

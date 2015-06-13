@@ -41,16 +41,16 @@ data Token = Token { _id       :: M.ObjectId
 
 $(deriveBson id ''Token)
 
-createToken :: MonadIO m => Token -> M.Action m M.Value
+createToken :: Token -> M.Action IO M.Value
 createToken t =
   M.insert collectionName $ toBson t
 
-findTokenById :: MonadIO m => ObjectId -> M.Action m (Maybe Token)
+findTokenById :: ObjectId -> M.Action IO (Maybe Token)
 findTokenById tid = runMaybeT $ do
   mToken <- MaybeT $ M.findOne (M.select [idF =: tid] collectionName)
   fromBson mToken
 
-validateToken :: MonadIO m => ObjectId -> M.Action m Bool
+validateToken :: ObjectId -> M.Action IO Bool
 validateToken tid = do
   currentTime <- liftIO getCurrentTime
   res <- runMaybeT $ do

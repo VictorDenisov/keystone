@@ -10,7 +10,6 @@ import Common ( capitalize, dropOptions, fromObject, skipTickOptions
               , skipUnderscoreOptions, (<.>))
 import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
                        , (+++))
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad (liftM)
@@ -148,32 +147,30 @@ produceServicesReply services baseUrl
                               $ map (\f -> f baseUrl)
                                   $ map produceServiceJson services
 
-createService :: MonadIO m => Service -> M.Action m M.ObjectId
+createService :: Service -> M.Action IO M.ObjectId
 createService s = do
   M.ObjId oid <- M.insert collectionName $ toBson s
   return oid
 
-listServices :: (MonadIO m, MonadBaseControl IO m)
-             => M.Action m [Service]
+listServices :: M.Action IO [Service]
 listServices = do
   cur <- M.find $ M.select [] collectionName
   docs <- M.rest cur
   mapM fromBson docs
 
-findServiceById :: (MonadIO m) => ObjectId -> M.Action m (Maybe Service)
+findServiceById :: ObjectId -> M.Action IO (Maybe Service)
 findServiceById sid = runMaybeT $ do
   mService <- MaybeT $ M.findOne (M.select [idF =: sid] collectionName)
   fromBson mService
 
-updateService :: (MonadIO m)
-              => M.ObjectId -> M.Document -> M.Action m (Maybe Service)
+updateService :: M.ObjectId -> M.Document -> M.Action IO (Maybe Service)
 updateService sid serviceUpdate = do
   M.modify (M.select [idF =: sid] collectionName) [ setC =: serviceUpdate ]
   -- If the service is deleted between these commands we assume it's never been updated
   -- TODO Remove this from here. It should be handled by a higher layer.
   findServiceById sid
 
-deleteService :: (MonadIO m) => ObjectId -> M.Action m OpStatus
+deleteService :: ObjectId -> M.Action IO OpStatus
 deleteService sid = do
   M.delete $ M.select [idF =: sid] collectionName
   ad <- affectedDocs
@@ -182,7 +179,7 @@ deleteService sid = do
     else return Success
 
 
-addEndpoint :: (MonadIO m) => ObjectId -> Endpoint -> M.Action m (Maybe M.ObjectId)
+addEndpoint :: ObjectId -> Endpoint -> M.Action IO (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
   M.modify (M.select [idF =: sid] collectionName) [ pushC =: [endpointsF =: (toBson endpoint)] ]
   count <- affectedDocs
@@ -191,7 +188,7 @@ addEndpoint sid endpoint = do
       then Just $ eid endpoint
       else Nothing
 
-listEndpoints :: (MonadIO m) => M.Action m [(M.ObjectId, Endpoint)]
+listEndpoints :: M.Action IO [(M.ObjectId, Endpoint)]
 listEndpoints = do
   docs <- M.aggregate collectionName [ [projectC =: [endpointsF =: (M.Int32 1)]]
                                      , [unwindC  =: endpointsA]

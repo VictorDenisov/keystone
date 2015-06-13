@@ -6,7 +6,6 @@ module Model.Assignment
 where
 
 import Control.Applicative ((<$>))
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)

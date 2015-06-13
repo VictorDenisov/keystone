@@ -12,7 +12,6 @@ import Common.Database ( affectedDocs, currentDateC, idF, inC, matchC, neC, pull
 
 import Control.Monad (when)
 import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -97,13 +96,12 @@ produceProjectsReply projects baseUrl
   where
     projectsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceProjectJson projects
 
-createProject ::  MonadIO m => Project -> M.Action m M.ObjectId
+createProject ::  Project -> M.Action IO M.ObjectId
 createProject p = do
   M.ObjId pid <- M.insert collectionName $ toBson p
   return pid
 
-listProjects :: (MonadIO m, MonadBaseControl IO m)
-             => (Maybe String) -> M.Action m [Project]
+listProjects :: (Maybe String) -> M.Action IO [Project]
 listProjects mName = do
   let nameFilter = case mName of
                       Nothing -> []
@@ -112,7 +110,7 @@ listProjects mName = do
   docs <- M.rest cur
   mapM fromBson docs
 
-findProjectById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Project)
+findProjectById :: M.ObjectId -> M.Action IO (Maybe Project)
 findProjectById pid = runMaybeT $ do
   mProject <- MaybeT $ M.findOne (M.select [idF =: pid] collectionName)
   fromBson mProject

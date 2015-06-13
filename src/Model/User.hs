@@ -13,7 +13,6 @@ import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC, s
 import Control.Applicative ((<$>))
 import Control.Monad (mapM)
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
-import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -96,8 +95,7 @@ createUser u = (do
       _ -> throwM f
   )
 
-listUsers :: (MonadIO m, MonadBaseControl IO m)
-          => (Maybe String) -> M.Action m [User]
+listUsers :: (Maybe String) -> M.Action IO [User]
 listUsers mName = do
   let nameFilter = case mName of
                       Nothing -> []
@@ -106,19 +104,18 @@ listUsers mName = do
   docs <- M.rest cursor
   mapM fromBson docs
 
-findUserById :: (MonadIO m) => ObjectId -> M.Action m (Maybe User)
+findUserById :: ObjectId -> M.Action IO (Maybe User)
 findUserById uid = runMaybeT $ do
   mUser <- MaybeT $ M.findOne (M.select [idF =: uid] collectionName)
   fromBson mUser
 
-updateUser :: (MonadIO m)
-           => M.ObjectId -> M.Document -> M.Action m (Maybe User)
+updateUser :: M.ObjectId -> M.Document -> M.Action IO (Maybe User)
 updateUser uid userUpdate = do
   M.modify (M.select [idF =: uid] collectionName) [ setC =: userUpdate ]
   -- If the user is deleted between these commands we assume it's never been updated
   findUserById uid
 
-deleteUser :: (MonadIO m) => ObjectId -> M.Action m OpStatus
+deleteUser :: ObjectId -> M.Action IO OpStatus
 deleteUser uid = do
   M.delete $ M.select [idF =: uid] collectionName
   ad <- affectedDocs
@@ -129,7 +126,7 @@ deleteUser uid = do
 listExistingUserIds :: [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingUserIds = listExistingIds collectionName
 
-verifyDatabase :: MonadIO m => M.Action m ()
+verifyDatabase :: M.Action IO ()
 verifyDatabase = MA.ensureIndex
                     $ (MA.index
                           collectionName
