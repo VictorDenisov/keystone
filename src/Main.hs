@@ -113,7 +113,7 @@ application config = do
     baseUrl <- getBaseUrl config
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- mapM (A.authenticate (A.scope au) pipe) (A.methods au)
+      res <- liftIO $ mapM (A.authenticate (A.scope au) pipe) (A.methods au)
       release releaseKey
       case head res of
         Right (tokenId, t) -> lift $ do
@@ -157,7 +157,7 @@ application config = do
     res <- runMaybeT $ do
       subjectToken <- MaybeT $ return mSubjectToken
       st <- MaybeT $ return $ readMaybe $ TL.unpack subjectToken
-      isValid <- lift $ CD.withDB (database config) $ MT.validateToken st
+      isValid <- liftIO $ CD.withDB (database config) $ MT.validateToken st
       when (not isValid) mzero
       return st
 
@@ -170,16 +170,16 @@ application config = do
   S.post "/v3/services" $ do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
     service <- liftIO $ Srv.newRequestToService scr
-    sid <- CD.withDB (database config) $ MS.createService service
+    sid <- liftIO $ CD.withDB (database config) $ MS.createService service
     S.status status201
     with_host_url config $ MS.produceServiceReply service
   S.get "/v3/services" $ do
-    services <- CD.withDB (database config) $ MS.listServices
+    services <- liftIO $ CD.withDB (database config) $ MS.listServices
     S.status status200
     with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
-    mService <- CD.withDB (database config) $ MS.findServiceById sid
+    mService <- liftIO $ CD.withDB (database config) $ MS.findServiceById sid
     case mService of
       Nothing -> do
         S.status status404
@@ -190,7 +190,7 @@ application config = do
   S.patch "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
-    mService <- CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
+    mService <- liftIO $ CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
     case mService of
       Nothing -> do
         S.status status404
@@ -200,7 +200,7 @@ application config = do
         with_host_url config $ MS.produceServiceReply service
   S.delete "/v3/services/:sid" $ do
     (sid :: M.ObjectId) <- parseId "sid"
-    n <- CD.withDB (database config) $ MS.deleteService sid
+    n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
     case n of
       NotFound -> do
         S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
@@ -210,7 +210,7 @@ application config = do
   S.post "/v3/endpoints" $ do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest
     endpoint <- liftIO $ Srv.newRequestToEndpoint ecr
-    mEid <- CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
+    mEid <- liftIO $ CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
     case mEid of
       Nothing -> do
         S.status status404
@@ -219,24 +219,24 @@ application config = do
         S.status status201
         with_host_url config $ MS.produceEndpointReply endpoint (Srv.eserviceId ecr)
   S.get "/v3/endpoints" $ do
-    endpoints <- CD.withDB (database config) $ MS.listEndpoints
+    endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
     S.status status200
     with_host_url config $ MS.produceEndpointsReply endpoints
   -- Project API
   S.post "/v3/projects" $ do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
     project <- liftIO $ P.newRequestToProject pcr
-    pid <- CD.withDB (database config) $ MP.createProject project
+    pid <- liftIO $ CD.withDB (database config) $ MP.createProject project
     S.status status201
     with_host_url config $ MP.produceProjectReply project
   S.get "/v3/projects" $ do
     projectName <- parseMaybeString "name"
-    projects <- CD.withDB (database config) $ MP.listProjects projectName
+    projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
     S.status status200
     with_host_url config $ MP.produceProjectsReply projects
   S.get "/v3/projects/:pid" $ do
     (pid :: M.ObjectId) <- parseId "pid"
-    mProject <- CD.withDB (database config) $ MP.findProjectById pid
+    mProject <- liftIO $ CD.withDB (database config) $ MP.findProjectById pid
     case mProject of
       Nothing -> do
         S.status status404
@@ -247,31 +247,31 @@ application config = do
   S.get "/v3/projects/:pid/users/:uid/roles" $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
-    roles <- CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
+    roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
     S.status status200
     with_host_url config $ MR.produceRolesReply roles -- TODO base url should be revised here
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     (rid :: M.ObjectId) <- parseId "rid"
-    res <- CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
+    res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
     S.status status204
   -- User API
   S.post "/v3/users" $ do
     (d :: U.UserCreateRequest) <- parseRequest
     user <- liftIO $ U.newRequestToUser d
-    uid <- CD.withDB (database config) $ MU.createUser user
+    uid <- liftIO $ CD.withDB (database config) $ MU.createUser user
     S.status status201
     with_host_url config $ MU.produceUserReply user
   S.get "/v3/users" $ do
     userName <- parseMaybeString "name"
     liftIO $ putStrLn $ show userName
-    users <- CD.withDB (database config) $ MU.listUsers userName
+    users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
     S.status status200
     with_host_url config $ MU.produceUsersReply users
   S.get "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
-    mUser <- CD.withDB (database config) $ MU.findUserById uid
+    mUser <- liftIO $ CD.withDB (database config) $ MU.findUserById uid
     case mUser of
       Nothing -> do
         S.status status404
@@ -282,7 +282,7 @@ application config = do
   S.patch "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
-    mUser <- CD.withDB (database config) $ MU.updateUser uid (U.updateRequestToDocument uur)
+    mUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid (U.updateRequestToDocument uur)
     case mUser of
       Nothing -> do
         S.status status404
@@ -292,7 +292,7 @@ application config = do
         with_host_url config $ MU.produceUserReply user
   S.delete "/v3/users/:uid" $ do
     (uid :: M.ObjectId) <- parseId "uid"
-    st <- CD.withDB (database config) $ MU.deleteUser uid
+    st <- liftIO $ CD.withDB (database config) $ MU.deleteUser uid
     case st of
       Success  -> S.status status204
       NotFound -> do
@@ -305,7 +305,7 @@ application config = do
   S.post "/v3/roles" $ do
     (rcr :: R.RoleCreateRequest) <- parseRequest
     role <- liftIO $ R.newRequestToRole rcr
-    mRid <- liftIO $ CD.withDB (database config) $ MR.createRole role
+    mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
     case mRid of
       Left message -> do
         S.json $ E.conflict $ "Duplicate role name, " ++ message ++ "."
@@ -315,12 +315,12 @@ application config = do
         with_host_url config $ MR.produceRoleReply role
   S.get "/v3/roles" $ do
     roleName <- parseMaybeString "name"
-    roles <- CD.withDB (database config) $ MR.listRoles roleName
+    roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
     S.status status200
     with_host_url config $ MR.produceRolesReply roles
   S.get "/v3/roles/:rid" $ do
     (rid :: M.ObjectId) <- parseId "rid"
-    mRole <- CD.withDB (database config) $ MR.findRoleById rid
+    mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
     case mRole of
       Nothing -> do
         S.status status404
@@ -331,7 +331,7 @@ application config = do
   S.get "/v3/role_assignments" $ do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
-    roles <- CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
+    roles <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
     S.status status200
     with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
 
@@ -385,7 +385,7 @@ withAuth config app req respond = do
               case mTokenId of
                 Nothing -> respond $ responseLBS status401 [] "Wrong token"
                 Just tokenId  -> do
-                  mToken <- CD.withDB (database config) $ MT.findTokenById tokenId
+                  mToken <- liftIO $ CD.withDB (database config) $ MT.findTokenById tokenId
                   case mToken of
                     Nothing -> respond $ responseLBS status401 [] "Wrong token"
                     Just token -> app req respond -- TODO verify that this user has access
@@ -421,6 +421,6 @@ with_host_url config v = do
   S.json $ v url
 
 verifyDatabase :: Database -> IO ()
-verifyDatabase dbConf = CD.withDB dbConf $ do
+verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
   MU.verifyDatabase
   MR.verifyDatabase

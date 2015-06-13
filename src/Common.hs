@@ -34,21 +34,12 @@ loggerName = "Main"
 type ScottyM = S.ScottyT E.Error IO
 type ActionM = ActionT E.Error IO
 
-{-
-instance MonadThrow m => MonadThrow (ActionT E.Error m) where
-  throwM e = S.raise $ E.internalError $ show $ toException e
-  -}
-
 instance MonadThrow m => MonadThrow (ActionT E.Error m) where
   throwM = lift . throwM
 
 instance MonadCatch m => MonadCatch (ActionT E.Error m) where
   catch (ActionT m) c = ActionT $ catch m (runAM . c)
-{-
-instance MonadCatch m => MonadCatch (ActionT E.Error m) where
-  catch (ActionT m) c = ActionT $ ExceptT $ ReaderT $ \r -> StateT $ \s -> catch (runStateT (runReaderT (runExceptT m) r) s) (\e -> runStateT (runReaderT (runExceptT $ runAM $ c e) r) s)
 
--}
 skipTickOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
 
 skipUnderscoreOptions = defaultOptions { fieldLabelModifier = filter (/= '_') }

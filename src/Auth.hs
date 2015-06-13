@@ -63,7 +63,10 @@ instance FromJSON AuthRequest where
           mDomainId <- runMaybeT $ do
             domainSpec <- MaybeT $ userSpec .:? "domain"
             MaybeT $ domainSpec .:? "id"
-          PasswordMethod <$> (userSpec .:? "id") <*> (userSpec .:? "name") <*> (return mDomainId) <*> (userSpec .: "password")
+          PasswordMethod <$> (userSpec .:? "id")
+                         <*> (userSpec .:? "name")
+                         <*> (return mDomainId)
+                         <*> (userSpec .: "password")
     scope <- runMaybeT $ do
       s <- MaybeT $ auth .:? "scope"
       p <- MaybeT $ s .:? "project"
@@ -76,8 +79,10 @@ instance FromJSON AuthRequest where
     return $ AuthRequest ms scope
   parseJSON v = typeMismatch (nameBase ''AuthRequest) v
 
-authenticate :: (MonadBaseControl IO m, MonadIO m)
-             => (Maybe AuthScope) -> M.Pipe -> AuthMethod -> m (Either String (String, MT.Token))
+authenticate :: (Maybe AuthScope)
+             -> M.Pipe
+             -> AuthMethod
+             -> IO (Either String (String, MT.Token))
 authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) = do
     mu <- case mUserId of
               Just userId -> CD.runDB pipe $ MU.findUserById userId

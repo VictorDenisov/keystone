@@ -36,8 +36,7 @@ connect dbConf = do
     host = dbHost dbConf
     port = dbPort dbConf
 
-withDB :: (MonadBaseControl IO m, MonadThrow m, MonadIO m)
-       => Database -> M.Action m a -> m a
+withDB :: Database -> M.Action IO a -> IO a
 withDB dbConf f = runResourceT $ do
   (releaseKey, pipe) <- allocate (connect dbConf) M.close
   v <- lift $ runDB pipe f

@@ -58,10 +58,9 @@ produceAssignmentsReply assignments baseUrl
   where
     assignmentsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\a -> produceAssignmentJson a) assignments
 
-listAssignments :: (MonadIO m, MonadBaseControl IO m)
-                => (Maybe MP.ProjectId)
+listAssignments :: (Maybe MP.ProjectId)
                 -> (Maybe MU.UserId)
-                -> M.Action m [Assignment]
+                -> M.Action IO [Assignment]
 listAssignments mPid mUid = do
   let projectFilter = case mPid of
                         Just (MP.ProjectId pid) -> [(T.pack $ nameBase 'projectId) =: pid]
@@ -87,16 +86,14 @@ listAssignments mPid mUid = do
                           && (pid `elem` existingProjectIds)
                          )) assignments
 
-listUserRoles :: (MonadIO m, MonadBaseControl IO m)
-              => MP.ProjectId -> MU.UserId -> M.Action m [MR.Role]
+listUserRoles :: MP.ProjectId -> MU.UserId -> M.Action IO [MR.Role]
 listUserRoles pid uid = do
   assignments <- listAssignments (Just pid) (Just uid)
   mRoles <- mapM MR.findRoleById
               $ map ((\(MR.RoleId rid) -> rid) . roleId) assignments
   return $ catMaybes mRoles
 
-addAssignment :: (MonadIO m)
-              => Assignment -> M.Action m M.ObjectId
+addAssignment :: Assignment -> M.Action IO M.ObjectId
 addAssignment a = do
   M.ObjId aid <- M.insert collectionName $ toBson a
   return aid

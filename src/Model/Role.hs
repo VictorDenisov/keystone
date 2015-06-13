@@ -77,13 +77,11 @@ produceRolesReply roles baseUrl
   where
     rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceRoleJson roles
 
---createRole :: (MonadCatch m, MonadIO m) => Role -> M.Action m (Either String M.ObjectId)
 createRole :: Role -> M.Action IO (Either String M.ObjectId)
 createRole r = (do
     M.ObjId rid <- M.insert collectionName $ toBson r
     return $ Right rid
   ) `catch` (\f -> do
-    liftIO $ putStrLn "Hello all"
     case f of
       M.WriteFailure code message ->
         if (code == 11000)
@@ -92,8 +90,7 @@ createRole r = (do
       _ -> return $ Left $ show f
   )
 
-listRoles :: (MonadIO m, MonadBaseControl IO m)
-          => (Maybe String) -> M.Action m [Role]
+listRoles :: (Maybe String) -> M.Action IO [Role]
 listRoles mName = do
   let nameFilter = case mName of
                       Nothing -> []
@@ -102,19 +99,18 @@ listRoles mName = do
   docs <- M.rest cur
   mapM fromBson docs
 
-findRoleById :: (MonadIO m) => M.ObjectId -> M.Action m (Maybe Role)
+findRoleById :: M.ObjectId -> M.Action IO (Maybe Role)
 findRoleById rid = runMaybeT $ do
   mRole <- MaybeT $ M.findOne (M.select [idF =: rid] collectionName)
   fromBson mRole
 
-listExistingRoleIds :: (MonadIO m, MonadBaseControl IO m)
-                    => [M.ObjectId] -> M.Action m [M.ObjectId]
+listExistingRoleIds :: [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingRoleIds roleIds = do
   cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId roleIds)] ] collectionName)
   docs <- M.rest cur
   return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
 
-verifyDatabase :: MonadIO m => M.Action m ()
+verifyDatabase :: M.Action IO ()
 verifyDatabase = MA.ensureIndex
                     $ (MA.index
                           collectionName
