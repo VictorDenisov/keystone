@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
+
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
 import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
 import Data.Aeson.TH (deriveJSON, defaultOptions)
@@ -26,9 +27,13 @@ import Data.HashMap.Strict (insert)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (getCurrentTime)
 import Data.Vector (fromList)
+
 import Language.Haskell.TH.Syntax (nameBase)
-import Model.Common (TransactionId(..), CaptureStatus(..))
+
+import Model.Common (listExistingIds, CaptureStatus(..), TransactionId(..))
+
 import System.Log.Logger (debugM)
+
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -112,9 +117,7 @@ findProjectById pid = runMaybeT $ do
   mProject <- MaybeT $ M.findOne (M.select [idF =: pid] collectionName)
   fromBson mProject
 
-listExistingProjectIds :: (MonadIO m, MonadBaseControl IO m)
-                       => [M.ObjectId] -> M.Action m [M.ObjectId]
-listExistingProjectIds projectIds = do
-  cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId projectIds)] ] collectionName)
-  docs <- M.rest cur
-  return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
+-- | Returns subset of the provided list.
+-- | The subset contains only existing project ids.
+listExistingProjectIds ::[M.ObjectId] -> M.Action IO [M.ObjectId]
+listExistingProjectIds = listExistingIds collectionName
