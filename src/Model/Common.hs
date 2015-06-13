@@ -14,4 +14,5 @@ newtype ProjectId = ProjectId M.ObjectId
 data OpStatus = Success
               | NotFound
               | Busy
+              | Duplicate String -- What field was duplicate
                 deriving Show

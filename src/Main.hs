@@ -307,9 +307,9 @@ application config = do
     role <- liftIO $ R.newRequestToRole rcr
     mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
     case mRid of
-      Left message -> do
-        S.json $ E.conflict $ "Duplicate role name, " ++ message ++ "."
-        S.status status409
+      Left err -> do
+        S.json err
+        S.status $ E.code err
       Right rid -> do
         S.status status201
         with_host_url config $ MR.produceRoleReply role

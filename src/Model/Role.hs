@@ -10,7 +10,7 @@ where
 import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
 import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC)
 
-import Control.Monad.Catch (MonadCatch(catch), SomeException)
+import Control.Monad.Catch (MonadCatch(catch), SomeException, MonadThrow(throwM))
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -77,17 +77,15 @@ produceRolesReply roles baseUrl
   where
     rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceRoleJson roles
 
-createRole :: Role -> M.Action IO (Either String M.ObjectId)
+createRole :: Role -> M.Action IO (Either E.Error M.ObjectId)
 createRole r = (do
     M.ObjId rid <- M.insert collectionName $ toBson r
     return $ Right rid
   ) `catch` (\f -> do
     case f of
-      M.WriteFailure code message ->
-        if (code == 11000)
-          then return $ Left "Duplicate key"
-          else return $ Left $ show f
-      _ -> return $ Left $ show f
+      M.WriteFailure 11000 message ->
+          return $ Left $ E.conflict $ "Insert of role with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
+      _ -> throwM f
   )
 
 listRoles :: (Maybe String) -> M.Action IO [Role]
