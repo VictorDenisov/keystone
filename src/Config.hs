@@ -21,7 +21,7 @@ data KeystoneConfig = KeystoneConfig
                     , keyFile         :: FilePath -- TLS runner checks if this file exists
                     , port            :: Int      -- Port won't bind if it's busy
                     , endpoint        :: Maybe String
-                    , database        :: Database -- TODO Will be verified during creation of the pool
+                    , database        :: Database
                     , logLevel        :: Priority
                     , serverType      :: ServerType
                     }

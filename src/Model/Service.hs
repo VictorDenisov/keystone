@@ -10,6 +10,7 @@ import Common ( capitalize, dropOptions, fromObject, skipTickOptions
               , skipUnderscoreOptions, (<.>))
 import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
                        , (+++))
+import Control.Applicative ((<$>))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad (liftM)
@@ -165,10 +166,10 @@ findServiceById sid = runMaybeT $ do
 
 updateService :: M.ObjectId -> M.Document -> M.Action IO (Maybe Service)
 updateService sid serviceUpdate = do
-  M.modify (M.select [idF =: sid] collectionName) [ setC =: serviceUpdate ]
-  -- If the service is deleted between these commands we assume it's never been updated
-  -- TODO Remove this from here. It should be handled by a higher layer.
-  findServiceById sid
+  res <- M.findAndModify (M.select [idF =: sid] collectionName) [ setC =: serviceUpdate ]
+  case res of
+    Left _  -> return Nothing
+    Right v -> Just <$> fromBson v
 
 deleteService :: ObjectId -> M.Action IO OpStatus
 deleteService sid = do
