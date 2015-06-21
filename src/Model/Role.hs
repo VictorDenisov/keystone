@@ -8,7 +8,9 @@ module Model.Role
 where
 
 import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
-import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC)
+import Common.Database ( affectedDocs, decC, duplicateE, idF, inC, incC, neC
+                       , pullC, pushC
+                       )
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Except (MonadError(..))
@@ -87,7 +89,7 @@ createRole r = (do
     return $ Right rid
   ) `catch` (\f -> do
     case f of
-      M.WriteFailure 11000 message ->
+      M.WriteFailure duplicateE message ->
           return $ Left $ E.conflict $ "Insert of role with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
       _ -> throwM f
   )

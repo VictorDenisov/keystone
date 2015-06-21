@@ -66,6 +66,9 @@ instance FromJSON M.ObjectId where
 instance ToJSON M.ObjectId where
   toJSON v = String $ T.pack $ show v
 
+duplicateE :: M.ErrorCode
+duplicateE = 11000
+
 -- Common fields that are used around
 idF = "_id"
 idF :: Text
