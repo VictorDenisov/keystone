@@ -430,3 +430,5 @@ verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
   MR.verifyDatabase
   liftIO $ noticeM loggerName "Verifying project collection"
   MP.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying token collection"
+  MT.verifyDatabase

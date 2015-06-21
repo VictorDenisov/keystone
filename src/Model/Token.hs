@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# Language DeriveDataTypeable #-}
+{-# Language RecordWildCards #-}
 {-# Language TemplateHaskell #-}
 module Model.Token
 where
@@ -18,10 +19,13 @@ import Data.Data (Typeable)
 import Data.Maybe (fromJust)
 import Data.Time.Clock (getCurrentTime, UTCTime)
 
+import Database.MongoDB.Internal.Util ((<.>))
+
 import Language.Haskell.TH.Syntax (nameBase)
 
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MA
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
@@ -66,3 +70,17 @@ validateToken tid = do
   case res of
     Just v  -> return v
     Nothing -> return False
+
+idxDocument :: M.Index -> M.Database -> M.Document
+idxDocument M.Index{..} db = [
+	"ns" =: db <.> iColl,
+	"key" =: iKey,
+	"name" =: iName,
+	"unique" =: iUnique,
+	"dropDups" =: iDropDups ]
+
+verifyDatabase :: M.Action IO ()
+verifyDatabase = M.insert_ "system.indexes" . (\db -> (idxDocument idx db) ++ ["expireAfterSeconds" =: (M.Int32 0)]) =<< M.thisDatabase
+  where idx = (MA.index
+                    collectionName
+                    [(T.pack $ nameBase 'expiresAt) =: (M.Int32 1)])
