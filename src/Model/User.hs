@@ -111,9 +111,10 @@ findUserById uid = runMaybeT $ do
 
 updateUser :: M.ObjectId -> M.Document -> M.Action IO (Maybe User)
 updateUser uid userUpdate = do
-  M.modify (M.select [idF =: uid] collectionName) [ setC =: userUpdate ]
-  -- If the user is deleted between these commands we assume it's never been updated
-  findUserById uid
+  res <- M.findAndModify (M.select [idF =: uid] collectionName) [ setC =: userUpdate ]
+  case res of
+    Left _  -> return Nothing
+    Right v -> Just <$> fromBson v
 
 deleteUser :: ObjectId -> M.Action IO OpStatus
 deleteUser uid = do
