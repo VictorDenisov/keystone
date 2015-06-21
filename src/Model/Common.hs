@@ -2,8 +2,10 @@ module Model.Common
 where
 
 import Common.Database (idF, inC)
+import Control.Monad (forM)
 
 import Data.Bson ((=:), ObjectId)
+import Data.List.Split (chunksOf)
 
 import qualified Database.MongoDB as M
 
@@ -23,6 +25,8 @@ data OpStatus = Success
 
 listExistingIds :: M.Collection -> [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingIds collection ids = do
-  cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId ids)] ] collection)
-  docs <- M.rest cur
-  return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
+  chunks <- forM (chunksOf 50000 ids) $ \chunk -> do -- we need to split long list into chunks because mongodb limits the request size
+    cur <- M.find (M.select [ idF =: [inC =: (M.Array $ map M.ObjId chunk)] ] collection)
+    docs <- M.rest cur
+    return $ map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
+  return $ concat chunks
