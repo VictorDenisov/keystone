@@ -1,5 +1,6 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# Language TemplateHaskell #-}
@@ -21,7 +22,7 @@ import Data.Bson (Val(..), (=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
-import Data.HashMap.Strict (insert)
+import Data.HashMap.Strict (insert, delete)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(..))
@@ -101,9 +102,10 @@ $(deriveBson (drop 1) ''Endpoint)
 $(deriveJSON (dropOptions 1) ''Endpoint)
 
 produceServiceJson :: Service -> String -> Value
-produceServiceJson (s@Service{..}) baseUrl
+produceServiceJson (s@Service{_id}) baseUrl
       = Object
         $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show _id)) ])
+        $ delete (T.pack $ nameBase 'endpoints)
         $ fromObject $ toJSON s
 
 produceServiceReply :: Service -> String -> Value
