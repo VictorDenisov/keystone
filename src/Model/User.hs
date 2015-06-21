@@ -90,8 +90,8 @@ createUser u = (do
     return $ Right oid
   ) `catch` (\f -> do
     case f of
-      M.WriteFailure 11000 message ->
-          return $ Left $ E.conflict $ "Insert of role with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
+      M.WriteFailure duplicateE message ->
+          return $ Left $ E.conflict $ "Insert of user with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
       _ -> throwM f
   )
 

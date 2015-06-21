@@ -11,6 +11,7 @@ import Common.Database ( affectedDocs, currentDateC, idF, inC, matchC, neC, pull
                        , pushC, setC, unwindC, (+.+), (+++))
 
 import Control.Monad (when)
+import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -35,7 +36,10 @@ import System.Log.Logger (debugM)
 
 import Text.Read (readMaybe)
 
+import qualified Error as E
+
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MA
 import qualified Data.Text as T
 
 import qualified Model.Role as MR
@@ -96,10 +100,16 @@ produceProjectsReply projects baseUrl
   where
     projectsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceProjectJson projects
 
-createProject ::  Project -> M.Action IO M.ObjectId
-createProject p = do
-  M.ObjId pid <- M.insert collectionName $ toBson p
-  return pid
+createProject :: Project -> M.Action IO (Either E.Error M.ObjectId)
+createProject p = (do
+    M.ObjId pid <- M.insert collectionName $ toBson p
+    return $ Right pid
+  ) `catch` (\f -> do
+    case f of
+      M.WriteFailure duplicateE message ->
+          return $ Left $ E.conflict $ "Insert of project with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
+      _ -> throwM f
+  )
 
 listProjects :: (Maybe String) -> M.Action IO [Project]
 listProjects mName = do
@@ -119,3 +129,11 @@ findProjectById pid = runMaybeT $ do
 -- | The subset contains only existing project ids.
 listExistingProjectIds ::[M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingProjectIds = listExistingIds collectionName
+
+verifyDatabase :: M.Action IO ()
+verifyDatabase = MA.ensureIndex
+                    $ (MA.index
+                          collectionName
+                          [(T.pack $ nameBase 'name) =: (M.Int32 1)])
+                      {MA.iUnique = True} -- TODO this should be modified as soon as domains are implemented
+                      -- different domains can have projects with the same name

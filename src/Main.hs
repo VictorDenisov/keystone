@@ -40,7 +40,7 @@ import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple (fileHandler)
 import System.Log.Logger ( debugM, errorM, setLevel, updateGlobalLogger
-                         , Priority(..), addHandler)
+                         , noticeM, Priority(..), addHandler)
 import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
@@ -66,20 +66,12 @@ import qualified Service as Srv
 import qualified User as U
 import qualified Web.Scotty.Trans as S
 
-{-
-instance (S.ScottyError e, MonadThrow m) => MonadThrow (ActionT e m) where
-  throwM e = lift $ throwM e
-
-instance (S.ScottyError e, MonadCatch m) => MonadCatch (ActionT e m) where
-  catch (ActionT m) c = ActionT $ ExceptT $ ReaderT $ \r -> StateT $ \s -> catch (runStateT (runReaderT (runExceptT m) r) s) (\e -> runStateT (runReaderT (runExceptT $ runAM $ c e) r) s)
-  -}
-
 main = do
   config <- readConfig
-  verifyDatabase $ database config
   updateGlobalLogger loggerName $ setLevel $ logLevel config
   fh <- fileHandler "keystone.log" DEBUG
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
+  verifyDatabase $ database config
 
   app <- S.scottyAppT id id (application config)
   let settings = tlsSettings
@@ -226,9 +218,14 @@ application config = do
   S.post "/v3/projects" $ do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
     project <- liftIO $ P.newRequestToProject pcr
-    pid <- liftIO $ CD.withDB (database config) $ MP.createProject project
-    S.status status201
-    with_host_url config $ MP.produceProjectReply project
+    mPid <- liftIO $ CD.withDB (database config) $ MP.createProject project
+    case mPid of
+      Left err -> do
+        S.json err
+        S.status $ E.code err
+      Right rid -> do
+        S.status status201
+        with_host_url config $ MP.produceProjectReply project
   S.get "/v3/projects" $ do
     projectName <- parseMaybeString "name"
     projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
@@ -427,5 +424,9 @@ with_host_url config v = do
 
 verifyDatabase :: Database -> IO ()
 verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
+  liftIO $ noticeM loggerName "Verifying user collection"
   MU.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying role collection"
   MR.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying project collection"
+  MP.verifyDatabase
