@@ -153,9 +153,12 @@ createService s = do
   M.ObjId oid <- M.insert collectionName $ toBson s
   return oid
 
-listServices :: M.Action IO [Service]
-listServices = do
-  cur <- M.find $ M.select [] collectionName
+listServices :: (Maybe String) -> M.Action IO [Service]
+listServices mName = do
+  let nameFilter = case mName of
+                      Nothing -> []
+                      Just nm -> [(T.pack $ nameBase 'name) =: (M.String $ T.pack nm)]
+  cur <- M.find $ M.select nameFilter collectionName
   docs <- M.rest cur
   mapM fromBson docs
 

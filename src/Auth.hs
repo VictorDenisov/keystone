@@ -99,7 +99,7 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) =
                 currentTime  <- liftIO getCurrentTime
                 scopeProject <- CD.runDB pipe $ calcProject mScope
                 scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
-                services     <- CD.runDB pipe $ MS.listServices
+                services     <- CD.runDB pipe $ MS.listServices Nothing
                 tokenId <- liftIO $ M.genObjectId
                 let token = MT.Token
                                   tokenId

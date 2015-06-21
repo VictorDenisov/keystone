@@ -166,7 +166,8 @@ application config = do
     S.status status201
     with_host_url config $ MS.produceServiceReply service
   S.get "/v3/services" $ do
-    services <- liftIO $ CD.withDB (database config) $ MS.listServices
+    serviceName <- parseMaybeString "name"
+    services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
     S.status status200
     with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ do
@@ -267,7 +268,6 @@ application config = do
         with_host_url config $ MU.produceUserReply user
   S.get "/v3/users" $ do
     userName <- parseMaybeString "name"
-    liftIO $ putStrLn $ show userName
     users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
     S.status status200
     with_host_url config $ MU.produceUsersReply users
