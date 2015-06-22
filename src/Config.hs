@@ -59,7 +59,7 @@ $(deriveJSON defaultOptions ''Database)
 
 readConfig :: IO KeystoneConfig
 readConfig = do
-  mConf <- decodeFile "keystone.yml"
+  mConf <- decodeFile "keystone.conf"
   case mConf of
     Just conf ->
       return conf
