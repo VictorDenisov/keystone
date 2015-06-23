@@ -1,14 +1,10 @@
 explain A, F, C notation
 
-add expireAfter index for tokens
-
-use findAndModify command for updates
-
 clean up dangling role assignments from time to time
 
 don't restrict the types of services when creating services ?? it gives more flexibility but can cause more errors
 
-When listing existing projects provide $in command with chunks of possibly long lists
-
 retry one more time in case of network failure (valid for replica set)
 implement authentication with token
+
+move produce reply functions one level up

@@ -52,6 +52,7 @@ import qualified Auth as A
 import qualified Common.Database as CD
 import qualified Data.Text.Lazy as TL
 import qualified Database.MongoDB as M
+import qualified Domain as D
 import qualified Error as E
 import qualified Model.Assignment as MA
 import qualified Model.Domain as MD
@@ -215,6 +216,10 @@ application config = do
     endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
     S.status status200
     with_host_url config $ MS.produceEndpointsReply endpoints
+  -- Domain API
+  S.get "/v3/domains" $ do
+    S.status status200
+    with_host_url config $ D.produceDomainsReply []
   -- Project API
   S.post "/v3/projects" $ do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
