@@ -8,11 +8,11 @@ import Data.Vector (fromList)
 
 data Domain = Domain
 
-domainJson :: String -> Value
-domainJson baseUrl
+produceDomainJson :: Domain -> String -> Value
+produceDomainJson domain baseUrl
   = object [ "description" .= ("Fake default domain" :: String)
            , "enabled"     .= True
-           , "id"          .= ("default" :: String)
+           , "id"          .= ("55897e27b74cea2c9383d14c" :: String)
            , "links"       .=
                 ( object
                 [ "self" .= (baseUrl ++ "/v3/domains/default")
@@ -20,6 +20,9 @@ domainJson baseUrl
            , "name"        .= ("Default" :: String)
            ]
             
+produceDomainReply :: Domain -> String -> Value
+produceDomainReply domain baseUrl
+      = object [ "domain" .= produceDomainJson domain baseUrl ]
 
 produceDomainsReply :: [Domain] -> String -> Value
 produceDomainsReply domains baseUrl
@@ -28,5 +31,5 @@ produceDomainsReply domains baseUrl
                                 , "self"     .= (baseUrl ++ "/v3/domains")
                                 ]
                         )
-           , "domains" .= (Array $ fromList [domainJson baseUrl])
+           , "domains" .= (Array $ fromList [produceDomainJson Domain baseUrl])
            ]
