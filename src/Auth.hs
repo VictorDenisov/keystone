@@ -4,7 +4,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Auth
 where
-import Common (loggerName)
+import Common (loggerName, ActionM)
+import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
 import Control.Monad (forM, liftM)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -19,11 +20,15 @@ import Data.Maybe (fromJust, maybeToList, catMaybes, listToMaybe)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
+import Network.HTTP.Types (methodGet, methodPost)
+import Network.HTTP.Types.Status (status401)
+import Network.HTTP.Types.Header (HeaderName)
 import System.Log.Logger (debugM)
 import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
 import qualified Domain as D
+import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Model.Assignment as MA
 import qualified Model.Domain as MD
@@ -32,7 +37,9 @@ import qualified Model.Token as MT
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
+import qualified Web.Scotty.Trans as S
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
 
 data AuthRequest = AuthRequest
                  { methods :: [AuthMethod]
@@ -191,3 +198,112 @@ produceTokenResponse (MT.Token _ issued expires user mProject roles services) ba
                              , "region_id" .= (String $ T.pack MD.defaultDomainId)
                              , "url"       .= MS.eurl endpoint
                              ]
+
+data Action = ValidateToken
+            | CheckToken
+            | RevokeToken
+
+            | AddService
+            | ListServices
+            | ShowServiceDetails
+            | UpdateService
+            | DeleteService
+
+            | AddEndpoint
+            | ListEndpoints
+            | UpdateEndpoint
+            | DeleteEndpoint
+
+            | AddDomain
+            | ListDomains
+            | ShowDomainDetails
+            | UpdateDomain
+            | DeleteDomain
+            | ListRolesForDomainUser
+            | GrantRoleToDomainUser
+            | CheckRoleForDomainUser
+            | RevokeRoleForDomainUser
+            | ListRolesForDomainGroup
+            | GrantRoleToDomainGroup
+            | CheckRoleForDomainGroup
+            | RevokeRoleForDomainGroup
+
+            | AddProject
+            | ListProjects
+            | ShowProjectDetails
+            | UpdateProject
+            | DeleteProject
+            | ListRolesForProjectUser
+            | GrantRoleToProjectUser
+            | CheckRoleForProjectUser
+            | RevokeRoleForProjectUser
+            | ListRolesForProjectGroup
+            | GrantRoleToProjectGroup
+            | CheckRoleForProjectGroup
+            | RevokeRoleForProjectGroup
+
+            | AddUser
+            | ListUsers
+            | ShowUserDetails
+            | UpdateUser
+            | DeleteUser
+            | ListGroupsForUser
+            | ListProjectsForUser
+
+            | AddGroup
+            | ListGroups
+            | ShowGroupDetails
+            | UpdateGroup
+            | DeleteGroup
+            | ListUsersInGroup
+            | AddUserToGroup
+            | RemoveUserFromGroup
+            | CheckUserMembershipInGroup
+
+            | AddCredential
+            | ListCredentials
+            | ShowCredentialDetails
+            | UpdateCredential
+            | DeleteCredential
+
+            | AddRole
+            | ListRoles
+            | ListRoleAssignments
+            | DeleteRole
+
+            | AddPolicy
+            | ListPolicies
+            | ShowPolicyDetails
+            | UpdatePolicy
+            | DeletePolicy
+              deriving (Show, Read, Eq)
+
+hXAuthToken :: LT.Text
+hXAuthToken = "X-Auth-Token"
+
+requireAuth :: KeystoneConfig -> ActionM () -> ActionM ()
+requireAuth config actionToRun = do
+  let adminToken = Config.adminToken config
+  req <- S.request
+  mToken <- S.header hXAuthToken
+  case mToken of
+    Nothing -> do
+      S.status status401
+      S.json $ E.unauthorized "Token is required"
+    Just m ->
+      if m == (LT.pack adminToken)
+        then
+          actionToRun
+        else do
+          let mTokenId = readMaybe $ LT.unpack m
+          case mTokenId of
+            Nothing -> do
+              S.status status401
+              S.json $ E.unauthorized "Wrong token"
+            Just tokenId  -> do
+              mToken <- liftIO $ CD.withDB (database config) $ MT.findTokenById tokenId
+              case mToken of
+                Nothing -> do
+                  S.status status401
+                  S.json $ E.unauthorized "Wrong token"
+                Just token -> actionToRun

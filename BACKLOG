@@ -8,3 +8,6 @@ retry one more time in case of network failure (valid for replica set)
 implement authentication with token
 
 move produce reply functions one level up
+
+requireAuth opens a separate connection to the database. Make internal action reuse
+the connection.

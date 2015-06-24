@@ -85,7 +85,7 @@ main = do
 
 application :: KeystoneConfig -> ScottyM ()
 application config = do
-  S.middleware (withAuth config)
+  --S.middleware (withAuth config)
   S.defaultHandler $ \e -> do
     S.status $ E.code e
     case statusCode $ E.code e of
@@ -117,7 +117,7 @@ application config = do
         Left errorMessage -> lift $ do
           S.json $ E.unauthorized errorMessage
           S.status status401
-  S.addroute GET "/v3/auth/tokens" $ do
+  S.addroute GET "/v3/auth/tokens" $ A.requireAuth config $ do
     mSubjectToken <- S.header hXSubjectToken
     baseUrl <- getBaseUrl config
     res <- runResourceT $ do
@@ -145,7 +145,7 @@ application config = do
       Right resp -> do
         S.status status200
         S.json resp
-  S.addroute HEAD "/v3/auth/tokens" $ do
+  S.addroute HEAD "/v3/auth/tokens" $ A.requireAuth config $ do
     mSubjectToken <- S.header hXSubjectToken
     res <- runMaybeT $ do
       subjectToken <- MaybeT $ return mSubjectToken
@@ -160,18 +160,18 @@ application config = do
       Just _ -> do
         S.status status204
   -- Service API
-  S.post "/v3/services" $ do
+  S.post "/v3/services" $ A.requireAuth config $ do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
     service <- liftIO $ Srv.newRequestToService scr
     sid <- liftIO $ CD.withDB (database config) $ MS.createService service
     S.status status201
     with_host_url config $ MS.produceServiceReply service
-  S.get "/v3/services" $ do
+  S.get "/v3/services" $ A.requireAuth config $ do
     serviceName <- parseMaybeString "name"
     services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
     S.status status200
     with_host_url config $ MS.produceServicesReply services
-  S.get "/v3/services/:sid" $ do
+  S.get "/v3/services/:sid" $ A.requireAuth config $ do
     (sid :: M.ObjectId) <- parseId "sid"
     mService <- liftIO $ CD.withDB (database config) $ MS.findServiceById sid
     case mService of
@@ -181,7 +181,7 @@ application config = do
       Just service -> do
         S.status status200
         with_host_url config $ MS.produceServiceReply service
-  S.patch "/v3/services/:sid" $ do
+  S.patch "/v3/services/:sid" $ A.requireAuth config $ do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
     mService <- liftIO $ CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
@@ -192,7 +192,7 @@ application config = do
       Just service -> do
         S.status status200
         with_host_url config $ MS.produceServiceReply service
-  S.delete "/v3/services/:sid" $ do
+  S.delete "/v3/services/:sid" $ A.requireAuth config $ do
     (sid :: M.ObjectId) <- parseId "sid"
     n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
     case n of
@@ -201,7 +201,7 @@ application config = do
         S.status status404
       Success -> S.status status204
   --- Endpoint API
-  S.post "/v3/endpoints" $ do
+  S.post "/v3/endpoints" $ A.requireAuth config $ do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest
     endpoint <- liftIO $ Srv.newRequestToEndpoint ecr
     mEid <- liftIO $ CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
@@ -212,20 +212,20 @@ application config = do
       Just _eid -> do
         S.status status201
         with_host_url config $ MS.produceEndpointReply endpoint (Srv.eserviceId ecr)
-  S.get "/v3/endpoints" $ do
+  S.get "/v3/endpoints" $ A.requireAuth config $ do
     endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
     S.status status200
     with_host_url config $ MS.produceEndpointsReply endpoints
   -- Domain API
-  S.get "/v3/domains" $ do
+  S.get "/v3/domains" $ A.requireAuth config $ do
     S.status status200
     with_host_url config $ D.produceDomainsReply []
-  S.get "/v3/domains/:did" $ do
+  S.get "/v3/domains/:did" $ A.requireAuth config $ do
     (did :: M.ObjectId) <- parseId "did"
     S.status status200
     with_host_url config $ D.produceDomainReply MD.Domain
   -- Project API
-  S.post "/v3/projects" $ do
+  S.post "/v3/projects" $ A.requireAuth config $ do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
     project <- liftIO $ P.newRequestToProject pcr
     mPid <- liftIO $ CD.withDB (database config) $ MP.createProject project
@@ -236,12 +236,12 @@ application config = do
       Right rid -> do
         S.status status201
         with_host_url config $ MP.produceProjectReply project
-  S.get "/v3/projects" $ do
+  S.get "/v3/projects" $ A.requireAuth config $ do
     projectName <- parseMaybeString "name"
     projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
     S.status status200
     with_host_url config $ MP.produceProjectsReply projects
-  S.get "/v3/projects/:pid" $ do
+  S.get "/v3/projects/:pid" $ A.requireAuth config $ do
     (pid :: M.ObjectId) <- parseId "pid"
     mProject <- liftIO $ CD.withDB (database config) $ MP.findProjectById pid
     case mProject of
@@ -251,20 +251,20 @@ application config = do
       Just project -> do
         S.status status200
         with_host_url config $ MP.produceProjectReply project
-  S.get "/v3/projects/:pid/users/:uid/roles" $ do
+  S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireAuth config $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
     S.status status200
     with_host_url config $ MR.produceRolesReply roles -- TODO base url should be revised here
-  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ do
+  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ A.requireAuth config $ do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     (rid :: M.ObjectId) <- parseId "rid"
     res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
     S.status status204
   -- User API
-  S.post "/v3/users" $ do
+  S.post "/v3/users" $ A.requireAuth config $ do
     (d :: U.UserCreateRequest) <- parseRequest
     user <- liftIO $ U.newRequestToUser d
     mUid <- liftIO $ CD.withDB (database config) $ MU.createUser user
@@ -275,12 +275,12 @@ application config = do
       Right rid -> do
         S.status status201
         with_host_url config $ MU.produceUserReply user
-  S.get "/v3/users" $ do
+  S.get "/v3/users" $ A.requireAuth config $ do
     userName <- parseMaybeString "name"
     users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
     S.status status200
     with_host_url config $ MU.produceUsersReply users
-  S.get "/v3/users/:uid" $ do
+  S.get "/v3/users/:uid" $ A.requireAuth config $ do
     (uid :: M.ObjectId) <- parseId "uid"
     mUser <- liftIO $ CD.withDB (database config) $ MU.findUserById uid
     case mUser of
@@ -290,7 +290,7 @@ application config = do
       Just user -> do
         S.status status200
         with_host_url config $ MU.produceUserReply user
-  S.patch "/v3/users/:uid" $ do
+  S.patch "/v3/users/:uid" $ A.requireAuth config $ do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
     mUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid (U.updateRequestToDocument uur)
@@ -301,7 +301,7 @@ application config = do
       Just user -> do
         S.status status200
         with_host_url config $ MU.produceUserReply user
-  S.delete "/v3/users/:uid" $ do
+  S.delete "/v3/users/:uid" $ A.requireAuth config $ do
     (uid :: M.ObjectId) <- parseId "uid"
     st <- liftIO $ CD.withDB (database config) $ MU.deleteUser uid
     case st of
@@ -313,7 +313,7 @@ application config = do
         S.json $ E.conflict $ "The user " ++ (show uid) ++ " has a role assigned. Please remove the role assignment first."
         S.status status409
   -- Role API
-  S.post "/v3/roles" $ do
+  S.post "/v3/roles" $ A.requireAuth config $ do
     (rcr :: R.RoleCreateRequest) <- parseRequest
     role <- liftIO $ R.newRequestToRole rcr
     mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
@@ -324,12 +324,12 @@ application config = do
       Right rid -> do
         S.status status201
         with_host_url config $ MR.produceRoleReply role
-  S.get "/v3/roles" $ do
+  S.get "/v3/roles" $ A.requireAuth config $ do
     roleName <- parseMaybeString "name"
     roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
     S.status status200
     with_host_url config $ MR.produceRolesReply roles
-  S.get "/v3/roles/:rid" $ do
+  S.get "/v3/roles/:rid" $ A.requireAuth config $ do
     (rid :: M.ObjectId) <- parseId "rid"
     mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
     case mRole of
@@ -339,7 +339,7 @@ application config = do
       Just role -> do
         S.status status200
         with_host_url config $ MR.produceRoleReply role
-  S.get "/v3/role_assignments" $ do
+  S.get "/v3/role_assignments" $ A.requireAuth config $ do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
     roles <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
@@ -371,38 +371,6 @@ parseRequest :: FromJSON a => ActionM a
 parseRequest = do
   S.rescue S.jsonData $ \e ->
     S.raise $ E.badRequest $ E.message e
-
-withAuth :: KeystoneConfig -> Middleware
-withAuth config app req respond = do
-  let adminToken = Config.adminToken config
-  liftIO $ debugM loggerName $ unpack $ rawPathInfo req
-  if ((requestMethod req == methodPost) && ( (rawPathInfo req == "/v3/auth/tokens") ))
-    || ((requestMethod req == methodGet) && (   (rawPathInfo req == "/v3")
-                                             || (rawPathInfo req == "/")
-                                            ))
-    then
-      app req respond
-    else do
-      let
-        rh = requestHeaders req
-        mToken = lookup hXAuthToken rh
-      case mToken of
-        Nothing -> respond $ responseLBS status401 [] "Token is required"
-        Just m ->
-          if m == (pack adminToken)
-            then app req respond
-            else do
-              let mTokenId = readMaybe $ unpack m
-              case mTokenId of
-                Nothing -> respond $ responseLBS status401 [] "Wrong token"
-                Just tokenId  -> do
-                  mToken <- liftIO $ CD.withDB (database config) $ MT.findTokenById tokenId
-                  case mToken of
-                    Nothing -> respond $ responseLBS status401 [] "Wrong token"
-                    Just token -> app req respond -- TODO verify that this user has access
-
-hXAuthToken :: HeaderName
-hXAuthToken = "X-Auth-Token"
 
 hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"
