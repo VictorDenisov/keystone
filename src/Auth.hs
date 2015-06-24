@@ -23,6 +23,7 @@ import System.Log.Logger (debugM)
 import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
+import qualified Domain as D
 import qualified Database.MongoDB as M
 import qualified Model.Assignment as MA
 import qualified Model.User as MU
@@ -40,7 +41,8 @@ data AuthRequest = AuthRequest
 data AuthMethod = PasswordMethod
                 { userId   :: Maybe M.ObjectId
                 , userName :: Maybe String
-                , domainId :: Maybe String
+                , domainId :: Maybe M.ObjectId
+                , domainName :: Maybe String
                 , password :: String
                 } deriving Show
 
@@ -62,10 +64,15 @@ instance FromJSON AuthRequest where
           userSpec <- mDescr .: "user"
           mDomainId <- runMaybeT $ do
             domainSpec <- MaybeT $ userSpec .:? "domain"
-            MaybeT $ domainSpec .:? "id"
+            idString   <- MaybeT $ domainSpec .:? "id"
+            MaybeT $ return $ readMaybe idString
+          mDomainName <- runMaybeT $ do
+            domainSpec <- MaybeT $ userSpec .:? "domain"
+            MaybeT $ domainSpec .:? "name"
           PasswordMethod <$> (userSpec .:? "id")
                          <*> (userSpec .:? "name")
                          <*> (return mDomainId)
+                         <*> (return mDomainName)
                          <*> (userSpec .: "password")
     scope <- runMaybeT $ do
       s <- MaybeT $ auth .:? "scope"
@@ -83,7 +90,7 @@ authenticate :: (Maybe AuthScope)
              -> M.Pipe
              -> AuthMethod
              -> IO (Either String (String, MT.Token))
-authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId password) = do
+authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
     mu <- case mUserId of
               Just userId -> CD.runDB pipe $ MU.findUserById userId
               Nothing -> do
@@ -136,7 +143,7 @@ calcProjectScope project baseUrl
                    , "name"   .= MP.name project
                    , "links"  .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show $ MP._id project)) ])
                    , "domain" .= (object [ "name" .= ("Default" :: String)
-                                         , "id"   .= ("default" :: String)
+                                         , "id"   .= D.defaultDomainId
                                          ])
                    ]
 
@@ -149,7 +156,7 @@ produceTokenResponse (MT.Token _ issued expires user mProject roles services) ba
                                 , "user"       .= (object [ "name"   .= MU.name user
                                                           , "id"     .= (show $ MU._id user)
                                                           , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                                                 , "id"   .= ("default" :: String)])
+                                                                                 , "id"   .= D.defaultDomainId])
                                                           ] )
                                 , "catalog"  .= (Array $ fromList $ map serviceToValue services)
                                 ] ++ (concat $ maybeToList scopeFields))
@@ -180,6 +187,6 @@ produceTokenResponse (MT.Token _ issued expires user mProject roles services) ba
                              [ "id"        .= MS.eid endpoint
                              , "interface" .= MS.einterface endpoint
                              , "region"    .= (String "Default")
-                             , "region_id" .= (String "default")
+                             , "region_id" .= (String $ T.pack D.defaultDomainId)
                              , "url"       .= MS.eurl endpoint
                              ]
