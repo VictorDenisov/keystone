@@ -1,5 +1,3 @@
-explain A, F, C notation
-
 clean up dangling role assignments from time to time
 
 don't restrict the types of services when creating services ?? it gives more flexibility but can cause more errors

@@ -1,0 +1,41 @@
+{
+    "admin_required": {"role":"admin"},
+    "service_role": {"role":"service"},
+    "service_or_admin": {"or" : [{"rule":"admin_required"}, {"rule":"service_role"}]},
+
+    "default": "rule:admin_required",
+    "identity" : {
+
+        "ValidateToken":           {"rule":"service_or_admin"},
+        "CheckToken":              {"rule":"service_or_admin"},
+
+        "AddService":              {"rule":"admin_required"},
+        "ListServices":            {"rule":"admin_required"},
+        "ShowServiceDetails":      {"rule":"admin_required"},
+        "UpdateService":           {"rule":"admin_required"},
+        "DeleteService":           {"rule":"admin_required"},
+
+        "AddEndpoint":             {"rule":"admin_required"},
+        "ListEndpoints":           {"rule":"admin_required"},
+
+        "ListDomains":             {"rule":"admin_required"},
+        "ShowDomainDetails":       {"rule":"admin_required"},
+
+        "AddProject":              {"rule":"admin_required"},
+        "ListProjects":            {"rule":"admin_required"},
+        "ShowProjectDetails":      {"rule":"admin_required"},
+        "ListRolesForProjectUser": {"rule":"admin_required"},
+        "GrantRoleToProjectUser":  {"rule":"admin_required"},
+
+        "AddUser":                 {"rule":"admin_required"},
+        "ListUsers":               {"rule":"admin_required"},
+        "ShowUserDetails":         {"rule":"admin_required"},
+        "UpdateUser":              {"rule":"admin_required"},
+        "DeleteUser":              {"rule":"admin_required"},
+
+        "AddRole":                 {"rule":"admin_required"},
+        "ListRoles":               {"rule":"admin_required"},
+        "ShowRoleDetails":         {"rule":"admin_required"},
+        "ListRoleAssignments":     {"rule":"admin_required"}
+    }
+}

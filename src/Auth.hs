@@ -1,29 +1,40 @@
+{-# Language DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# Language FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# Language ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Auth
 where
+import Prelude hiding (readFile)
 import Common (loggerName, ActionM)
 import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
+import Control.Exception (throwIO, Exception(..))
 import Control.Monad (forM, liftM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (verifyPassword)
-import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
-import Data.Aeson.Types (Value(..), (.=), object, Pair, ToJSON(..), typeMismatch)
+import Data.Aeson (FromJSON(..), (.:), (.:?), eitherDecode)
+import Data.Aeson.Types ( Value(..), (.=), object, Pair, ToJSON(..), typeMismatch
+                        , Object)
 import Data.ByteString.Char8 (pack)
+import Data.ByteString.Lazy (readFile)
+import Data.Data (Typeable)
+import Data.Hashable (Hashable)
 import Data.Maybe (fromJust, maybeToList, catMaybes, listToMaybe)
+import Data.IORef (IORef(..), readIORef, newIORef, writeIORef)
+import Data.List (find)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
-import Data.Vector (fromList)
+import Data.Vector (fromList, or)
+import GHC.Generics (Generic)
 import Language.Haskell.TH.Syntax (nameBase)
 import Network.HTTP.Types (methodGet, methodPost)
 import Network.HTTP.Types.Status (status401)
 import Network.HTTP.Types.Header (HeaderName)
-import System.Log.Logger (debugM)
+import System.Log.Logger (debugM, noticeM)
 import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
@@ -39,7 +50,9 @@ import qualified Model.Role as MR
 import qualified Model.Service as MS
 import qualified Web.Scotty.Trans as S
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import qualified Data.Text.Lazy as LT
+import qualified Data.HashMap.Strict as HM
 
 data AuthRequest = AuthRequest
                  { methods :: [AuthMethod]
@@ -268,6 +281,7 @@ data Action = ValidateToken
 
             | AddRole
             | ListRoles
+            | ShowRoleDetails
             | ListRoleAssignments
             | DeleteRole
 
@@ -276,13 +290,19 @@ data Action = ValidateToken
             | ShowPolicyDetails
             | UpdatePolicy
             | DeletePolicy
-              deriving (Show, Read, Eq)
+              deriving (Show, Read, Eq, Generic)
+
+instance Hashable Action
 
 hXAuthToken :: LT.Text
 hXAuthToken = "X-Auth-Token"
 
-requireAuth :: KeystoneConfig -> ActionM () -> ActionM ()
-requireAuth config actionToRun = do
+requireAuth :: (HM.HashMap Action Verifier)
+            -> KeystoneConfig
+            -> Action
+            -> ActionM ()
+            -> ActionM ()
+requireAuth verifiers config action actionToRun = do
   let adminToken = Config.adminToken config
   req <- S.request
   mToken <- S.header hXAuthToken
@@ -306,4 +326,86 @@ requireAuth config actionToRun = do
                 Nothing -> do
                   S.status status401
                   S.json $ E.unauthorized "Wrong token"
-                Just token -> actionToRun
+                Just token -> do
+                  if (verifiers HM.! action) token
+                    then actionToRun
+                    else do
+                      S.status status401
+                      S.json $ E.unauthorized "You are not authorized to perform this action"
+
+type Policy = HM.HashMap Action Verifier
+
+type Verifier = MT.Token -> Bool
+
+data PolicyCompileException = PolicyCompileException String
+                              deriving (Typeable, Show)
+
+instance Exception PolicyCompileException
+
+compileExpression :: HM.HashMap T.Text (IORef (Either Value Verifier)) -> Value -> IO Verifier
+compileExpression verifiers (Object m) = do
+  case (head $ HM.toList m) of
+    ("or", (Array operands)) -> do
+      vs <- V.mapM (compileExpression verifiers) operands
+      return $ \token -> V.or $ V.map ($ token) vs
+    ("and", (Array operands)) -> do
+      vs <- V.mapM (compileExpression verifiers) operands
+      return $ \token -> V.and $ V.map ($ token) vs
+    ("not", operand) -> do
+      v <- compileExpression verifiers operand
+      return $ \token -> not $ v token
+    ("rule", (String ruleName)) -> do
+      let mRef = ruleName `HM.lookup` verifiers
+      case mRef of
+        Nothing  -> throwIO $ PolicyCompileException $ "rule " ++ (T.unpack ruleName) ++ " is not defined"
+        Just ref -> do
+          expr <- readIORef ref
+          case expr of
+            Left s -> do
+              verifier <- compileExpression verifiers s
+              writeIORef ref $ Right verifier
+              return verifier
+            Right v -> return v
+    ("role", (String r)) -> do
+      let role = T.unpack r
+      return $ \token -> maybe
+                           False
+                           (const True)
+                           $ find
+                               (\tokenRole -> role == (MR.name tokenRole))
+                               (MT.roles token)
+
+-- TODO verify all actions are in the policy
+compilePolicy :: Value -> IO (HM.HashMap Action Verifier)
+compilePolicy (Object policy) =
+  case "identity" `HM.lookup` policy of
+    Nothing -> throwIO $ PolicyCompileException "Expected key 'identity' in policy file"
+    Just vActionRules -> withObject "identity" vActionRules $ \actionRules -> do
+      let rulesOnly = "identity" `HM.delete` policy
+      ruleMap <- HM.traverseWithKey convertRule $ rulesOnly
+      resList <- mapM (compileActionRule ruleMap) $ HM.toList actionRules
+      return $ HM.fromList resList
+  where
+    convertRule :: T.Text -> Value -> IO (IORef (Either Value Verifier))
+    convertRule _ v = newIORef (Left v)
+
+    compileActionRule :: HM.HashMap T.Text (IORef (Either Value Verifier)) -> (T.Text, Value) -> IO (Action, Verifier)
+    compileActionRule verifiers (actionName, expression) = do
+      let mAction = readMaybe $ T.unpack actionName
+      verifier <- compileExpression verifiers expression
+      case mAction of
+        Nothing -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
+        Just action -> return $ (action, verifier)
+    withObject :: String -> Value -> (Object -> IO a) -> IO a
+    withObject keyName (Object v) f = f v
+    withObject keyName _ _ = throwIO $ PolicyCompileException $ "Expected object at the key " ++ keyName
+
+
+loadPolicy :: IO Policy
+loadPolicy = do
+  liftIO $ noticeM loggerName "Loading policy"
+  content <- readFile "policy.json"
+  let res = (eitherDecode content:: Either String Value)
+  case  res of
+    Left errorString -> throwIO $ PolicyCompileException $ "Failed to parse policy json: " ++ errorString
+    Right jsonPolicy -> compilePolicy jsonPolicy
