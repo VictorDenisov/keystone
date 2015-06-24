@@ -223,7 +223,7 @@ application config = do
   S.get "/v3/domains/:did" $ do
     (did :: M.ObjectId) <- parseId "did"
     S.status status200
-    with_host_url config $ D.produceDomainReply D.Domain
+    with_host_url config $ D.produceDomainReply MD.Domain
   -- Project API
   S.post "/v3/projects" $ do
     (pcr :: P.ProjectCreateRequest) <- parseRequest

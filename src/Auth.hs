@@ -26,6 +26,7 @@ import qualified Common.Database as CD
 import qualified Domain as D
 import qualified Database.MongoDB as M
 import qualified Model.Assignment as MA
+import qualified Model.Domain as MD
 import qualified Model.User as MU
 import qualified Model.Token as MT
 import qualified Model.Project as MP
@@ -142,8 +143,8 @@ calcProjectScope project baseUrl
           = object [ "id"     .= MP._id project
                    , "name"   .= MP.name project
                    , "links"  .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show $ MP._id project)) ])
-                   , "domain" .= (object [ "name" .= ("Default" :: String)
-                                         , "id"   .= D.defaultDomainId
+                   , "domain" .= (object [ "name" .= MD.defaultDomainName
+                                         , "id"   .= MD.defaultDomainId
                                          ])
                    ]
 
@@ -155,8 +156,8 @@ produceTokenResponse (MT.Token _ issued expires user mProject roles services) ba
                                 , "extras"     .= (object [])
                                 , "user"       .= (object [ "name"   .= MU.name user
                                                           , "id"     .= (show $ MU._id user)
-                                                          , "domain" .= ( object [ "name" .= ("Default" :: String)
-                                                                                 , "id"   .= D.defaultDomainId])
+                                                          , "domain" .= ( object [ "name" .= MD.defaultDomainName
+                                                                                 , "id"   .= MD.defaultDomainId])
                                                           ] )
                                 , "catalog"  .= (Array $ fromList $ map serviceToValue services)
                                 ] ++ (concat $ maybeToList scopeFields))
@@ -186,7 +187,7 @@ produceTokenResponse (MT.Token _ issued expires user mProject roles services) ba
     endpointToValue endpoint = object
                              [ "id"        .= MS.eid endpoint
                              , "interface" .= MS.einterface endpoint
-                             , "region"    .= (String "Default")
-                             , "region_id" .= (String $ T.pack D.defaultDomainId)
+                             , "region"    .= MD.defaultDomainName
+                             , "region_id" .= (String $ T.pack MD.defaultDomainId)
                              , "url"       .= MS.eurl endpoint
                              ]

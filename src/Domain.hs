@@ -6,33 +6,30 @@ import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
 import Data.Aeson.Types (object, (.=), Value(..))
 import Data.Vector (fromList)
 
-data Domain = Domain
+import qualified Model.Domain as MD
 
-defaultDomainId :: String
-defaultDomainId = "55897e27b74cea2c9383d14c"
-
-produceDomainJson :: Domain -> String -> Value
+produceDomainJson :: MD.Domain -> String -> Value
 produceDomainJson domain baseUrl
   = object [ "description" .= ("Fake default domain" :: String)
            , "enabled"     .= True
-           , "id"          .= defaultDomainId
+           , "id"          .= MD.defaultDomainId
            , "links"       .=
                 ( object
-                [ "self" .= (baseUrl ++ "/v3/domains/" ++ defaultDomainId)
+                [ "self" .= (baseUrl ++ "/v3/domains/" ++ MD.defaultDomainId)
                 ] )
-           , "name"        .= ("Default" :: String)
+           , "name"        .= MD.defaultDomainName
            ]
 
-produceDomainReply :: Domain -> String -> Value
+produceDomainReply :: MD.Domain -> String -> Value
 produceDomainReply domain baseUrl
       = object [ "domain" .= produceDomainJson domain baseUrl ]
 
-produceDomainsReply :: [Domain] -> String -> Value
+produceDomainsReply :: [MD.Domain] -> String -> Value
 produceDomainsReply domains baseUrl
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
                                 , "self"     .= (baseUrl ++ "/v3/domains")
                                 ]
                         )
-           , "domains" .= (Array $ fromList [produceDomainJson Domain baseUrl])
+           , "domains" .= (Array $ fromList [produceDomainJson MD.Domain baseUrl])
            ]
