@@ -142,15 +142,15 @@ application config = do
 
         when (currentTime > (MT.expiresAt token)) $ throwError $ "Could not find token, " ++ (show st) ++ "."
         lift $ release releaseKey
-        return $ A.produceTokenResponse token baseUrl
+        return token
 
     case res of
       Left errorMessage -> do
         S.status status404
         S.json $ E.notFound errorMessage
-      Right resp -> do
+      Right tokenToVerify -> do
         S.status status200
-        S.json resp
+        S.json $ A.produceTokenResponse tokenToVerify baseUrl
   S.addroute HEAD "/v3/auth/tokens" $ A.requireToken config $ \token -> do
     mSubjectToken <- S.header hXSubjectToken
     res <- runMaybeT $ do
