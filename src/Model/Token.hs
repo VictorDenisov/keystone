@@ -41,7 +41,9 @@ data Token = Token { _id       :: M.ObjectId
                    , project   :: Maybe MP.Project -- currently only project scope is available
                    , roles     :: [MR.Role]
                    , services  :: [MS.Service]
-                   } deriving (Show, Eq, Typeable)
+                   }
+           | AdminToken
+             deriving (Show, Eq, Typeable)
 
 $(deriveBson id ''Token)
 

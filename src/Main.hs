@@ -75,10 +75,10 @@ main = do
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
   !policy <- A.loadPolicy -- bang pattern is because we want to know if the policy is correct now
-  let authGuard = A.requireAuth policy config
+  let authGuard = A.requireToken config
   verifyDatabase $ database config
 
-  app <- S.scottyAppT id id (application authGuard config)
+  app <- S.scottyAppT id id (application config)
   let settings = tlsSettings
                       (certificateFile config)
                       (keyFile config)
@@ -88,10 +88,9 @@ main = do
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
 
-application :: (A.Action -> ActionM () -> ActionM ())
-            -> KeystoneConfig
+application :: KeystoneConfig
             -> ScottyM ()
-application authGuard config = do
+application config = do
   --S.middleware (withAuth config)
   S.defaultHandler $ \e -> do
     S.status $ E.code e
@@ -124,7 +123,7 @@ application authGuard config = do
         Left errorMessage -> lift $ do
           S.json $ E.unauthorized errorMessage
           S.status status401
-  S.addroute GET "/v3/auth/tokens" $ authGuard A.ValidateToken $ do
+  S.addroute GET "/v3/auth/tokens" $ A.requireToken config $ \token -> do
     mSubjectToken <- S.header hXSubjectToken
     baseUrl <- getBaseUrl config
     res <- runResourceT $ do
@@ -152,7 +151,7 @@ application authGuard config = do
       Right resp -> do
         S.status status200
         S.json resp
-  S.addroute HEAD "/v3/auth/tokens" $ authGuard A.CheckToken $ do
+  S.addroute HEAD "/v3/auth/tokens" $ A.requireToken config $ \token -> do
     mSubjectToken <- S.header hXSubjectToken
     res <- runMaybeT $ do
       subjectToken <- MaybeT $ return mSubjectToken
@@ -167,18 +166,18 @@ application authGuard config = do
       Just _ -> do
         S.status status204
   -- Service API
-  S.post "/v3/services" $ authGuard A.AddService $ do
+  S.post "/v3/services" $ A.requireToken config $ \token -> do
     (scr :: Srv.ServiceCreateRequest) <- parseRequest
     service <- liftIO $ Srv.newRequestToService scr
     sid <- liftIO $ CD.withDB (database config) $ MS.createService service
     S.status status201
     with_host_url config $ MS.produceServiceReply service
-  S.get "/v3/services" $ authGuard A.ListServices $ do
+  S.get "/v3/services" $ A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
     services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
     S.status status200
     with_host_url config $ MS.produceServicesReply services
-  S.get "/v3/services/:sid" $ authGuard A.ShowServiceDetails $ do
+  S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     mService <- liftIO $ CD.withDB (database config) $ MS.findServiceById sid
     case mService of
@@ -188,7 +187,7 @@ application authGuard config = do
       Just service -> do
         S.status status200
         with_host_url config $ MS.produceServiceReply service
-  S.patch "/v3/services/:sid" $ authGuard A.UpdateService $ do
+  S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
     mService <- liftIO $ CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
@@ -199,7 +198,7 @@ application authGuard config = do
       Just service -> do
         S.status status200
         with_host_url config $ MS.produceServiceReply service
-  S.delete "/v3/services/:sid" $ authGuard A.DeleteService $ do
+  S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
     case n of
@@ -208,7 +207,7 @@ application authGuard config = do
         S.status status404
       Success -> S.status status204
   --- Endpoint API
-  S.post "/v3/endpoints" $ authGuard A.AddEndpoint $ do
+  S.post "/v3/endpoints" $ A.requireToken config $ \token -> do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest
     endpoint <- liftIO $ Srv.newRequestToEndpoint ecr
     mEid <- liftIO $ CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
@@ -219,20 +218,20 @@ application authGuard config = do
       Just _eid -> do
         S.status status201
         with_host_url config $ MS.produceEndpointReply endpoint (Srv.eserviceId ecr)
-  S.get "/v3/endpoints" $ authGuard A.ListEndpoints $ do
+  S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
     endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
     S.status status200
     with_host_url config $ MS.produceEndpointsReply endpoints
   -- Domain API
-  S.get "/v3/domains" $ authGuard A.ListDomains $ do
+  S.get "/v3/domains" $ A.requireToken config $ \token -> do
     S.status status200
     with_host_url config $ D.produceDomainsReply []
-  S.get "/v3/domains/:did" $ authGuard A.ShowDomainDetails $ do
+  S.get "/v3/domains/:did" $ A.requireToken config $ \token -> do
     (did :: M.ObjectId) <- parseId "did"
     S.status status200
     with_host_url config $ D.produceDomainReply MD.Domain
   -- Project API
-  S.post "/v3/projects" $ authGuard A.AddProject $ do
+  S.post "/v3/projects" $ A.requireToken config $ \token -> do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
     project <- liftIO $ P.newRequestToProject pcr
     mPid <- liftIO $ CD.withDB (database config) $ MP.createProject project
@@ -243,12 +242,12 @@ application authGuard config = do
       Right rid -> do
         S.status status201
         with_host_url config $ MP.produceProjectReply project
-  S.get "/v3/projects" $ authGuard A.ListProjects $ do
+  S.get "/v3/projects" $ A.requireToken config $ \token -> do
     projectName <- parseMaybeString "name"
     projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
     S.status status200
     with_host_url config $ MP.produceProjectsReply projects
-  S.get "/v3/projects/:pid" $ authGuard A.ShowProjectDetails $ do
+  S.get "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     mProject <- liftIO $ CD.withDB (database config) $ MP.findProjectById pid
     case mProject of
@@ -258,20 +257,20 @@ application authGuard config = do
       Just project -> do
         S.status status200
         with_host_url config $ MP.produceProjectReply project
-  S.get "/v3/projects/:pid/users/:uid/roles" $ authGuard A.ListRolesForProjectUser $ do
+  S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
     S.status status200
     with_host_url config $ MR.produceRolesReply roles -- TODO base url should be revised here
-  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ authGuard A.GrantRoleToProjectUser $ do
+  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     (rid :: M.ObjectId) <- parseId "rid"
     res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
     S.status status204
   -- User API
-  S.post "/v3/users" $ authGuard A.AddUser $ do
+  S.post "/v3/users" $ A.requireToken config $ \token -> do
     (d :: U.UserCreateRequest) <- parseRequest
     user <- liftIO $ U.newRequestToUser d
     mUid <- liftIO $ CD.withDB (database config) $ MU.createUser user
@@ -282,12 +281,12 @@ application authGuard config = do
       Right rid -> do
         S.status status201
         with_host_url config $ MU.produceUserReply user
-  S.get "/v3/users" $ authGuard A.ListUsers $ do
+  S.get "/v3/users" $ A.requireToken config $ \token -> do
     userName <- parseMaybeString "name"
     users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
     S.status status200
     with_host_url config $ MU.produceUsersReply users
-  S.get "/v3/users/:uid" $ authGuard A.ShowUserDetails $ do
+  S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     mUser <- liftIO $ CD.withDB (database config) $ MU.findUserById uid
     case mUser of
@@ -297,7 +296,7 @@ application authGuard config = do
       Just user -> do
         S.status status200
         with_host_url config $ MU.produceUserReply user
-  S.patch "/v3/users/:uid" $ authGuard A.UpdateUser $ do
+  S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
     mUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid (U.updateRequestToDocument uur)
@@ -308,7 +307,7 @@ application authGuard config = do
       Just user -> do
         S.status status200
         with_host_url config $ MU.produceUserReply user
-  S.delete "/v3/users/:uid" $ authGuard A.DeleteUser $ do
+  S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     st <- liftIO $ CD.withDB (database config) $ MU.deleteUser uid
     case st of
@@ -320,7 +319,7 @@ application authGuard config = do
         S.json $ E.conflict $ "The user " ++ (show uid) ++ " has a role assigned. Please remove the role assignment first."
         S.status status409
   -- Role API
-  S.post "/v3/roles" $ authGuard A.AddRole $ do
+  S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest
     role <- liftIO $ R.newRequestToRole rcr
     mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
@@ -331,12 +330,12 @@ application authGuard config = do
       Right rid -> do
         S.status status201
         with_host_url config $ MR.produceRoleReply role
-  S.get "/v3/roles" $ authGuard A.ListRoles $ do
+  S.get "/v3/roles" $ A.requireToken config $ \token -> do
     roleName <- parseMaybeString "name"
     roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
     S.status status200
     with_host_url config $ MR.produceRolesReply roles
-  S.get "/v3/roles/:rid" $ authGuard A.ShowRoleDetails $ do
+  S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
     case mRole of
@@ -346,7 +345,7 @@ application authGuard config = do
       Just role -> do
         S.status status200
         with_host_url config $ MR.produceRoleReply role
-  S.get "/v3/role_assignments" $ authGuard A.ListRoleAssignments $ do
+  S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
     roles <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)

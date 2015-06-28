@@ -297,12 +297,22 @@ instance Hashable Action
 hXAuthToken :: LT.Text
 hXAuthToken = "X-Auth-Token"
 
-requireAuth :: (HM.HashMap Action Verifier)
-            -> KeystoneConfig
-            -> Action
+authorize :: (HM.HashMap Action Verifier)
+          -> Action
+          -> MT.Token
+          -> ActionM ()
+          -> ActionM ()
+authorize verifiers action token actionToRun =
+  if (verifiers HM.! action) token
+  then actionToRun
+  else do
+    S.status status401
+    S.json $ E.unauthorized "You are not authorized to perform this action"
+
+requireToken :: KeystoneConfig
+            -> (MT.Token -> ActionM ())
             -> ActionM ()
-            -> ActionM ()
-requireAuth verifiers config action actionToRun = do
+requireToken config actionToRun = do
   let adminToken = Config.adminToken config
   req <- S.request
   mToken <- S.header hXAuthToken
@@ -313,7 +323,7 @@ requireAuth verifiers config action actionToRun = do
     Just m ->
       if m == (LT.pack adminToken)
         then
-          actionToRun
+          actionToRun MT.AdminToken
         else do
           let mTokenId = readMaybe $ LT.unpack m
           case mTokenId of
@@ -326,12 +336,7 @@ requireAuth verifiers config action actionToRun = do
                 Nothing -> do
                   S.status status401
                   S.json $ E.unauthorized "Wrong token"
-                Just token -> do
-                  if (verifiers HM.! action) token
-                    then actionToRun
-                    else do
-                      S.status status401
-                      S.json $ E.unauthorized "You are not authorized to perform this action"
+                Just token -> actionToRun token
 
 type Policy = HM.HashMap Action Verifier
 
