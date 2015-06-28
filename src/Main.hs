@@ -74,7 +74,7 @@ main = do
   fh <- fileHandler "keystone.log" DEBUG
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
-  !policy <- A.loadPolicy -- we want to make sure that the correctness of the policy is known before hand
+  !policy <- A.loadPolicy -- bang pattern is because we want to know if the policy is correct now
   let authGuard = A.requireAuth policy config
   verifyDatabase $ database config
 

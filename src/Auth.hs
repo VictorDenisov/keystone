@@ -17,7 +17,7 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (verifyPassword)
-import Data.Aeson (FromJSON(..), (.:), (.:?), eitherDecode)
+import Data.Aeson (FromJSON(..), (.:), (.:?), eitherDecode')
 import Data.Aeson.Types ( Value(..), (.=), object, Pair, ToJSON(..), typeMismatch
                         , Object)
 import Data.ByteString.Char8 (pack)
@@ -348,9 +348,11 @@ compileExpression verifiers (Object m) = do
     ("or", (Array operands)) -> do
       vs <- V.mapM (compileExpression verifiers) operands
       return $ \token -> V.or $ V.map ($ token) vs
+    ("or", _) -> throwIO $ PolicyCompileException "or expression value should be array"
     ("and", (Array operands)) -> do
       vs <- V.mapM (compileExpression verifiers) operands
       return $ \token -> V.and $ V.map ($ token) vs
+    ("and", _) -> throwIO $ PolicyCompileException "and expression value should be array"
     ("not", operand) -> do
       v <- compileExpression verifiers operand
       return $ \token -> not $ v token
@@ -366,6 +368,7 @@ compileExpression verifiers (Object m) = do
               writeIORef ref $ Right verifier
               return verifier
             Right v -> return v
+    ("rule", _) -> throwIO $ PolicyCompileException "rule expression value should be string"
     ("role", (String r)) -> do
       let role = T.unpack r
       return $ \token -> maybe
@@ -374,14 +377,17 @@ compileExpression verifiers (Object m) = do
                            $ find
                                (\tokenRole -> role == (MR.name tokenRole))
                                (MT.roles token)
+    ("role", _) -> throwIO $ PolicyCompileException "role expression value should be string"
+    (expr, _) -> throwIO $ PolicyCompileException $ "Unknown expression: " ++ (T.unpack expr)
+compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error while compiling policy expression " ++ (show expr) ++ ". Expecting object instead"
 
 -- TODO verify all actions are in the policy
 compilePolicy :: Value -> IO (HM.HashMap Action Verifier)
 compilePolicy (Object policy) =
-  case "identity" `HM.lookup` policy of
+  case HM.lookup identityF policy of
     Nothing -> throwIO $ PolicyCompileException "Expected key 'identity' in policy file"
-    Just vActionRules -> withObject "identity" vActionRules $ \actionRules -> do
-      let rulesOnly = "identity" `HM.delete` policy
+    Just vActionRules -> withObject (T.unpack identityF) vActionRules $ \actionRules -> do
+      let rulesOnly = HM.delete identityF policy
       ruleMap <- HM.traverseWithKey convertRule $ rulesOnly
       resList <- mapM (compileActionRule ruleMap) $ HM.toList actionRules
       return $ HM.fromList resList
@@ -389,23 +395,29 @@ compilePolicy (Object policy) =
     convertRule :: T.Text -> Value -> IO (IORef (Either Value Verifier))
     convertRule _ v = newIORef (Left v)
 
-    compileActionRule :: HM.HashMap T.Text (IORef (Either Value Verifier)) -> (T.Text, Value) -> IO (Action, Verifier)
+    compileActionRule :: HM.HashMap T.Text (IORef (Either Value Verifier))
+                      -> (T.Text, Value)
+                      -> IO (Action, Verifier)
     compileActionRule verifiers (actionName, expression) = do
       let mAction = readMaybe $ T.unpack actionName
       verifier <- compileExpression verifiers expression
       case mAction of
-        Nothing -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
+        Nothing     -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
         Just action -> return $ (action, verifier)
+
     withObject :: String -> Value -> (Object -> IO a) -> IO a
     withObject keyName (Object v) f = f v
     withObject keyName _ _ = throwIO $ PolicyCompileException $ "Expected object at the key " ++ keyName
 
+    identityF :: T.Text
+    identityF = "identity"
+compilePolicy _ = throwIO $ PolicyCompileException "Root value in policy file should be Object"
 
 loadPolicy :: IO Policy
 loadPolicy = do
   liftIO $ noticeM loggerName "Loading policy"
   content <- readFile "policy.json"
-  let res = (eitherDecode content:: Either String Value)
+  let res = (eitherDecode' content :: Either String Value)
   case  res of
     Left errorString -> throwIO $ PolicyCompileException $ "Failed to parse policy json: " ++ errorString
     Right jsonPolicy -> compilePolicy jsonPolicy
