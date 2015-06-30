@@ -39,14 +39,19 @@ newRequestToUser UserCreateRequest{..} = do
                   name
                   cryptedPassword
 
-updateRequestToDocument :: UserUpdateRequest -> M.Document
-updateRequestToDocument UserUpdateRequest{..} = concat
-  [ (pack $ nameBase 'MU.description) M.=? udescription
-  , (pack $ nameBase 'MU.email)       M.=? uemail
-  , (pack $ nameBase 'MU.name)        M.=? uname
-  , (pack $ nameBase 'MU.enabled)     M.=? uenabled
-  , (pack $ nameBase 'MU.password)    M.=? upassword
-  ]
+updateRequestToDocument :: UserUpdateRequest -> IO M.Document
+updateRequestToDocument UserUpdateRequest{..} = do
+  cryptedPassword <- runMaybeT $ do
+    p <- MaybeT $ return upassword
+    p1 <- liftIO $ makePassword (BS8.pack p) 17
+    return $ BS8.unpack p1
+  return $ concat
+    [ (pack $ nameBase 'MU.description) M.=? udescription
+    , (pack $ nameBase 'MU.email)       M.=? uemail
+    , (pack $ nameBase 'MU.name)        M.=? uname
+    , (pack $ nameBase 'MU.enabled)     M.=? uenabled
+    , (pack $ nameBase 'MU.password)    M.=? cryptedPassword
+    ]
 
 instance FromJSON UserCreateRequest where
   parseJSON (Object v) = do
