@@ -294,15 +294,21 @@ data Action = ValidateToken
 
 instance Hashable Action
 
+data EmptyResource = EmptyResource
+
+data FilterResource = NameFilter String
+                    | EmptyFilter
+
 hXAuthToken :: LT.Text
 hXAuthToken = "X-Auth-Token"
 
 authorize :: (HM.HashMap Action Verifier)
           -> Action
           -> MT.Token
+          -> a -- This a will be instance of Resource class.
           -> ActionM ()
           -> ActionM ()
-authorize verifiers action token actionToRun =
+authorize verifiers action token resource actionToRun =
   if (verifiers HM.! action) token
   then actionToRun
   else do
