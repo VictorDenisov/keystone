@@ -149,7 +149,7 @@ application policy config = do
       Left errorMessage -> do
         S.status status404
         S.json $ E.notFound errorMessage
-      Right tokenToVerify -> A.authorize policy A.ValidateToken token tokenToVerify $ do
+      Right tokenToVerify -> A.authorize policy A.ValidateToken token (A.Token tokenToVerify) $ do
         S.status status200
         S.json $ A.produceTokenResponse tokenToVerify baseUrl
   S.addroute HEAD "/v3/auth/tokens" $ A.requireToken config $ \token -> do
@@ -166,7 +166,7 @@ application policy config = do
       Nothing -> do
         S.status status404
       Just tokenToVerify -> do
-        A.authorize policy A.CheckToken token tokenToVerify $ S.status status204
+        A.authorize policy A.CheckToken token (A.Token tokenToVerify) $ S.status status204
   -- Service API
   S.post "/v3/services" $ A.requireToken config $ \token ->
     A.authorize policy A.AddService token A.EmptyResource $ do

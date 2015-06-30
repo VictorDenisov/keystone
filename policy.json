@@ -7,7 +7,7 @@
     "identity" : {
 
         "ValidateToken":           {"rule":"service_or_admin"},
-        "CheckToken":              {"rule":"service_or_admin"},
+        "CheckToken":              {"or" : [{"rule":"service_or_admin"}, {"rule":"owner"}]},
 
         "AddService":              {"rule":"admin_required"},
         "ListServices":            {"rule":"admin_required"},

@@ -294,10 +294,14 @@ data Action = ValidateToken
 
 instance Hashable Action
 
-data EmptyResource = EmptyResource
+data Resource = Token MT.Token
+              | UserId M.ObjectId
+              | EmptyResource
 
-data FilterResource = NameFilter String
-                    | EmptyFilter
+isOwner :: Resource -> MT.Token -> Bool
+isOwner (Token tokenToVerify) token = (MU._id $ MT.user token) == (MU._id $ MT.user tokenToVerify)
+isOwner (UserId userId) token = (MU._id $ MT.user token) == userId
+isOwner (EmptyResource) _ = True
 
 hXAuthToken :: LT.Text
 hXAuthToken = "X-Auth-Token"
@@ -305,11 +309,11 @@ hXAuthToken = "X-Auth-Token"
 authorize :: (HM.HashMap Action Verifier)
           -> Action
           -> MT.Token
-          -> a -- This a will be instance of Resource class.
+          -> Resource
           -> ActionM ()
           -> ActionM ()
 authorize verifiers action token resource actionToRun =
-  if (verifiers HM.! action) token
+  if (verifiers HM.! action) resource token
   then actionToRun
   else do
     S.status status401
@@ -346,27 +350,33 @@ requireToken config actionToRun = do
 
 type Policy = HM.HashMap Action Verifier
 
-type Verifier = MT.Token -> Bool
+type Verifier = Resource -> MT.Token -> Bool
 
 data PolicyCompileException = PolicyCompileException String
                               deriving (Typeable, Show)
 
 instance Exception PolicyCompileException
 
+guardAdminToken :: Verifier -> Verifier
+guardAdminToken v r MT.AdminToken = True
+guardAdminToken v r t = v r t
+
 compileExpression :: HM.HashMap T.Text (IORef (Either Value Verifier)) -> Value -> IO Verifier
 compileExpression verifiers (Object m) = do
   case (head $ HM.toList m) of
     ("or", (Array operands)) -> do
       vs <- V.mapM (compileExpression verifiers) operands
-      return $ \token -> V.or $ V.map ($ token) vs
+      return $ \resource token -> V.or $ V.map (\v -> v resource token) vs
     ("or", _) -> throwIO $ PolicyCompileException "or expression value should be array"
     ("and", (Array operands)) -> do
       vs <- V.mapM (compileExpression verifiers) operands
-      return $ \token -> V.and $ V.map ($ token) vs
+      return $ \resource token -> V.and $ V.map (\v -> v resource token) vs
     ("and", _) -> throwIO $ PolicyCompileException "and expression value should be array"
     ("not", operand) -> do
       v <- compileExpression verifiers operand
-      return $ \token -> not $ v token
+      return $ \resource token -> not $ v resource token
+    ("rule", (String "owner")) -> do
+      return $ \resource token -> isOwner resource token
     ("rule", (String ruleName)) -> do
       let mRef = ruleName `HM.lookup` verifiers
       case mRef of
@@ -382,7 +392,7 @@ compileExpression verifiers (Object m) = do
     ("rule", _) -> throwIO $ PolicyCompileException "rule expression value should be string"
     ("role", (String r)) -> do
       let role = T.unpack r
-      return $ \token -> maybe
+      return $ \resource token -> maybe
                            False
                            (const True)
                            $ find
@@ -411,7 +421,7 @@ compilePolicy (Object policy) =
                       -> IO (Action, Verifier)
     compileActionRule verifiers (actionName, expression) = do
       let mAction = readMaybe $ T.unpack actionName
-      verifier <- compileExpression verifiers expression
+      verifier <- guardAdminToken <$> compileExpression verifiers expression
       case mAction of
         Nothing     -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
         Just action -> return $ (action, verifier)
