@@ -345,6 +345,12 @@ application policy config = do
         Busy     -> do
           S.json $ E.conflict $ "The user " ++ (show uid) ++ " has a role assigned. Please remove the role assignment first."
           S.status status409
+  S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
+    (uid :: M.ObjectId) <- parseId "uid"
+    A.authorize policy A.ListProjectsForUser token (A.UserId uid) $ do
+      projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
+      S.status status200
+      with_host_url config $ MP.produceProjectsReply projects
   -- Role API
   S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest

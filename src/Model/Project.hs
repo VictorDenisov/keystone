@@ -130,6 +130,7 @@ findProjectById pid = runMaybeT $ do
 listExistingProjectIds ::[M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingProjectIds = listExistingIds collectionName
 
+
 verifyDatabase :: M.Action IO ()
 verifyDatabase = MA.ensureIndex
                     $ (MA.index

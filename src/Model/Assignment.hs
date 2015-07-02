@@ -18,6 +18,8 @@ import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
+import Model.Common (listObjects)
+
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
 
@@ -84,6 +86,12 @@ listAssignments mPid mUid = do
                           && (uid `elem` existingUserIds)
                           && (pid `elem` existingProjectIds)
                          )) assignments
+
+listProjectsForUser :: MU.UserId -> M.Action IO [MP.Project]
+listProjectsForUser uid = do
+  assignments <- listAssignments Nothing (Just uid)
+  let pids = map ((\(MP.ProjectId pid) -> pid) . projectId) assignments
+  listObjects MP.collectionName pids
 
 listUserRoles :: MP.ProjectId -> MU.UserId -> M.Action IO [MR.Role]
 listUserRoles pid uid = do
