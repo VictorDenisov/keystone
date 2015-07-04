@@ -20,6 +20,7 @@ import Control.Monad.Except (ExceptT(..), runExceptT, MonadError(throwError))
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Control.Monad.State (StateT(..), runStateT)
 import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
+import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson.Types (Value, FromJSON(..))
 import Data.Data (Typeable)
 import Data.Bson ((=:))
@@ -351,6 +352,25 @@ application policy config = do
       projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
       S.status status200
       with_host_url config $ MP.produceProjectsReply projects
+  S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
+    (uid :: M.ObjectId) <- parseId "uid"
+    (cpr :: U.ChangePasswordRequest) <- parseRequest
+    A.authorize policy A.ChangePassword token (A.UserId uid) $ do
+      res <- liftIO $ CD.withDB (database config) $ A.checkUserPassword (Just uid) Nothing (U.poriginalPassword cpr)
+      case res of
+        Left errorMessage -> do
+          S.status status404
+          S.json $ E.notFound "User not found"
+        Right _ -> do
+          updateDocument <- liftIO $ U.changePasswordRequestToDocument cpr
+          mModifiedUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid updateDocument
+          case mModifiedUser of
+            Nothing -> do
+              S.status status404
+              S.json $ E.notFound "User not found"
+            Just modifiedUser -> do
+              S.status status200
+              with_host_url config $ MU.produceUserReply modifiedUser
   -- Role API
   S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest

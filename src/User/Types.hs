@@ -30,3 +30,8 @@ data UserUpdateRequest = UserUpdateRequest
                        , uname :: Maybe String
                        , upassword :: Maybe String
                        } deriving Show
+
+data ChangePasswordRequest = ChangePasswordRequest
+                           { poriginalPassword :: String
+                           , ppassword         :: String
+                           }

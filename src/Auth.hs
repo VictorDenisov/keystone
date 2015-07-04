@@ -107,40 +107,47 @@ instance FromJSON AuthRequest where
     return $ AuthRequest ms scope
   parseJSON v = typeMismatch (nameBase ''AuthRequest) v
 
+checkUserPassword :: Maybe M.ObjectId -> Maybe String -> String -> M.Action IO (Either String MU.User)
+checkUserPassword mUserId mUserName passwordToCheck = do
+  mu <- case mUserId of
+            Just userId -> MU.findUserById userId
+            Nothing -> do
+              users <- MU.listUsers mUserName
+              return $ listToMaybe users
+  case mu of
+    Nothing -> return $ Left "User is not found."
+    Just user  ->
+      case MU.password user of
+        Just p ->
+          if verifyPassword (pack passwordToCheck) (pack p)
+            then return $ Right user
+            else return $ Left "The password if incorrect"
+        Nothing -> return $ Left "User exists, but doesn't have any password."
+
 authenticate :: (Maybe AuthScope)
              -> M.Pipe
              -> AuthMethod
              -> IO (Either String (String, MT.Token))
 authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
-    mu <- case mUserId of
-              Just userId -> CD.runDB pipe $ MU.findUserById userId
-              Nothing -> do
-                users <- CD.runDB pipe $ MU.listUsers mUserName
-                return $ listToMaybe users
-    case mu of
-      Nothing -> return $ Left "User is not found."
-      Just user  ->
-        case MU.password user of
-          Just p ->
-            if verifyPassword (pack password) (pack p)
-              then do
-                currentTime  <- liftIO getCurrentTime
-                scopeProject <- CD.runDB pipe $ calcProject mScope
-                scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
-                services     <- CD.runDB pipe $ MS.listServices Nothing
-                tokenId <- liftIO $ M.genObjectId
-                let token = MT.Token
-                                  tokenId
-                                  currentTime
-                                  (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
-                                  user
-                                  scopeProject
-                                  scopeRoles
-                                  services
-                mt <- CD.runDB pipe $ MT.createToken token
-                return $ Right (show mt, token)
-              else return $ Left "Passwords don't match."
-          Nothing -> return $ Left "User exists, but doesn't have any password."
+  res <- CD.runDB pipe $ checkUserPassword mUserId mUserName password
+  case res of
+    Left  errorMessage -> return $ Left errorMessage
+    Right user -> do
+      currentTime  <- liftIO getCurrentTime
+      scopeProject <- CD.runDB pipe $ calcProject mScope
+      scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
+      services     <- CD.runDB pipe $ MS.listServices Nothing
+      tokenId <- liftIO $ M.genObjectId
+      let token = MT.Token
+                        tokenId
+                        currentTime
+                        (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
+                        user
+                        scopeProject
+                        scopeRoles
+                        services
+      mt <- CD.runDB pipe $ MT.createToken token
+      return $ Right (show mt, token)
   where
     calcProject mScope = runMaybeT $ do
       (ProjectIdScope mPid mPname _) <- MaybeT $ return mScope
@@ -262,6 +269,7 @@ data Action = ValidateToken
             | DeleteUser
             | ListGroupsForUser
             | ListProjectsForUser
+            | ChangePassword
 
             | AddGroup
             | ListGroups

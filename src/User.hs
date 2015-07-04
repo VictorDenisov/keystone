@@ -18,7 +18,9 @@ import Data.Aeson.Types (typeMismatch)
 import Data.Text (pack)
 import Language.Haskell.TH.Syntax (nameBase)
 
-import User.Types (UserCreateRequest(..), UserUpdateRequest(..))
+import User.Types ( ChangePasswordRequest(..)
+                  , UserCreateRequest(..)
+                  , UserUpdateRequest(..))
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M
@@ -53,6 +55,20 @@ updateRequestToDocument UserUpdateRequest{..} = do
     , (pack $ nameBase 'MU.password)    M.=? cryptedPassword
     ]
 
+changePasswordRequestToDocument :: ChangePasswordRequest -> IO M.Document
+changePasswordRequestToDocument ChangePasswordRequest{..} = do
+  cryptedPassword <- runMaybeT $ do
+    p <- return ppassword
+    p1 <- liftIO $ makePassword (BS8.pack p) 17
+    return $ BS8.unpack p1
+  return $ concat [ (pack $ nameBase 'MU.password) M.=? cryptedPassword ]
+
+instance FromJSON ChangePasswordRequest where
+  parseJSON (Object v) = do
+    user <- v .: "user"
+    parseCpr user
+  parseJSON v = typeMismatch (nameBase ''ChangePasswordRequest) v
+
 instance FromJSON UserCreateRequest where
   parseJSON (Object v) = do
     user <- v .: "user"
@@ -68,3 +84,5 @@ instance FromJSON UserUpdateRequest where
 parseUcr = $(mkParseJSON underscoreOptions ''UserCreateRequest)
 
 parseUur = $(mkParseJSON (dropOptions 1 <.> underscoreOptions) ''UserUpdateRequest)
+
+parseCpr = $(mkParseJSON (dropOptions 1 <.> underscoreOptions) ''ChangePasswordRequest)

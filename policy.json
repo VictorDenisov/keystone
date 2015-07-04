@@ -33,6 +33,7 @@
         "UpdateUser":              {"rule":"admin_required"},
         "DeleteUser":              {"rule":"admin_required"},
         "ListProjectsForUser":     {"or" : [{"rule":"admin_required"}, {"rule":"owner"}]},
+        "ChangePassword":          {"rule":"owner"},
 
         "AddRole":                 {"rule":"admin_required"},
         "ListRoles":               {"rule":"admin_required"},
