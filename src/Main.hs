@@ -76,8 +76,8 @@ main = do
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
   !policy <- A.loadPolicy
-  -- bang pattern is because we want to know if the policy is correct now
-  -- we need the evaluation to happen immediatelly
+  -- ^ bang pattern is because we want to know if the policy is correct now
+  -- ^ we need the evaluation to happen immediatelly
   verifyDatabase $ database config
 
   app <- S.scottyAppT id id (application policy config)
@@ -410,6 +410,17 @@ application policy config = do
       S.status status200
       with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
 
+verifyDatabase :: Database -> IO ()
+verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
+  liftIO $ noticeM loggerName "Verifying user collection"
+  MU.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying role collection"
+  MR.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying project collection"
+  MP.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying token collection"
+  MT.verifyDatabase
+
 parseMaybeString :: TL.Text -> ActionM (Maybe String)
 parseMaybeString paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
@@ -462,14 +473,3 @@ with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
 with_host_url config v = do
   url <- getBaseUrl config
   S.json $ v url
-
-verifyDatabase :: Database -> IO ()
-verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
-  liftIO $ noticeM loggerName "Verifying user collection"
-  MU.verifyDatabase
-  liftIO $ noticeM loggerName "Verifying role collection"
-  MR.verifyDatabase
-  liftIO $ noticeM loggerName "Verifying project collection"
-  MP.verifyDatabase
-  liftIO $ noticeM loggerName "Verifying token collection"
-  MT.verifyDatabase
