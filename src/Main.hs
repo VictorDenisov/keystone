@@ -38,11 +38,12 @@ import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
                    , rawPathInfo, requestMethod
                    )
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
+import System.IO (stdout)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import System.Log.Handler (setFormatter)
-import System.Log.Handler.Simple (fileHandler)
-import System.Log.Logger ( debugM, errorM, setLevel, updateGlobalLogger
-                         , noticeM, Priority(..), addHandler)
+import System.Log.Handler.Simple (fileHandler, streamHandler)
+import System.Log.Logger ( debugM, errorM, warningM, setLevel, updateGlobalLogger
+                         , noticeM, Priority(..), setHandlers, removeAllHandlers)
 import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
@@ -71,9 +72,14 @@ import qualified Web.Scotty.Trans as S
 
 main = do
   config <- readConfig
-  updateGlobalLogger loggerName $ setLevel $ logLevel config
-  fh <- fileHandler "keystone.log" (logLevel config)
-  updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
+  let logFormatter = simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg"
+  stdoutHandler <- streamHandler stdout (logLevel config)
+  fileHandler <- fileHandler "keystone.log" (logLevel config)
+  removeAllHandlers
+  updateGlobalLogger loggerName $ setLevel (logLevel config) . setHandlers
+    [ setFormatter stdoutHandler logFormatter
+    , setFormatter fileHandler   logFormatter
+    ]
 
   !policy <- A.loadPolicy
   -- ^ bang pattern is because we want to know if the policy is correct now
@@ -85,7 +91,7 @@ main = do
                       (certificateFile config)
                       (keyFile config)
   let serverSettings = setPort (port config) defaultSettings
-  liftIO $ noticeM loggerName "Starting web server"
+  noticeM loggerName "Starting web server"
   case serverType config of
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
@@ -104,6 +110,7 @@ application policy config = do
         S.json $ e {E.message = "Internal error. Server time - " ++ (show time)}
       _ -> do
         S.json e
+  -- Version API
   S.get "/" $ do
     with_host_url config apiVersions
   S.get "/v3" $ do
