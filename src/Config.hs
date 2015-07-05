@@ -38,28 +38,31 @@ data ServerType = Tls
 confFileName :: String
 confFileName = "keystone.conf"
 
+defaultConfig :: KeystoneConfig
+defaultConfig =
+  KeystoneConfig
+    { adminToken      = "ADMIN_TOKEN"
+    , certificateFile = "server.crt"
+    , keyFile         = "server.key"
+    , port            = defaultPort
+    , endpoint        = Nothing
+    , database        = Database
+                      { dbHost = "localhost"
+                      , dbPort = 27017
+                      }
+    , logLevel        = WARNING
+    , serverType      = Plain
+    }
+  where defaultPort = 35357
+
 readConfig :: IO KeystoneConfig
 readConfig = do
   mConf <- decodeFile confFileName
   case mConf of
-    Just conf ->
-      return conf
+    Just conf -> return conf
     Nothing   -> do
       errorM loggerName $ "Failed to parse config file: " ++ confFileName ++ ". Using default values."
-      return $ KeystoneConfig
-                   { adminToken      = "ADMIN_TOKEN"
-                   , certificateFile = "server.crt"
-                   , keyFile         = "server.key"
-                   , port            = defaultPort
-                   , endpoint        = Nothing
-                   , database        = Database
-                                     { dbHost = "localhost"
-                                     , dbPort = 27017
-                                     }
-                   , logLevel        = WARNING
-                   , serverType      = Plain
-                   }
-  where defaultPort = 35357
+      return defaultConfig
 
 instance ToJSON ServerType where
   toJSON t = String $ T.pack $ show t
@@ -67,7 +70,7 @@ instance ToJSON ServerType where
 instance FromJSON ServerType where
   parseJSON (String v) = case readMaybe $ T.unpack v of
                            Just v  -> return v
-                           Nothing -> (fail "Failed to parse ServerType")
+                           Nothing -> fail "Failed to parse ServerType"
   parseJSON v = typeMismatch (nameBase ''ServerType) v
 
 instance ToJSON Priority where
