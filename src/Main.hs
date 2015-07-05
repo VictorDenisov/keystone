@@ -118,7 +118,6 @@ application policy config = do
   -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: A.AuthRequest) <- parseRequest
-    liftIO $ debugM loggerName $ show au
     baseUrl <- getBaseUrl config
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
@@ -454,10 +453,12 @@ parseId paramName = do
     Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (TL.unpack paramName)
     Just v  -> return v
 
-parseRequest :: FromJSON a => ActionM a
+parseRequest :: (Show a, FromJSON a) => ActionM a
 parseRequest = do
-  S.rescue S.jsonData $ \e ->
+  request <- S.rescue S.jsonData $ \e ->
     S.raise $ E.badRequest $ E.message e
+  liftIO $ debugM loggerName $ "Parsed request body: " ++ (show request)
+  return request
 
 hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"

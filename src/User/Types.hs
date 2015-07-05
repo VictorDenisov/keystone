@@ -34,4 +34,4 @@ data UserUpdateRequest = UserUpdateRequest
 data ChangePasswordRequest = ChangePasswordRequest
                            { poriginalPassword :: String
                            , ppassword         :: String
-                           }
+                           } deriving Show
