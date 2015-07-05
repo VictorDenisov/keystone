@@ -75,8 +75,9 @@ main = do
   fh <- fileHandler "keystone.log" (logLevel config)
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
-  !policy <- A.loadPolicy -- bang pattern is because we want to know if the policy is correct now
-  let authGuard = A.requireToken config
+  !policy <- A.loadPolicy
+  -- bang pattern is because we want to know if the policy is correct now
+  -- we need the evaluation to happen immediatelly
   verifyDatabase $ database config
 
   app <- S.scottyAppT id id (application policy config)
