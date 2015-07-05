@@ -35,8 +35,7 @@ import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, status409, status500, statusCode)
 import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
-                   , rawPathInfo, requestMethod
-                   )
+                   , rawPathInfo, requestMethod, strictRequestBody)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
@@ -53,6 +52,7 @@ import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
+import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Text.Lazy as TL
 import qualified Database.MongoDB as M
 import qualified Domain as D
@@ -100,7 +100,7 @@ application :: A.Policy
             -> KeystoneConfig
             -> ScottyM ()
 application policy config = do
-  --S.middleware (withAuth config)
+  S.middleware logRequestResponse
   S.defaultHandler $ \e -> do
     S.status $ E.code e
     case statusCode $ E.code e of
@@ -427,6 +427,11 @@ verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
   MP.verifyDatabase
   liftIO $ noticeM loggerName "Verifying token collection"
   MT.verifyDatabase
+
+logRequestResponse :: Middleware
+logRequestResponse app request responder = do
+  debugM loggerName $ show request
+  app request responder
 
 parseMaybeString :: TL.Text -> ActionM (Maybe String)
 parseMaybeString paramName =
