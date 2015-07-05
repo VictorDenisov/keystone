@@ -57,14 +57,17 @@ $(deriveJSON defaultOptions ''KeystoneConfig)
 
 $(deriveJSON defaultOptions ''Database)
 
+confFileName :: String
+confFileName = "keystone.conf"
+
 readConfig :: IO KeystoneConfig
 readConfig = do
-  mConf <- decodeFile "keystone.conf"
+  mConf <- decodeFile confFileName
   case mConf of
     Just conf ->
       return conf
     Nothing   -> do
-      errorM loggerName "Failed to parse config file. Using default values."
+      errorM loggerName $ "Failed to parse config file: " ++ confFileName ++ ". Using default values."
       return $ KeystoneConfig
                    { adminToken      = "ADMIN_TOKEN"
                    , certificateFile = "server.crt"
