@@ -72,7 +72,7 @@ import qualified Web.Scotty.Trans as S
 main = do
   config <- readConfig
   updateGlobalLogger loggerName $ setLevel $ logLevel config
-  fh <- fileHandler "keystone.log" DEBUG
+  fh <- fileHandler "keystone.log" (logLevel config)
   updateGlobalLogger loggerName $ addHandler $ setFormatter fh (simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg")
 
   !policy <- A.loadPolicy -- bang pattern is because we want to know if the policy is correct now
