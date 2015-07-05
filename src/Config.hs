@@ -35,28 +35,6 @@ data ServerType = Tls
                 | Plain
                   deriving (Read, Show)
 
-instance ToJSON ServerType where
-  toJSON t = String $ T.pack $ show t
-
-instance FromJSON ServerType where
-  parseJSON (String v) = case readMaybe $ T.unpack v of
-                           Just v  -> return v
-                           Nothing -> (fail "Failed to parse ServerType")
-  parseJSON v = typeMismatch (nameBase ''ServerType) v
-
-instance ToJSON Priority where
-  toJSON p = String $ T.pack $ show p
-
-instance FromJSON Priority where
-  parseJSON (String v) = case readMaybe $ T.unpack v of
-                           Just v  -> return v
-                           Nothing -> fail "Failed to parse Priority"
-  parseJSON v = typeMismatch (nameBase ''Priority) v
-
-$(deriveJSON defaultOptions ''KeystoneConfig)
-
-$(deriveJSON defaultOptions ''Database)
-
 confFileName :: String
 confFileName = "keystone.conf"
 
@@ -82,3 +60,25 @@ readConfig = do
                    , serverType      = Plain
                    }
   where defaultPort = 35357
+
+instance ToJSON ServerType where
+  toJSON t = String $ T.pack $ show t
+
+instance FromJSON ServerType where
+  parseJSON (String v) = case readMaybe $ T.unpack v of
+                           Just v  -> return v
+                           Nothing -> (fail "Failed to parse ServerType")
+  parseJSON v = typeMismatch (nameBase ''ServerType) v
+
+instance ToJSON Priority where
+  toJSON p = String $ T.pack $ show p
+
+instance FromJSON Priority where
+  parseJSON (String v) = case readMaybe $ T.unpack v of
+                           Just v  -> return v
+                           Nothing -> fail "Failed to parse Priority"
+  parseJSON v = typeMismatch (nameBase ''Priority) v
+
+$(deriveJSON defaultOptions ''KeystoneConfig)
+
+$(deriveJSON defaultOptions ''Database)
