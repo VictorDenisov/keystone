@@ -8,51 +8,36 @@ where
 
 import Common (loggerName, ScottyM, ActionM)
 import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
-import Control.Applicative ((<*>), (<$>))
-import Control.Exception (bracket)
-import Control.Exception.Base (throwIO)
+import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Catch (MonadThrow(throwM), MonadCatch(catch), Exception, SomeException)
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
-import Control.Monad.Except (ExceptT(..), runExceptT, MonadError(throwError))
-import Control.Monad.Reader (ReaderT(..), runReaderT)
-import Control.Monad.State (StateT(..), runStateT)
-import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release)
-import Crypto.PasswordStore (verifyPassword)
+import Control.Monad.Except (runExceptT, MonadError(throwError))
+import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 import Data.Aeson.Types (Value, FromJSON(..))
-import Data.Data (Typeable)
-import Data.Bson ((=:))
-import Data.ByteString.Char8 (pack, unpack)
-import Data.List (lookup, or)
-import Data.Maybe (isNothing, maybe, fromJust)
+import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
-import Network.HTTP.Types (methodGet, methodPost)
-import Network.HTTP.Types.Header (HeaderName)
 import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
-                                 , status404, status409, status500, statusCode)
-import Network.Wai ( Middleware, requestHeaders, responseLBS, rawQueryString
-                   , rawPathInfo, requestMethod, strictRequestBody)
+                                 , status404, status409, statusCode)
+import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple (fileHandler, streamHandler)
-import System.Log.Logger ( debugM, errorM, warningM, setLevel, updateGlobalLogger
-                         , noticeM, Priority(..), setHandlers, removeAllHandlers)
+import System.Log.Logger ( debugM, errorM, setLevel, updateGlobalLogger
+                         , noticeM, setHandlers, removeAllHandlers)
 import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
 
 import Version (apiV3Reply, apiVersions)
-import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Auth as A
 import qualified Common.Database as CD
-import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Text.Lazy as TL
 import qualified Database.MongoDB as M
 import qualified Domain as D
