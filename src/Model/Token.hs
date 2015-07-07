@@ -7,16 +7,12 @@ where
 
 import Common.Database (idF)
 
-import Control.Monad (liftM)
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson.Types (Value(..), (.=), object, ToJSON(..))
 import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
-import Data.Maybe (fromJust)
 import Data.Time.Clock (getCurrentTime, UTCTime)
 
 import Database.MongoDB.Internal.Util ((<.>))

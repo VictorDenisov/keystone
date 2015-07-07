@@ -6,44 +6,30 @@
 module Model.Project
 where
 
-import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
-import Common.Database ( affectedDocs, currentDateC, idF, inC, matchC, neC, pullC
-                       , pushC, setC, unwindC, (+.+), (+++))
+import Common (fromObject, skipUnderscoreOptions)
+import Common.Database (idF)
 
-import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
-import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
-import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
-import Data.Aeson.TH (deriveJSON, defaultOptions)
+import Data.Aeson (ToJSON(..), Value(..))
+import Data.Aeson.Types (object, (.=))
+import Data.Aeson.TH (deriveJSON)
 import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
 import Data.HashMap.Strict (insert)
-import Data.Maybe (catMaybes)
-import Data.Time.Clock (getCurrentTime)
 import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
-import Model.Common (listExistingIds, CaptureStatus(..), TransactionId(..))
-
-import System.Log.Logger (debugM)
-
-import Text.Read (readMaybe)
+import Model.Common (listExistingIds)
 
 import qualified Error as E
 
 import qualified Database.MongoDB as M
 import qualified Database.MongoDB.Admin as MA
 import qualified Data.Text as T
-
-import qualified Model.Role as MR
-import qualified Model.User as MU
 
 collectionName :: M.Collection
 collectionName = "project"

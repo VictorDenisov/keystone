@@ -8,18 +8,15 @@ module Model.User
 where
 
 import Common (fromObject, skipUnderscoreOptions)
-import Common.Database (affectedDocs, decC, idF, inC, incC, neC, pullC, pushC, setC)
+import Common.Database (affectedDocs, idF, setC)
 
 import Control.Applicative ((<$>))
-import Control.Monad (mapM)
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
-import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
-import Data.Aeson.TH (deriveJSON, defaultOptions)
-import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
+import Data.Aeson (ToJSON(..), Value(..))
+import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.Types (object, (.=))
 import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
@@ -28,10 +25,7 @@ import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
-import Model.Common ( CaptureStatus(..), TransactionId(..), OpStatus(..)
-                    , listExistingIds)
-
-import Text.Read (readMaybe)
+import Model.Common (OpStatus(..), listExistingIds)
 
 import qualified Error as E
 import qualified Database.MongoDB as M

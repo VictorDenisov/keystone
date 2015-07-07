@@ -7,7 +7,7 @@ module Project
 ) where
 
 import Common (underscoreOptions)
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object, (.:))
+import Data.Aeson (FromJSON(..), Value(..), (.:))
 import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (typeMismatch)
 import Data.Maybe (fromMaybe)

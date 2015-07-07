@@ -7,19 +7,15 @@
 module Model.Role
 where
 
-import Common (capitalize, fromObject, loggerName, skipUnderscoreOptions)
-import Common.Database ( affectedDocs, decC, duplicateE, idF, inC, incC, neC
-                       , pullC, pushC
-                       )
+import Common (fromObject, skipUnderscoreOptions)
+import Common.Database (idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
-import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
-import Data.Aeson.TH (deriveJSON, defaultOptions)
+import Data.Aeson (ToJSON(..), Value(..))
+import Data.Aeson.Types (object, (.=))
+import Data.Aeson.TH (deriveJSON)
 import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
@@ -28,11 +24,7 @@ import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
-import Model.Common (TransactionId(..), CaptureStatus(..), listExistingIds)
-
-import System.Log.Logger (criticalM)
-
-import Text.Read (readMaybe)
+import Model.Common (listExistingIds)
 
 import qualified Error as E
 import qualified Database.MongoDB as M

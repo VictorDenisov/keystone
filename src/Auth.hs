@@ -11,14 +11,13 @@ import Common (loggerName, ActionM)
 import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
 import Control.Exception (throwIO, Exception(..))
-import Control.Monad (forM, liftM)
+import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), eitherDecode')
-import Data.Aeson.Types ( Value(..), (.=), object, Pair, ToJSON(..), typeMismatch
+import Data.Aeson.Types ( Value(..), (.=), object, typeMismatch
                         , Object)
 import Data.ByteString.Char8 (pack)
 import Data.ByteString.Lazy (readFile)
@@ -28,17 +27,14 @@ import Data.Maybe (maybeToList, listToMaybe)
 import Data.IORef (IORef(..), readIORef, newIORef, writeIORef)
 import Data.List (find)
 import Data.Time.Clock (getCurrentTime, addUTCTime)
-import Data.Vector (fromList, or)
+import Data.Vector (fromList)
 import GHC.Generics (Generic)
 import Language.Haskell.TH.Syntax (nameBase)
-import Network.HTTP.Types (methodGet, methodPost)
 import Network.HTTP.Types.Status (status401)
-import Network.HTTP.Types.Header (HeaderName)
-import System.Log.Logger (debugM, noticeM)
+import System.Log.Logger (noticeM)
 import Text.Read (readMaybe)
 
 import qualified Common.Database as CD
-import qualified Domain as D
 import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Model.Assignment as MA
@@ -162,7 +158,7 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName
       return $ concat $ maybeToList list
 
 
-authenticate _ _ _ = return $ Left "Method is not supported."
+--authenticate _ _ _ = return $ Left "Method is not supported."
 
 
 calcProjectScope :: MP.Project -> String -> Value

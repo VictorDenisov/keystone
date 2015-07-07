@@ -7,13 +7,11 @@ module User
 ) where
 
 import Common (underscoreOptions, dropOptions, (<.>))
-import Control.Applicative ((<*>), (<$>))
-import Control.Monad (mzero)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (makePassword)
-import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
-import Data.Aeson.TH (mkParseJSON, defaultOptions)
+import Data.Aeson (FromJSON(..), (.:), Value(..))
+import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (typeMismatch)
 import Data.Text (pack)
 import Language.Haskell.TH.Syntax (nameBase)

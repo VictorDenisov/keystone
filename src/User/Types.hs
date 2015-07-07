@@ -1,15 +1,5 @@
-{-# Language DeriveDataTypeable #-}
-
 module User.Types
 where
-
-import Data.Data (Typeable)
-
-import qualified Model.User as MU
-
-import Control.Monad (mzero)
-import Control.Applicative ((<*>), (<$>))
-import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 
 data UserCreateRequest = UserCreateRequest
                        { defaultProjectId :: String

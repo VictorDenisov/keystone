@@ -5,11 +5,8 @@
 module Model.Assignment
 where
 
-import Control.Applicative ((<$>))
-import Control.Monad.Trans.Control (MonadBaseControl)
-import Control.Monad.Trans.Maybe (MaybeT(..))
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
-import Data.Aeson.Types (object, (.=), Value(..), typeMismatch)
+import Data.Aeson (Value(..))
+import Data.Aeson.Types (object, (.=))
 import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)

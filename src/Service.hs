@@ -9,12 +9,10 @@ module Service
 
 import Common (skipTickOptions, dropOptions, underscoreOptions, (<.>))
 import Service.Types
-import Control.Applicative ((<*>), (<$>))
-import Data.Aeson ( FromJSON(..), (.:), (.:?), Value(..))
-import Data.Aeson.TH (mkParseJSON, defaultOptions)
+import Data.Aeson ( FromJSON(..), (.:), Value(..))
+import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (typeMismatch)
-import Data.Data (Typeable)
-import Data.Text (pack, unpack)
+import Data.Text (pack)
 import Language.Haskell.TH.Syntax (nameBase)
 
 import qualified Database.MongoDB as M
