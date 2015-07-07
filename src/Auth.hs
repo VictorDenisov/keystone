@@ -25,7 +25,7 @@ import Data.Data (Typeable)
 import Data.Hashable (Hashable)
 import Data.Maybe (maybeToList, listToMaybe)
 import Data.IORef (IORef(..), readIORef, newIORef, writeIORef)
-import Data.List (find)
+import Data.List (find, (\\))
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 import Data.Vector (fromList)
 import GHC.Generics (Generic)
@@ -296,6 +296,35 @@ data Action = ValidateToken
             | DeletePolicy
               deriving (Show, Read, Eq, Generic)
 
+listOfImplementedActions = [ CheckToken
+                           , ValidateToken
+                           , AddService
+                           , ListServices
+                           , ShowServiceDetails
+                           , UpdateService
+                           , DeleteService
+                           , AddEndpoint
+                           , ListEndpoints
+                           , ListDomains
+                           , ShowDomainDetails
+                           , AddProject
+                           , ListProjects
+                           , ShowProjectDetails
+                           , ListRolesForProjectUser
+                           , GrantRoleToProjectUser
+                           , AddUser
+                           , ListUsers
+                           , ShowUserDetails
+                           , UpdateUser
+                           , DeleteUser
+                           , ListProjectsForUser
+                           , ChangePassword
+                           , AddRole
+                           , ListRoles
+                           , ShowRoleDetails
+                           , ListRoleAssignments
+                           ]
+
 instance Hashable Action
 
 data Resource = Token MT.Token
@@ -415,7 +444,12 @@ compilePolicy (Object policy) =
       let rulesOnly = HM.delete identityF policy
       ruleMap <- HM.traverseWithKey convertRule $ rulesOnly
       resList <- mapM (compileActionRule ruleMap) $ HM.toList actionRules
-      return $ HM.fromList resList
+      let policyActions = map fst resList
+      case ( policyActions \\ listOfImplementedActions
+           , listOfImplementedActions \\ policyActions) of
+        ([], []) -> return $ HM.fromList resList
+        ([], missingActions) -> throwIO $ PolicyCompileException $ "Actions missing from the policy " ++ (show missingActions)
+        (unknownActions, missingActions) -> throwIO $ PolicyCompileException $ "Unknown actions " ++ (show unknownActions)
   where
     convertRule :: T.Text -> Value -> IO (IORef (Either Value Verifier))
     convertRule _ v = newIORef (Left v)
