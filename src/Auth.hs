@@ -409,7 +409,6 @@ compileExpression verifiers (Object m) = do
     (expr, _) -> throwIO $ PolicyCompileException $ "Unknown expression: " ++ (T.unpack expr)
 compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error while compiling policy expression " ++ (show expr) ++ ". Expecting object instead"
 
--- TODO verify all actions are in the policy
 compilePolicy :: Value -> IO (HM.HashMap Action Verifier)
 compilePolicy (Object policy) =
   case HM.lookup identityF policy of
@@ -417,7 +416,9 @@ compilePolicy (Object policy) =
     Just vActionRules -> withObject (T.unpack identityF) vActionRules $ \actionRules -> do
       let rulesOnly = HM.delete identityF policy
       ruleMap <- HM.traverseWithKey convertRule $ rulesOnly
+
       resList <- mapM (compileActionRule ruleMap) $ HM.toList actionRules
+
       let policyActions = map fst resList
       case ( policyActions \\ listOfImplementedActions
            , listOfImplementedActions \\ policyActions) of
@@ -433,10 +434,11 @@ compilePolicy (Object policy) =
                       -> IO (Action, Verifier)
     compileActionRule verifiers (actionName, expression) = do
       let mAction = readMaybe $ T.unpack actionName
-      verifier <- guardAdminToken <$> compileExpression verifiers expression
       case mAction of
         Nothing     -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
-        Just action -> return $ (action, verifier)
+        Just action -> do
+          verifier <- guardAdminToken <$> compileExpression verifiers expression
+          return $ (action, verifier)
 
     withObject :: String -> Value -> (Object -> IO a) -> IO a
     withObject keyName (Object v) f = f v
