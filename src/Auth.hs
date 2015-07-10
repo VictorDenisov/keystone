@@ -217,7 +217,7 @@ produceTokenResponse (MT.Token _ issued expires user mProject roles services) ba
 
 data Action = ValidateToken
             | CheckToken
-            | RevokeToken
+            -- | RevokeToken
 
             | AddService
             | ListServices
@@ -227,103 +227,77 @@ data Action = ValidateToken
 
             | AddEndpoint
             | ListEndpoints
-            | UpdateEndpoint
-            | DeleteEndpoint
+            -- | UpdateEndpoint
+            -- | DeleteEndpoint
 
-            | AddDomain
+            -- | AddDomain
             | ListDomains
             | ShowDomainDetails
-            | UpdateDomain
-            | DeleteDomain
-            | ListRolesForDomainUser
-            | GrantRoleToDomainUser
-            | CheckRoleForDomainUser
-            | RevokeRoleForDomainUser
-            | ListRolesForDomainGroup
-            | GrantRoleToDomainGroup
-            | CheckRoleForDomainGroup
-            | RevokeRoleForDomainGroup
+            -- | UpdateDomain
+            -- | DeleteDomain
+            -- | ListRolesForDomainUser
+            -- | GrantRoleToDomainUser
+            -- | CheckRoleForDomainUser
+            -- | RevokeRoleForDomainUser
+            -- | ListRolesForDomainGroup
+            -- | GrantRoleToDomainGroup
+            -- | CheckRoleForDomainGroup
+            -- | RevokeRoleForDomainGroup
 
             | AddProject
             | ListProjects
             | ShowProjectDetails
-            | UpdateProject
-            | DeleteProject
+            -- | UpdateProject
+            -- | DeleteProject
             | ListRolesForProjectUser
             | GrantRoleToProjectUser
-            | CheckRoleForProjectUser
-            | RevokeRoleForProjectUser
-            | ListRolesForProjectGroup
-            | GrantRoleToProjectGroup
-            | CheckRoleForProjectGroup
-            | RevokeRoleForProjectGroup
+            -- | CheckRoleForProjectUser
+            -- | RevokeRoleForProjectUser
+            -- | ListRolesForProjectGroup
+            -- | GrantRoleToProjectGroup
+            -- | CheckRoleForProjectGroup
+            -- | RevokeRoleForProjectGroup
 
             | AddUser
             | ListUsers
             | ShowUserDetails
             | UpdateUser
             | DeleteUser
-            | ListGroupsForUser
+            -- | ListGroupsForUser
             | ListProjectsForUser
             | ChangePassword
 
-            | AddGroup
-            | ListGroups
-            | ShowGroupDetails
-            | UpdateGroup
-            | DeleteGroup
-            | ListUsersInGroup
-            | AddUserToGroup
-            | RemoveUserFromGroup
-            | CheckUserMembershipInGroup
+            -- | AddGroup
+            -- | ListGroups
+            -- | ShowGroupDetails
+            -- | UpdateGroup
+            -- | DeleteGroup
+            -- | ListUsersInGroup
+            -- | AddUserToGroup
+            -- | RemoveUserFromGroup
+            -- | CheckUserMembershipInGroup
 
-            | AddCredential
-            | ListCredentials
-            | ShowCredentialDetails
-            | UpdateCredential
-            | DeleteCredential
+            -- | AddCredential
+            -- | ListCredentials
+            -- | ShowCredentialDetails
+            -- | UpdateCredential
+            -- | DeleteCredential
 
             | AddRole
             | ListRoles
             | ShowRoleDetails
             | ListRoleAssignments
-            | DeleteRole
+            -- | DeleteRole
 
-            | AddPolicy
-            | ListPolicies
-            | ShowPolicyDetails
-            | UpdatePolicy
-            | DeletePolicy
-              deriving (Show, Read, Eq, Generic)
+            -- | AddPolicy
+            -- | ListPolicies
+            -- | ShowPolicyDetails
+            -- | UpdatePolicy
+            -- | DeletePolicy
+              deriving (Show, Read, Eq, Generic, Enum)
 
-listOfImplementedActions = [ CheckToken
-                           , ValidateToken
-                           , AddService
-                           , ListServices
-                           , ShowServiceDetails
-                           , UpdateService
-                           , DeleteService
-                           , AddEndpoint
-                           , ListEndpoints
-                           , ListDomains
-                           , ShowDomainDetails
-                           , AddProject
-                           , ListProjects
-                           , ShowProjectDetails
-                           , ListRolesForProjectUser
-                           , GrantRoleToProjectUser
-                           , AddUser
-                           , ListUsers
-                           , ShowUserDetails
-                           , UpdateUser
-                           , DeleteUser
-                           , ListProjectsForUser
-                           , ChangePassword
-                           , AddRole
-                           , ListRoles
-                           , ShowRoleDetails
-                           , ListRoleAssignments
-                           ]
+listOfImplementedActions :: [Action]
+listOfImplementedActions = enumFrom $ toEnum 0
 
 instance Hashable Action
 
