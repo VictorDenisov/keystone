@@ -104,8 +104,10 @@ listExistingRoleIds :: [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingRoleIds = listExistingIds collectionName
 
 verifyDatabase :: M.Action IO ()
-verifyDatabase = MA.ensureIndex
-                    $ (MA.index
+verifyDatabase = do
+  MA.ensureIndex $ (MA.index
                           collectionName
                           [(T.pack $ nameBase 'name) =: (M.Int32 1)])
                       {MA.iUnique = True}
+  roles <- listRoles Nothing
+  return ()

@@ -118,9 +118,11 @@ listExistingProjectIds = listExistingIds collectionName
 
 
 verifyDatabase :: M.Action IO ()
-verifyDatabase = MA.ensureIndex
-                    $ (MA.index
+verifyDatabase = do
+  MA.ensureIndex $ (MA.index
                           collectionName
                           [(T.pack $ nameBase 'name) =: (M.Int32 1)])
                       {MA.iUnique = True} -- TODO this should be modified as soon as domains are implemented
                       -- different domains can have projects with the same name
+  projects <- listProjects Nothing
+  return ()

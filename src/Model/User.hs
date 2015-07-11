@@ -122,9 +122,11 @@ listExistingUserIds :: [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingUserIds = listExistingIds collectionName
 
 verifyDatabase :: M.Action IO ()
-verifyDatabase = MA.ensureIndex
-                    $ (MA.index
+verifyDatabase = do
+  MA.ensureIndex $ (MA.index
                           collectionName
                           [(T.pack $ nameBase 'name) =: (M.Int32 1)])
                       {MA.iUnique = True} -- TODO this should be modified as soon as domains are implemented
                       -- different domains can have users with the same name
+  users <- listUsers Nothing
+  return ()

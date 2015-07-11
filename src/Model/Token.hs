@@ -78,7 +78,9 @@ idxDocument M.Index{..} db = [
 	"dropDups" =: iDropDups ]
 
 verifyDatabase :: M.Action IO ()
-verifyDatabase = M.insert_ "system.indexes" . (\db -> (idxDocument idx db) ++ ["expireAfterSeconds" =: (M.Int32 0)]) =<< M.thisDatabase
+verifyDatabase = do
+  M.insert_ "system.indexes" . (\db -> (idxDocument idx db) ++ ["expireAfterSeconds" =: (M.Int32 0)]) =<< M.thisDatabase
+  --listTokens
   where idx = (MA.index
                     collectionName
                     [(T.pack $ nameBase 'expiresAt) =: (M.Int32 1)])
