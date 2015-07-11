@@ -27,6 +27,7 @@ import Model.Common (OpStatus(..))
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MA
 import qualified Data.Text as T
 
 collectionName :: M.Collection
@@ -182,7 +183,6 @@ deleteService sid = do
     then return NotFound
     else return Success
 
-
 addEndpoint :: ObjectId -> Endpoint -> M.Action IO (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
   M.modify (M.select [idF =: sid] collectionName) [ pushC =: [endpointsF =: (toBson endpoint)] ]
@@ -201,3 +201,11 @@ listEndpoints = do
   endpoints <- mapM fromBson eDocs
   let serviceIds = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip serviceIds endpoints
+
+verifyDatabase :: M.Action IO ()
+verifyDatabase = do
+  MA.ensureIndex $ (MA.index
+                          collectionName
+                          [(T.pack $ nameBase 'name) =: (M.Int32 1)])
+  services <- listServices Nothing
+  return ()
