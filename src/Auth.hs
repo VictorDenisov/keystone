@@ -69,152 +69,6 @@ data AuthScope = ProjectIdScope
                , scopeDomainId :: Maybe String
                } deriving Show
 
-instance FromJSON AuthRequest where
-  parseJSON (Object v) = do
-    auth <- v .: "auth"
-    identity <- auth .: "identity"
-    mNames <- identity .: "methods"
-    ms <- forM mNames $ \m -> do
-      mDescr <- identity .: m
-      case m of
-        "password" -> do
-          userSpec <- mDescr .: "user"
-          mDomainId <- runMaybeT $ do
-            domainSpec <- MaybeT $ userSpec .:? "domain"
-            idString   <- MaybeT $ domainSpec .:? "id"
-            MaybeT $ return $ readMaybe idString
-          mDomainName <- runMaybeT $ do
-            domainSpec <- MaybeT $ userSpec .:? "domain"
-            MaybeT $ domainSpec .:? "name"
-          PasswordMethod <$> (userSpec .:? "id")
-                         <*> (userSpec .:? "name")
-                         <*> (return mDomainId)
-                         <*> (return mDomainName)
-                         <*> (userSpec .: "password")
-    scope <- runMaybeT $ do
-      s <- MaybeT $ auth .:? "scope"
-      p <- MaybeT $ s .:? "project"
-      i <- lift $ p .:? "id"
-      n <- lift $ p .:? "name"
-      di <- lift $ runMaybeT $ do
-        d <- MaybeT $ p .:? "domain"
-        MaybeT $ d .:? "id"
-      return $ ProjectIdScope i n di
-    return $ AuthRequest ms scope
-  parseJSON v = typeMismatch (nameBase ''AuthRequest) v
-
-checkUserPassword :: Maybe M.ObjectId -> Maybe String -> String -> M.Action IO (Either String MU.User)
-checkUserPassword mUserId mUserName passwordToCheck = do
-  mu <- case mUserId of
-            Just userId -> MU.findUserById userId
-            Nothing -> do
-              users <- MU.listUsers mUserName
-              return $ listToMaybe users
-  case mu of
-    Nothing -> return $ Left "User is not found."
-    Just user  ->
-      case MU.password user of
-        Just p ->
-          if verifyPassword (pack passwordToCheck) (pack p)
-            then return $ Right user
-            else return $ Left "The password if incorrect"
-        Nothing -> return $ Left "User exists, but doesn't have any password."
-
-authenticate :: (Maybe AuthScope)
-             -> M.Pipe
-             -> AuthMethod
-             -> IO (Either String (String, MT.Token))
-authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
-  res <- CD.runDB pipe $ checkUserPassword mUserId mUserName password
-  case res of
-    Left  errorMessage -> return $ Left errorMessage
-    Right user -> do
-      currentTime  <- liftIO getCurrentTime
-      scopeProject <- CD.runDB pipe $ calcProject mScope
-      scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
-      services     <- CD.runDB pipe $ MS.listServices Nothing
-      tokenId <- liftIO $ M.genObjectId
-      let token = MT.Token
-                        tokenId
-                        currentTime
-                        (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
-                        user
-                        scopeProject
-                        scopeRoles
-                        services
-      mt <- CD.runDB pipe $ MT.createToken token
-      return $ Right (show mt, token)
-  where
-    calcProject mScope = runMaybeT $ do
-      (ProjectIdScope mPid mPname _) <- MaybeT $ return mScope
-      MaybeT $ case mPid of
-        Just pid -> MP.findProjectById pid
-        Nothing  -> listToMaybe <$> MP.listProjects mPname
-
-    calcRoles mProject user = do
-      list <- runMaybeT $ do
-        project <- MaybeT $ return mProject
-        lift $ MA.listUserRoles (MP.ProjectId $ MP._id project) (MU.UserId $ MU._id user)
-      return $ concat $ maybeToList list
-
-
---authenticate _ _ _ = return $ Left "Method is not supported."
-
-
-calcProjectScope :: MP.Project -> String -> Value
-calcProjectScope project baseUrl
-          = object [ "id"     .= MP._id project
-                   , "name"   .= MP.name project
-                   , "links"  .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show $ MP._id project)) ])
-                   , "domain" .= (object [ "name" .= MD.defaultDomainName
-                                         , "id"   .= MD.defaultDomainId
-                                         ])
-                   ]
-
-produceTokenResponse :: MT.Token -> String -> Value
-produceTokenResponse (MT.Token _ issued expires user mProject roles services) baseUrl =
-  object [ "token" .= (object $ [ "expires_at" .= expires
-                                , "issued_at"  .= issued
-                                , "methods"    .= [ "password" :: String ]
-                                , "extras"     .= (object [])
-                                , "user"       .= (object [ "name"   .= MU.name user
-                                                          , "id"     .= (show $ MU._id user)
-                                                          , "domain" .= ( object [ "name" .= MD.defaultDomainName
-                                                                                 , "id"   .= MD.defaultDomainId])
-                                                          ] )
-                                , "catalog"  .= (Array $ fromList $ map serviceToValue services)
-                                ] ++ (concat $ maybeToList scopeFields))
-         ]
-  where
-    scopeFields = do
-      project <- mProject
-      let projectValue = calcProjectScope project baseUrl
-      return $ [ "project" .= projectValue
-               , "roles"   .= (Array $ fromList $ map toRoleReply roles)
-               ]
-
-    toRoleReply :: MR.Role -> Value
-    toRoleReply (MR.Role roleId roleName _ _)
-                      = object [ "id"   .= roleId
-                               , "name" .= roleName
-                               ]
-
-    serviceToValue :: MS.Service -> Value
-    serviceToValue service
-             = object [ "id"        .= MS._id service
-                      , "name"      .= MS.name service
-                      , "type"      .= MS.type' service
-                      , "endpoints" .= (map endpointToValue $ MS.endpoints service)
-                      ]
-    endpointToValue :: MS.Endpoint -> Value
-    endpointToValue endpoint = object
-                             [ "id"        .= MS.eid endpoint
-                             , "interface" .= MS.einterface endpoint
-                             , "region"    .= MD.defaultDomainName
-                             , "region_id" .= (String $ T.pack MD.defaultDomainId)
-                             , "url"       .= MS.eurl endpoint
-                             ]
-
 data Action = ValidateToken
             | CheckToken
             -- | RevokeToken
@@ -296,22 +150,59 @@ data Action = ValidateToken
             -- | DeletePolicy
               deriving (Show, Read, Eq, Generic, Enum)
 
-listOfImplementedActions :: [Action]
-listOfImplementedActions = enumFrom $ toEnum 0
-
 instance Hashable Action
 
 data Resource = Token MT.Token
               | UserId M.ObjectId
               | EmptyResource
 
-isOwner :: Resource -> MT.Token -> Bool
-isOwner (Token tokenToVerify) token = (MU._id $ MT.user token) == (MU._id $ MT.user tokenToVerify)
-isOwner (UserId userId) token = (MU._id $ MT.user token) == userId
-isOwner (EmptyResource) _ = True
+type Policy = HM.HashMap Action Verifier
 
-hXAuthToken :: LT.Text
-hXAuthToken = "X-Auth-Token"
+type Verifier = Resource -> MT.Token -> Bool
+
+data PolicyCompileException = PolicyCompileException String
+                              deriving (Typeable, Show)
+
+instance Exception PolicyCompileException
+
+authenticate :: (Maybe AuthScope)
+             -> M.Pipe
+             -> AuthMethod
+             -> IO (Either String (String, MT.Token))
+authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
+  res <- CD.runDB pipe $ checkUserPassword mUserId mUserName password
+  case res of
+    Left  errorMessage -> return $ Left errorMessage
+    Right user -> do
+      currentTime  <- liftIO getCurrentTime
+      scopeProject <- CD.runDB pipe $ calcProject mScope
+      scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
+      services     <- CD.runDB pipe $ MS.listServices Nothing
+      tokenId <- liftIO $ M.genObjectId
+      let token = MT.Token
+                        tokenId
+                        currentTime
+                        (addUTCTime (fromInteger $ 8 * 60 * 60) currentTime)
+                        user
+                        scopeProject
+                        scopeRoles
+                        services
+      mt <- CD.runDB pipe $ MT.createToken token
+      return $ Right (show mt, token)
+  where
+    calcProject mScope = runMaybeT $ do
+      (ProjectIdScope mPid mPname _) <- MaybeT $ return mScope
+      MaybeT $ case mPid of
+        Just pid -> MP.findProjectById pid
+        Nothing  -> listToMaybe <$> MP.listProjects mPname
+
+    calcRoles mProject user = do
+      list <- runMaybeT $ do
+        project <- MaybeT $ return mProject
+        lift $ MA.listUserRoles (MP.ProjectId $ MP._id project) (MU.UserId $ MU._id user)
+      return $ concat $ maybeToList list
+
+--authenticate _ _ _ = return $ Left "Method is not supported."
 
 authorize :: (HM.HashMap Action Verifier)
           -> Action
@@ -355,18 +246,53 @@ requireToken config actionToRun = do
                   S.json $ E.unauthorized "Wrong token"
                 Just token -> actionToRun token
 
-type Policy = HM.HashMap Action Verifier
+loadPolicy :: IO Policy
+loadPolicy = do
+  liftIO $ noticeM loggerName "Loading policy"
+  content <- readFile "policy.json"
+  let res = (eitherDecode' content :: Either String Value)
+  case  res of
+    Left errorString -> throwIO $ PolicyCompileException $ "Failed to parse policy json: " ++ errorString
+    Right jsonPolicy -> compilePolicy jsonPolicy
 
-type Verifier = Resource -> MT.Token -> Bool
+compilePolicy :: Value -> IO (HM.HashMap Action Verifier)
+compilePolicy (Object policy) =
+  case HM.lookup identityF policy of
+    Nothing -> throwIO $ PolicyCompileException "Expected key 'identity' in policy file"
+    Just vActionRules -> withObject (T.unpack identityF) vActionRules $ \actionRules -> do
+      let rulesOnly = HM.delete identityF policy
+      ruleMap <- HM.traverseWithKey convertRule $ rulesOnly
 
-data PolicyCompileException = PolicyCompileException String
-                              deriving (Typeable, Show)
+      resList <- mapM (compileActionRule ruleMap) $ HM.toList actionRules
 
-instance Exception PolicyCompileException
+      let policyActions = map fst resList
+      case ( policyActions \\ listOfImplementedActions
+           , listOfImplementedActions \\ policyActions) of
+        ([], []) -> return $ HM.fromList resList
+        ([], missingActions) -> throwIO $ PolicyCompileException $ "Actions missing from the policy " ++ (show missingActions)
+        (unknownActions, missingActions) -> throwIO $ PolicyCompileException $ "Unknown actions " ++ (show unknownActions)
+  where
+    convertRule :: T.Text -> Value -> IO (IORef (Either Value Verifier))
+    convertRule _ v = newIORef (Left v)
 
-guardAdminToken :: Verifier -> Verifier
-guardAdminToken v r MT.AdminToken = True
-guardAdminToken v r t = v r t
+    compileActionRule :: HM.HashMap T.Text (IORef (Either Value Verifier))
+                      -> (T.Text, Value)
+                      -> IO (Action, Verifier)
+    compileActionRule verifiers (actionName, expression) = do
+      case readMaybe $ T.unpack actionName of
+        Nothing     -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
+        Just action -> do
+          verifier <- guardAdminToken <$> compileExpression verifiers expression
+          return $ (action, verifier)
+
+    withObject :: String -> Value -> (Object -> IO a) -> IO a
+    withObject keyName (Object v) f = f v
+    withObject keyName _ _ = throwIO $ PolicyCompileException $ "Expected object at the key " ++ keyName
+
+    identityF :: T.Text
+    identityF = "identity"
+
+compilePolicy _ = throwIO $ PolicyCompileException "Root value in policy file should be Object"
 
 compileExpression :: HM.HashMap T.Text (IORef (Either Value Verifier)) -> Value -> IO Verifier
 compileExpression verifiers (Object m) = do
@@ -409,50 +335,122 @@ compileExpression verifiers (Object m) = do
     (expr, _) -> throwIO $ PolicyCompileException $ "Unknown expression: " ++ (T.unpack expr)
 compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error while compiling policy expression " ++ (show expr) ++ ". Expecting object instead"
 
-compilePolicy :: Value -> IO (HM.HashMap Action Verifier)
-compilePolicy (Object policy) =
-  case HM.lookup identityF policy of
-    Nothing -> throwIO $ PolicyCompileException "Expected key 'identity' in policy file"
-    Just vActionRules -> withObject (T.unpack identityF) vActionRules $ \actionRules -> do
-      let rulesOnly = HM.delete identityF policy
-      ruleMap <- HM.traverseWithKey convertRule $ rulesOnly
+checkUserPassword :: Maybe M.ObjectId -> Maybe String -> String -> M.Action IO (Either String MU.User)
+checkUserPassword mUserId mUserName passwordToCheck = do
+  mu <- case mUserId of
+            Just userId -> MU.findUserById userId
+            Nothing -> do
+              users <- MU.listUsers mUserName
+              return $ listToMaybe users
+  case mu of
+    Nothing -> return $ Left "User is not found."
+    Just user  ->
+      case MU.password user of
+        Just p ->
+          if verifyPassword (pack passwordToCheck) (pack p)
+            then return $ Right user
+            else return $ Left "The password if incorrect"
+        Nothing -> return $ Left "User exists, but doesn't have any password."
 
-      resList <- mapM (compileActionRule ruleMap) $ HM.toList actionRules
+instance FromJSON AuthRequest where
+  parseJSON (Object v) = do
+    auth <- v .: "auth"
+    identity <- auth .: "identity"
+    mNames <- identity .: "methods"
+    ms <- forM mNames $ \m -> do
+      mDescr <- identity .: m
+      case m of
+        "password" -> do
+          userSpec <- mDescr .: "user"
+          mDomainId <- runMaybeT $ do
+            domainSpec <- MaybeT $ userSpec .:? "domain"
+            idString   <- MaybeT $ domainSpec .:? "id"
+            MaybeT $ return $ readMaybe idString
+          mDomainName <- runMaybeT $ do
+            domainSpec <- MaybeT $ userSpec .:? "domain"
+            MaybeT $ domainSpec .:? "name"
+          PasswordMethod <$> (userSpec .:? "id")
+                         <*> (userSpec .:? "name")
+                         <*> (return mDomainId)
+                         <*> (return mDomainName)
+                         <*> (userSpec .: "password")
+    scope <- runMaybeT $ do
+      s <- MaybeT $ auth .:? "scope"
+      p <- MaybeT $ s .:? "project"
+      i <- lift $ p .:? "id"
+      n <- lift $ p .:? "name"
+      di <- lift $ runMaybeT $ do
+        d <- MaybeT $ p .:? "domain"
+        MaybeT $ d .:? "id"
+      return $ ProjectIdScope i n di
+    return $ AuthRequest ms scope
+  parseJSON v = typeMismatch (nameBase ''AuthRequest) v
 
-      let policyActions = map fst resList
-      case ( policyActions \\ listOfImplementedActions
-           , listOfImplementedActions \\ policyActions) of
-        ([], []) -> return $ HM.fromList resList
-        ([], missingActions) -> throwIO $ PolicyCompileException $ "Actions missing from the policy " ++ (show missingActions)
-        (unknownActions, missingActions) -> throwIO $ PolicyCompileException $ "Unknown actions " ++ (show unknownActions)
+produceTokenResponse :: MT.Token -> String -> Value
+produceTokenResponse (MT.Token _ issued expires user mProject roles services) baseUrl =
+  object [ "token" .= (object $ [ "expires_at" .= expires
+                                , "issued_at"  .= issued
+                                , "methods"    .= [ "password" :: String ]
+                                , "extras"     .= (object [])
+                                , "user"       .= (object [ "name"   .= MU.name user
+                                                          , "id"     .= (show $ MU._id user)
+                                                          , "domain" .= ( object [ "name" .= MD.defaultDomainName
+                                                                                 , "id"   .= MD.defaultDomainId])
+                                                          ] )
+                                , "catalog"  .= (Array $ fromList $ map serviceToValue services)
+                                ] ++ (concat $ maybeToList scopeFields))
+         ]
   where
-    convertRule :: T.Text -> Value -> IO (IORef (Either Value Verifier))
-    convertRule _ v = newIORef (Left v)
+    scopeFields = do
+      project <- mProject
+      let projectValue = calcProjectScope project baseUrl
+      return $ [ "project" .= projectValue
+               , "roles"   .= (Array $ fromList $ map toRoleReply roles)
+               ]
 
-    compileActionRule :: HM.HashMap T.Text (IORef (Either Value Verifier))
-                      -> (T.Text, Value)
-                      -> IO (Action, Verifier)
-    compileActionRule verifiers (actionName, expression) = do
-      let mAction = readMaybe $ T.unpack actionName
-      case mAction of
-        Nothing     -> throwIO $ PolicyCompileException $ "Unknown action " ++ (T.unpack actionName)
-        Just action -> do
-          verifier <- guardAdminToken <$> compileExpression verifiers expression
-          return $ (action, verifier)
+    toRoleReply :: MR.Role -> Value
+    toRoleReply (MR.Role roleId roleName _ _)
+                      = object [ "id"   .= roleId
+                               , "name" .= roleName
+                               ]
 
-    withObject :: String -> Value -> (Object -> IO a) -> IO a
-    withObject keyName (Object v) f = f v
-    withObject keyName _ _ = throwIO $ PolicyCompileException $ "Expected object at the key " ++ keyName
+    serviceToValue :: MS.Service -> Value
+    serviceToValue service
+             = object [ "id"        .= MS._id service
+                      , "name"      .= MS.name service
+                      , "type"      .= MS.type' service
+                      , "endpoints" .= (map endpointToValue $ MS.endpoints service)
+                      ]
+    endpointToValue :: MS.Endpoint -> Value
+    endpointToValue endpoint = object
+                             [ "id"        .= MS.eid endpoint
+                             , "interface" .= MS.einterface endpoint
+                             , "region"    .= MD.defaultDomainName
+                             , "region_id" .= (String $ T.pack MD.defaultDomainId)
+                             , "url"       .= MS.eurl endpoint
+                             ]
 
-    identityF :: T.Text
-    identityF = "identity"
-compilePolicy _ = throwIO $ PolicyCompileException "Root value in policy file should be Object"
+calcProjectScope :: MP.Project -> String -> Value
+calcProjectScope project baseUrl
+          = object [ "id"     .= MP._id project
+                   , "name"   .= MP.name project
+                   , "links"  .= (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show $ MP._id project)) ])
+                   , "domain" .= (object [ "name" .= MD.defaultDomainName
+                                         , "id"   .= MD.defaultDomainId
+                                         ])
+                   ]
 
-loadPolicy :: IO Policy
-loadPolicy = do
-  liftIO $ noticeM loggerName "Loading policy"
-  content <- readFile "policy.json"
-  let res = (eitherDecode' content :: Either String Value)
-  case  res of
-    Left errorString -> throwIO $ PolicyCompileException $ "Failed to parse policy json: " ++ errorString
-    Right jsonPolicy -> compilePolicy jsonPolicy
+listOfImplementedActions :: [Action]
+listOfImplementedActions = enumFrom $ toEnum 0
+
+isOwner :: Resource -> MT.Token -> Bool
+isOwner (Token tokenToVerify) token = (MU._id $ MT.user token) == (MU._id $ MT.user tokenToVerify)
+isOwner (UserId userId) token = (MU._id $ MT.user token) == userId
+isOwner (EmptyResource) _ = True
+
+hXAuthToken :: LT.Text
+hXAuthToken = "X-Auth-Token"
+
+guardAdminToken :: Verifier -> Verifier
+guardAdminToken v r MT.AdminToken = True
+guardAdminToken v r t = v r t
