@@ -19,6 +19,7 @@ import Model.Common (listObjects)
 
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
+import qualified Database.MongoDB.Admin as MA
 
 import qualified Model.Project as MP
 import qualified Model.Role as MR
@@ -104,5 +105,15 @@ addAssignment a = do
 
 verifyDatabase :: M.Action IO ()
 verifyDatabase = do
+  MA.ensureIndex $ (MA.index
+                          collectionName
+                          [ (T.pack $ nameBase 'projectId) =: (M.Int32 1)
+                          , (T.pack $ nameBase 'userId)    =: (M.Int32 1)])
+                      {MA.iUnique = True}
+  MA.ensureIndex $ (MA.index
+                          collectionName
+                          [ (T.pack $ nameBase 'userId)    =: (M.Int32 1)
+                          , (T.pack $ nameBase 'projectId) =: (M.Int32 1)])
+                      {MA.iUnique = True}
   assignments <- listAssignments Nothing Nothing
   return ()
