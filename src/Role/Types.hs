@@ -4,8 +4,6 @@ where
 
 import Data.Data (Typeable)
 
-import qualified Database.MongoDB as M
-
 data RoleCreateRequest = RoleCreateRequest
                           { description :: Maybe String
                           , name        :: String

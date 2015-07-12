@@ -2,8 +2,8 @@
 module Domain
 where
 
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), Object)
-import Data.Aeson.Types (object, (.=), Value(..))
+import Data.Aeson (Value(..))
+import Data.Aeson.Types (object, (.=))
 import Data.Vector (fromList)
 
 import qualified Model.Domain as MD

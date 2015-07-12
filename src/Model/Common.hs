@@ -4,7 +4,7 @@ where
 import Common.Database (idF, inC)
 import Control.Monad (forM)
 
-import Data.Bson ((=:), ObjectId)
+import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..))
 import Data.List.Split (chunksOf)
 

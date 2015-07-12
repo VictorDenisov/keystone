@@ -4,8 +4,6 @@ where
 
 import Data.Data (Typeable)
 
-import qualified Database.MongoDB as M
-
 data ProjectCreateRequest = ProjectCreateRequest
                           { description :: Maybe String
                           , domainId    :: Maybe String
