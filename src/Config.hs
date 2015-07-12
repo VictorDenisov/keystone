@@ -1,14 +1,15 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# Language TemplateHaskell #-}
 module Config
 where
 
-import Common (loggerName)
+import Control.Exception (catch, SomeException)
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Aeson.Types (typeMismatch)
 import Data.Yaml (decodeFile)
 import Language.Haskell.TH.Syntax (nameBase)
-import System.Log.Logger (Priority(..), errorM)
+import System.Log.Logger (Priority(NOTICE))
 import Text.Read (readMaybe)
 
 import qualified Data.Text as T
@@ -49,7 +50,7 @@ defaultConfig =
                               { dbHost = "localhost"
                               , dbPort = 27017
                               }
-    , logLevel              = WARNING
+    , logLevel              = NOTICE
     , serverType            = Plain
     , verifyTokenCollection = True
     }
@@ -57,12 +58,12 @@ defaultConfig =
 
 readConfig :: IO KeystoneConfig
 readConfig = do
-  mConf <- decodeFile confFileName
+  mConf <- catch (decodeFile confFileName) $ \(e::SomeException) ->
+    return $ Just defaultConfig
   case mConf of
     Just conf -> return conf
     Nothing   -> do
-      errorM loggerName $ "Failed to parse config file: " ++ confFileName ++ ". Using default values."
-      return defaultConfig
+      fail $ "Failed to parse existing config file. Please verify the syntax and mandatory values."
 
 instance ToJSON ServerType where
   toJSON t = String $ T.pack $ show t
