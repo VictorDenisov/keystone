@@ -412,6 +412,8 @@ verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do
   MP.verifyDatabase
   liftIO $ noticeM loggerName "Verifying service collection"
   MS.verifyDatabase
+  liftIO $ noticeM loggerName "Verifying assignment collection"
+  MA.verifyDatabase
   when verifyTokenCollection $ do
     liftIO $ noticeM loggerName "Verifying token collection"
     MT.verifyDatabase

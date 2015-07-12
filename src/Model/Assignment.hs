@@ -101,3 +101,8 @@ addAssignment :: Assignment -> M.Action IO M.ObjectId
 addAssignment a = do
   M.ObjId aid <- M.insert collectionName $ toBson a
   return aid
+
+verifyDatabase :: M.Action IO ()
+verifyDatabase = do
+  assignments <- listAssignments Nothing Nothing
+  return ()
