@@ -22,7 +22,7 @@ import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
 import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
-                                 , status404, status409, statusCode)
+                                 , status404, statusCode)
 import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
@@ -336,9 +336,6 @@ application policy config = do
         NotFound -> do
           S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
           S.status status404
-        Busy     -> do
-          S.json $ E.conflict $ "The user " ++ (show uid) ++ " has a role assigned. Please remove the role assignment first."
-          S.status status409
   S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy A.ListProjectsForUser token (A.UserId uid) $ do

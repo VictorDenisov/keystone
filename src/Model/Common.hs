@@ -20,7 +20,6 @@ newtype ProjectId = ProjectId M.ObjectId
 
 data OpStatus = Success
               | NotFound
-              | Busy -- TODO Remove it
               | Duplicate String -- What field was duplicate
                 deriving Show
 
