@@ -395,9 +395,9 @@ application policy config = do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
     A.authorize policy A.ListRoleAssignments token A.EmptyResource $ do
-      roles <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
+      assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
       S.status status200
-      with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
+      with_host_url config $ MA.produceAssignmentsReply assignments -- TODO base url should be revised here filters should be provided
 
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do
