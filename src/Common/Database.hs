@@ -6,19 +6,15 @@ where
 
 import Common (loggerName)
 import Config (Database(..))
-import Control.Applicative (Applicative)
-import Control.Exception (bracket)
-import Control.Monad.Base (MonadBase)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.Trans.Resource (ResourceT, runResourceT, allocate, release, MonadResource, MonadBaseControl, MonadThrow)
+import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.Types (typeMismatch)
 import Data.Text (Text)
 import Language.Haskell.TH.Syntax (nameBase)
-import System.IO.Error ( catchIOError, ioError, userError
-                       , ioeGetErrorType, ioeGetLocation, ioeGetErrorString)
-import System.Log.Logger (errorM, infoM)
+import System.IO.Error (catchIOError, ioeGetErrorString)
+import System.Log.Logger (infoM)
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M

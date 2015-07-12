@@ -77,10 +77,17 @@ idxDocument M.Index{..} db = [
 	"unique" =: iUnique,
 	"dropDups" =: iDropDups ]
 
+listTokens :: M.Action IO [Token]
+listTokens = do
+  cursor <- M.find $ M.select [] collectionName
+  docs <- M.rest cursor
+  mapM fromBson docs
+
 verifyDatabase :: M.Action IO ()
 verifyDatabase = do
   M.insert_ "system.indexes" . (\db -> (idxDocument idx db) ++ ["expireAfterSeconds" =: (M.Int32 0)]) =<< M.thisDatabase
-  --listTokens
+  tokens <- listTokens
+  return ()
   where idx = (MA.index
                     collectionName
                     [(T.pack $ nameBase 'expiresAt) =: (M.Int32 1)])

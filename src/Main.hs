@@ -1,13 +1,14 @@
 {-# Language BangPatterns #-}
 {-# Language DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# Language TemplateHaskell #-}
 module Main
 where
 
 import Common (loggerName, ScottyM, ActionM)
-import Config (readConfig, KeystoneConfig(..), Database(..), ServerType(..))
+import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
 import Control.Monad.IO.Class (MonadIO(..))
@@ -69,7 +70,7 @@ main = do
   !policy <- A.loadPolicy
   -- ^ bang pattern is because we want to know if the policy is correct now
   -- ^ we need the evaluation to happen immediatelly
-  verifyDatabase $ database config
+  verifyDatabase config
 
   app <- S.scottyAppT id id (application policy config)
   let settings = tlsSettings
@@ -401,8 +402,8 @@ application policy config = do
       S.status status200
       with_host_url config $ MA.produceAssignmentsReply roles -- TODO base url should be revised here
 
-verifyDatabase :: Database -> IO ()
-verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
+verifyDatabase :: KeystoneConfig -> IO ()
+verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do
   liftIO $ noticeM loggerName "Verifying user collection"
   MU.verifyDatabase
   liftIO $ noticeM loggerName "Verifying role collection"
@@ -411,8 +412,9 @@ verifyDatabase dbConf = liftIO $ CD.withDB dbConf $ do
   MP.verifyDatabase
   liftIO $ noticeM loggerName "Verifying service collection"
   MS.verifyDatabase
-  liftIO $ noticeM loggerName "Verifying token collection"
-  MT.verifyDatabase
+  when verifyTokenCollection $ do
+    liftIO $ noticeM loggerName "Verifying token collection"
+    MT.verifyDatabase
 
 logRequestResponse :: Middleware
 logRequestResponse app request responder = do

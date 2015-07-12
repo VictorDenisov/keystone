@@ -14,14 +14,15 @@ import Text.Read (readMaybe)
 import qualified Data.Text as T
 
 data KeystoneConfig = KeystoneConfig
-                    { adminToken      :: String
-                    , certificateFile :: FilePath -- TLS runner checks if this file exists
-                    , keyFile         :: FilePath -- TLS runner checks if this file exists
-                    , port            :: Int      -- Port won't bind if it's busy
-                    , endpoint        :: Maybe String
-                    , database        :: Database
-                    , logLevel        :: Priority
-                    , serverType      :: ServerType
+                    { adminToken            :: String
+                    , certificateFile       :: FilePath -- TLS runner checks if this file exists
+                    , keyFile               :: FilePath -- TLS runner checks if this file exists
+                    , port                  :: Int      -- Port won't bind if it's busy
+                    , endpoint              :: Maybe String
+                    , database              :: Database
+                    , logLevel              :: Priority
+                    , serverType            :: ServerType
+                    , verifyTokenCollection :: Bool
                     }
 
 data Database = Database
@@ -39,17 +40,18 @@ confFileName = "keystone.conf"
 defaultConfig :: KeystoneConfig
 defaultConfig =
   KeystoneConfig
-    { adminToken      = "ADMIN_TOKEN"
-    , certificateFile = "server.crt"
-    , keyFile         = "server.key"
-    , port            = defaultPort
-    , endpoint        = Nothing
-    , database        = Database
-                      { dbHost = "localhost"
-                      , dbPort = 27017
-                      }
-    , logLevel        = WARNING
-    , serverType      = Plain
+    { adminToken            = "ADMIN_TOKEN"
+    , certificateFile       = "server.crt"
+    , keyFile               = "server.key"
+    , port                  = defaultPort
+    , endpoint              = Nothing
+    , database              = Database
+                              { dbHost = "localhost"
+                              , dbPort = 27017
+                              }
+    , logLevel              = WARNING
+    , serverType            = Plain
+    , verifyTokenCollection = True
     }
   where defaultPort = 35357
 
