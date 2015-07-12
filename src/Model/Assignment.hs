@@ -72,7 +72,6 @@ listAssignments mPid mUid = do
   cur <- M.find $ M.select (projectFilter ++ userFilter) collectionName
   docs <- M.rest cur
   assignments <- mapM fromBson docs
-  -- TODO optimize it for the case when project or user are not null
   let roleIds    = map ((\(MR.RoleId    rid) -> rid) . roleId)    assignments
   let userIds    = map ((\(MU.UserId    uid) -> uid) . userId)    assignments
   let projectIds = map ((\(MP.ProjectId pid) -> pid) . projectId) assignments
