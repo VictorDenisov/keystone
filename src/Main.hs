@@ -23,7 +23,7 @@ import Model.Common (OpStatus(..))
 import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, statusCode)
-import Network.Wai (Middleware)
+import Network.Wai (Middleware, rawQueryString)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
@@ -39,6 +39,7 @@ import Version (apiV3Reply, apiVersions)
 
 import qualified Auth as A
 import qualified Common.Database as CD
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text.Lazy as TL
 import qualified Database.MongoDB as M
 import qualified Domain as D
@@ -392,12 +393,13 @@ application policy config = do
           S.status status200
           with_host_url config $ MR.produceRoleReply role
   S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
+    queryString <- BS.unpack <$> rawQueryString <$> S.request
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
     A.authorize policy A.ListRoleAssignments token A.EmptyResource $ do
       assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
       S.status status200
-      with_host_url config $ MA.produceAssignmentsReply assignments -- TODO base url should be revised here filters should be provided
+      with_host_url config $ MA.produceAssignmentsReply assignments queryString
 
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do
