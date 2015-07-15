@@ -63,11 +63,11 @@ produceRoleReply :: Role -> String -> Value
 produceRoleReply role baseUrl
       = object [ "role" .= produceRoleJson role baseUrl ]
 
-produceRolesReply :: [Role] -> String -> Value
-produceRolesReply roles baseUrl
+produceRolesReply :: [Role] -> String -> String -> String -> Value
+produceRolesReply roles pathString queryString baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/roles")
+                                  , "self"     .= (baseUrl ++ pathString ++ queryString)
                                   ]
                           )
              , "roles" .= rolesEntry

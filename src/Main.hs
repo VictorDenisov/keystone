@@ -23,7 +23,7 @@ import Model.Common (OpStatus(..))
 import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, statusCode)
-import Network.Wai (Middleware, rawQueryString)
+import Network.Wai (Middleware, rawPathInfo, rawQueryString)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
@@ -272,12 +272,14 @@ application policy config = do
           S.status status200
           with_host_url config $ MP.produceProjectReply project
   S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireToken config $ \token -> do
+    pathString <- BS.unpack <$> rawPathInfo <$> S.request
+    queryString <- BS.unpack <$> rawQueryString <$> S.request
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy A.ListRolesForProjectUser token A.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
       S.status status200
-      with_host_url config $ MR.produceRolesReply roles -- TODO base url should be revised here
+      with_host_url config $ MR.produceRolesReply roles pathString queryString
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
@@ -376,11 +378,13 @@ application policy config = do
           S.status status201
           with_host_url config $ MR.produceRoleReply role
   S.get "/v3/roles" $ A.requireToken config $ \token -> do
+    pathString <- BS.unpack <$> rawPathInfo <$> S.request
+    queryString <- BS.unpack <$> rawQueryString <$> S.request
     roleName <- parseMaybeString "name"
     A.authorize policy A.ListRoles token A.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
       S.status status200
-      with_host_url config $ MR.produceRolesReply roles
+      with_host_url config $ MR.produceRolesReply roles pathString queryString
   S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy A.ShowRoleDetails token A.EmptyResource $ do
