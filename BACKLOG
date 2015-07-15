@@ -9,3 +9,5 @@ move produce reply functions one level up
 
 requireAuth opens a separate connection to the database. Make internal action reuse
 the connection.
+
+Add query string to all actions with filters.

@@ -65,11 +65,11 @@ produceUserReply :: User -> String -> Value
 produceUserReply (user@User{..}) baseUrl
   = object [ "user" .= produceUserJson user baseUrl ]
 
-produceUsersReply :: [User] -> String -> Value
-produceUsersReply users baseUrl
+produceUsersReply :: [User] -> String -> String -> Value
+produceUsersReply users queryString baseUrl
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
-                                , "self"     .= (baseUrl ++ "/v3/users")
+                                , "self"     .= (baseUrl ++ "/v3/users" ++ queryString)
                                 ]
                         )
            , "users" .= usersEntry
