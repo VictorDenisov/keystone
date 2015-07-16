@@ -74,11 +74,11 @@ produceProjectReply :: Project -> String -> Value
 produceProjectReply project baseUrl
       = object [ "project" .= produceProjectJson project baseUrl ]
 
-produceProjectsReply :: [Project] -> String -> String -> Value
-produceProjectsReply projects queryString baseUrl
+produceProjectsReply :: [Project] -> String -> String -> String -> Value
+produceProjectsReply projects pathString queryString baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/projects" ++ queryString)
+                                  , "self"     .= (baseUrl ++ pathString ++ queryString)
                                   ]
                           )
              , "projects" .= projectsEntry
