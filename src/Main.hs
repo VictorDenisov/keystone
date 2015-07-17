@@ -299,12 +299,11 @@ application policy config = do
           S.status status201
           with_host_url config $ MU.produceUserReply user
   S.get "/v3/users" $ A.requireToken config $ \token -> do
-    queryString <- BS.unpack <$> rawQueryString <$> S.request
     userName <- parseMaybeString "name"
     A.authorize policy A.ListUsers token A.EmptyResource $ do
       users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
       S.status status200
-      with_host_url config $ MU.produceUsersReply users queryString
+      with_host_url config $ MU.produceUsersReply users
   S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy A.ShowUserDetails token A.EmptyResource $ do

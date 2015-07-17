@@ -66,11 +66,11 @@ produceUserReply :: User -> UrlBasedValue
 produceUserReply (user@User{..}) (UrlInfo {baseUrl})
   = object [ "user" .= produceUserJson user baseUrl ]
 
-produceUsersReply :: [User] -> String -> UrlBasedValue
-produceUsersReply users queryString (UrlInfo {baseUrl})
+produceUsersReply :: [User] -> UrlBasedValue
+produceUsersReply users (UrlInfo {baseUrl, query})
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
-                                , "self"     .= (baseUrl ++ "/v3/users" ++ queryString)
+                                , "self"     .= (baseUrl ++ "/v3/users" ++ query)
                                 ]
                         )
            , "users" .= usersEntry
