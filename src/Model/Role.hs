@@ -64,11 +64,11 @@ produceRoleReply :: Role -> UrlBasedValue
 produceRoleReply role (UrlInfo {baseUrl})
       = object [ "role" .= produceRoleJson role baseUrl ]
 
-produceRolesReply :: [Role] -> String -> String -> UrlBasedValue
-produceRolesReply roles pathString queryString (UrlInfo {baseUrl})
+produceRolesReply :: [Role] -> UrlBasedValue
+produceRolesReply roles (UrlInfo {baseUrl, path, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ pathString ++ queryString)
+                                  , "self"     .= (baseUrl ++ path ++ query)
                                   ]
                           )
              , "roles" .= rolesEntry
