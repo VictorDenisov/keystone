@@ -8,7 +8,7 @@ module Model.Service
 where
 
 import Common ( capitalize, dropOptions, fromObject, skipTickOptions
-              , skipUnderscoreOptions, (<.>))
+              , skipUnderscoreOptions, (<.>), UrlBasedValue)
 import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
                        , (+++))
 import Control.Applicative ((<$>))
@@ -107,7 +107,7 @@ produceServiceJson (s@Service{_id}) baseUrl
         $ delete (T.pack $ nameBase 'endpoints)
         $ fromObject $ toJSON s
 
-produceServiceReply :: Service -> String -> Value
+produceServiceReply :: Service -> UrlBasedValue
 produceServiceReply (service@Service{..}) baseUrl
       = object [ "service" .= produceServiceJson service baseUrl ]
 
@@ -119,11 +119,11 @@ produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
         $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show eid)) ])
         $ fromObject $ toJSON s
 
-produceEndpointReply :: Endpoint -> M.ObjectId -> String -> Value
+produceEndpointReply :: Endpoint -> M.ObjectId -> UrlBasedValue
 produceEndpointReply (endpoint@Endpoint{..}) serviceId baseUrl
       = object [ "endpoint" .= produceEndpointJson endpoint serviceId baseUrl ]
 
-produceEndpointsReply :: [(M.ObjectId, Endpoint)] -> String -> Value
+produceEndpointsReply :: [(M.ObjectId, Endpoint)] -> UrlBasedValue
 produceEndpointsReply endpoints baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
@@ -135,7 +135,7 @@ produceEndpointsReply endpoints baseUrl
   where
     endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
 
-produceServicesReply :: [Service] -> String -> String -> Value
+produceServicesReply :: [Service] -> String -> UrlBasedValue
 produceServicesReply services queryString baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null

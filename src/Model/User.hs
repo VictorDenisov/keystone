@@ -7,7 +7,7 @@
 module Model.User
 where
 
-import Common (fromObject, skipUnderscoreOptions)
+import Common (fromObject, skipUnderscoreOptions, UrlBasedValue)
 import Common.Database (affectedDocs, idF, setC)
 
 import Control.Applicative ((<$>))
@@ -61,11 +61,11 @@ produceUserJson (u@User{..}) baseUrl
     $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/users/" ++ (show _id)) ])
     $ fromObject $ toJSON u
 
-produceUserReply :: User -> String -> Value
+produceUserReply :: User -> UrlBasedValue
 produceUserReply (user@User{..}) baseUrl
   = object [ "user" .= produceUserJson user baseUrl ]
 
-produceUsersReply :: [User] -> String -> String -> Value
+produceUsersReply :: [User] -> String -> UrlBasedValue
 produceUsersReply users queryString baseUrl
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null

@@ -59,6 +59,8 @@ capitalize s = (toUpper $ head s) : tail s
 fromObject :: Value -> Object
 fromObject (Object o) = o
 
+type UrlBasedValue = String -> Value
+
 instance Parsable ObjectId where
   parseParam t = maybe
                   (Left "Failed to parse object id from argument")

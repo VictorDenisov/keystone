@@ -7,7 +7,7 @@
 module Main
 where
 
-import Common (loggerName, ScottyM, ActionM)
+import Common (loggerName, ScottyM, ActionM, UrlBasedValue)
 import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
@@ -16,7 +16,7 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Except (runExceptT, MonadError(throwError))
 import Control.Monad.Trans.Resource (runResourceT, allocate, release)
-import Data.Aeson.Types (Value, FromJSON(..))
+import Data.Aeson.Types (FromJSON(..))
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
@@ -481,7 +481,7 @@ getBaseUrl config = do
         Just h -> return h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
 
-with_host_url :: KeystoneConfig -> (String -> Value) -> ActionM ()
+with_host_url :: KeystoneConfig -> UrlBasedValue -> ActionM ()
 with_host_url config v = do
   url <- getBaseUrl config
   S.json $ v url

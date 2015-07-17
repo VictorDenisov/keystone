@@ -6,7 +6,7 @@
 module Model.Project
 where
 
-import Common (fromObject, skipUnderscoreOptions)
+import Common (fromObject, skipUnderscoreOptions, UrlBasedValue)
 import Common.Database (idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
@@ -70,11 +70,11 @@ produceProjectJson (project@Project{..}) baseUrl
         $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show _id)) ])
         $ fromObject $ toJSON project
 
-produceProjectReply :: Project -> String -> Value
+produceProjectReply :: Project -> UrlBasedValue
 produceProjectReply project baseUrl
       = object [ "project" .= produceProjectJson project baseUrl ]
 
-produceProjectsReply :: [Project] -> String -> String -> String -> Value
+produceProjectsReply :: [Project] -> String -> String -> UrlBasedValue
 produceProjectsReply projects pathString queryString baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null

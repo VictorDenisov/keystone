@@ -5,6 +5,8 @@
 module Model.Assignment
 where
 
+import Common (UrlBasedValue)
+
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
 import Data.Bson ((=:))
@@ -45,7 +47,7 @@ produceAssignmentJson (Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId 
                , "links" .= (object ["assignment" .= (baseUrl ++ "/v3/projects/" ++ (show pid) ++ "/users/" ++ (show uid) ++ "/roles/" ++ (show rid))])
                ]
 
-produceAssignmentsReply :: [Assignment] -> String -> String -> Value
+produceAssignmentsReply :: [Assignment] -> String -> UrlBasedValue
 produceAssignmentsReply assignments queryString baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null

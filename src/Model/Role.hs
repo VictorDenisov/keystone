@@ -7,7 +7,7 @@
 module Model.Role
 where
 
-import Common (fromObject, skipUnderscoreOptions)
+import Common (fromObject, skipUnderscoreOptions, UrlBasedValue)
 import Common.Database (idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
@@ -59,11 +59,11 @@ produceRoleJson (role@Role{..}) baseUrl
         $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/roles/" ++ (show _id)) ])
         $ fromObject $ toJSON role
 
-produceRoleReply :: Role -> String -> Value
+produceRoleReply :: Role -> UrlBasedValue
 produceRoleReply role baseUrl
       = object [ "role" .= produceRoleJson role baseUrl ]
 
-produceRolesReply :: [Role] -> String -> String -> String -> Value
+produceRolesReply :: [Role] -> String -> String -> UrlBasedValue
 produceRolesReply roles pathString queryString baseUrl
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
