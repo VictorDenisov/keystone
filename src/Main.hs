@@ -393,13 +393,12 @@ application policy config = do
           S.status status200
           with_host_url config $ MR.produceRoleReply role
   S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
-    queryString <- BS.unpack <$> rawQueryString <$> S.request
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
     A.authorize policy A.ListRoleAssignments token A.EmptyResource $ do
       assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
       S.status status200
-      with_host_url config $ MA.produceAssignmentsReply assignments queryString
+      with_host_url config $ MA.produceAssignmentsReply assignments
 
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do

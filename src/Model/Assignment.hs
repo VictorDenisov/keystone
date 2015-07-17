@@ -47,11 +47,11 @@ produceAssignmentJson (Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId 
                , "links" .= (object ["assignment" .= (baseUrl ++ "/v3/projects/" ++ (show pid) ++ "/users/" ++ (show uid) ++ "/roles/" ++ (show rid))])
                ]
 
-produceAssignmentsReply :: [Assignment] -> String -> UrlBasedValue
-produceAssignmentsReply assignments queryString (UrlInfo {baseUrl})
+produceAssignmentsReply :: [Assignment] -> UrlBasedValue
+produceAssignmentsReply assignments (UrlInfo {baseUrl, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/role_assignments"++ queryString)
+                                  , "self"     .= (baseUrl ++ "/v3/role_assignments" ++ query)
                                   ]
                           )
              , "role_assignments" .= assignmentsEntry
