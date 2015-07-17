@@ -122,23 +122,20 @@ application policy config = do
   S.addroute GET "/v3/auth/tokens" $ A.requireToken config $ \token -> do
     mSubjectToken <- S.header hXSubjectToken
     baseUrl <- getBaseUrl config
-    res <- runResourceT $ do
-      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      runExceptT $ do
-        when (isNothing mSubjectToken) $ throwError "Could not find token, ."
-        let mst = readMaybe $ TL.unpack $ fromJust mSubjectToken
+    res <- runExceptT $ do
+      when (isNothing mSubjectToken) $ throwError "Could not find token, ."
+      let mst = readMaybe $ TL.unpack $ fromJust mSubjectToken
 
-        when (isNothing mst) $ throwError "Token is not an object id"
-        let st = fromJust mst
-        mToken <- liftIO $ CD.runDB pipe $ MT.findTokenById st
+      when (isNothing mst) $ throwError "Token is not an object id"
+      let st = fromJust mst
+      mToken <- liftIO $ CD.withDB (database config) $ MT.findTokenById st
 
-        when (isNothing mToken) $ throwError $ "Could not find token, " ++ (show st) ++ "."
-        let token = fromJust mToken
-        currentTime <- liftIO getCurrentTime
+      when (isNothing mToken) $ throwError $ "Could not find token, " ++ (show st) ++ "."
+      let token = fromJust mToken
+      currentTime <- liftIO getCurrentTime
 
-        when (currentTime > (MT.expiresAt token)) $ throwError $ "Could not find token, " ++ (show st) ++ "."
-        lift $ release releaseKey
-        return token
+      when (currentTime > (MT.expiresAt token)) $ throwError $ "Could not find token, " ++ (show st) ++ "."
+      return token
 
     case res of
       Left errorMessage -> do
