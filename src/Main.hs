@@ -483,5 +483,7 @@ getBaseUrl config = do
 
 with_host_url :: KeystoneConfig -> UrlBasedValue -> ActionM ()
 with_host_url config v = do
+  pathString <- BS.unpack <$> rawPathInfo <$> S.request
+  queryString <- BS.unpack <$> rawQueryString <$> S.request
   url <- getBaseUrl config
-  S.json $ v (UrlInfo url "" "")
+  S.json $ v (UrlInfo url pathString queryString)
