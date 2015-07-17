@@ -67,17 +67,16 @@ produceUserReply (user@User{..}) (UrlInfo {baseUrl})
   = object [ "user" .= produceUserJson user baseUrl ]
 
 produceUsersReply :: [User] -> UrlBasedValue
-produceUsersReply users (UrlInfo {baseUrl, query})
+produceUsersReply users (UrlInfo {baseUrl, path, query})
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
-                                , "self"     .= (baseUrl ++ "/v3/users" ++ query)
+                                , "self"     .= (baseUrl ++ path ++ query)
                                 ]
                         )
            , "users" .= usersEntry
            ]
   where
     usersEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceUserJson users
-
 
 createUser :: User -> M.Action IO (Either E.Error M.ObjectId)
 createUser u = (do

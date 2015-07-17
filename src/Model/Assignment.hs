@@ -48,10 +48,10 @@ produceAssignmentJson (Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId 
                ]
 
 produceAssignmentsReply :: [Assignment] -> UrlBasedValue
-produceAssignmentsReply assignments (UrlInfo {baseUrl, query})
+produceAssignmentsReply assignments (UrlInfo {baseUrl, path, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/role_assignments" ++ query)
+                                  , "self"     .= (baseUrl ++ path ++ query)
                                   ]
                           )
              , "role_assignments" .= assignmentsEntry
