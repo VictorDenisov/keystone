@@ -124,10 +124,10 @@ produceEndpointReply (endpoint@Endpoint{..}) serviceId (UrlInfo {baseUrl})
       = object [ "endpoint" .= produceEndpointJson endpoint serviceId baseUrl ]
 
 produceEndpointsReply :: [(M.ObjectId, Endpoint)] -> UrlBasedValue
-produceEndpointsReply endpoints (UrlInfo {baseUrl})
+produceEndpointsReply endpoints (UrlInfo {baseUrl, path, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/endpoints")
+                                  , "self"     .= (baseUrl ++ path ++ query)
                                   ]
                           )
              , "endpoints" .= endpointsEntry
@@ -136,10 +136,10 @@ produceEndpointsReply endpoints (UrlInfo {baseUrl})
     endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
 
 produceServicesReply :: [Service] -> UrlBasedValue
-produceServicesReply services (UrlInfo {baseUrl, query})
+produceServicesReply services (UrlInfo {baseUrl, path, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/services" ++ query)
+                                  , "self"     .= (baseUrl ++ path ++ query)
                                   ]
                           )
              , "services" .= servicesEntry
