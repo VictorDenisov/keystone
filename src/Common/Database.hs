@@ -38,9 +38,6 @@ withDB dbConf f = runResourceT $ do
   v <- lift $ runDB pipe f
   release releaseKey
   return v
-  where
-    host = dbHost dbConf
-    port = dbPort dbConf
 
 runDB :: MonadIO m => M.Pipe -> M.Action m a -> m a
 runDB p f = M.access p M.master dbName f
