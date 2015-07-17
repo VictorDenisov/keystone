@@ -256,12 +256,10 @@ application policy config = do
           with_host_url config $ MP.produceProjectReply project
   S.get "/v3/projects" $ A.requireToken config $ \token -> do
     projectName <- parseMaybeString "name"
-    pathString <- BS.unpack <$> rawPathInfo <$> S.request
-    queryString <- BS.unpack <$> rawQueryString <$> S.request
     A.authorize policy A.ListProjects token A.EmptyResource $ do
       projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
       S.status status200
-      with_host_url config $ MP.produceProjectsReply projects pathString queryString
+      with_host_url config $ MP.produceProjectsReply projects
   S.get "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     A.authorize policy A.ShowProjectDetails token A.EmptyResource $ do
@@ -344,11 +342,10 @@ application policy config = do
           S.status status404
   S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
-    pathString <- BS.unpack <$> rawPathInfo <$> S.request
     A.authorize policy A.ListProjectsForUser token (A.UserId uid) $ do
       projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
       S.status status200
-      with_host_url config $ MP.produceProjectsReply projects pathString ""
+      with_host_url config $ MP.produceProjectsReply projects
   S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: U.ChangePasswordRequest) <- parseRequest
