@@ -1,6 +1,9 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Domain
 where
+
+import Common (UrlBasedValue, UrlInfo(..))
 
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
@@ -20,12 +23,12 @@ produceDomainJson domain baseUrl
            , "name"        .= MD.defaultDomainName
            ]
 
-produceDomainReply :: MD.Domain -> String -> Value
-produceDomainReply domain baseUrl
+produceDomainReply :: MD.Domain -> UrlBasedValue
+produceDomainReply domain (UrlInfo {baseUrl})
       = object [ "domain" .= produceDomainJson domain baseUrl ]
 
-produceDomainsReply :: [MD.Domain] -> String -> Value
-produceDomainsReply domains baseUrl
+produceDomainsReply :: [MD.Domain] -> UrlBasedValue
+produceDomainsReply domains (UrlInfo {baseUrl})
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
                                 , "self"     .= (baseUrl ++ "/v3/domains")

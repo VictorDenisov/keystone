@@ -8,7 +8,7 @@ module Model.Service
 where
 
 import Common ( capitalize, dropOptions, fromObject, skipTickOptions
-              , skipUnderscoreOptions, (<.>), UrlBasedValue)
+              , skipUnderscoreOptions, (<.>), UrlBasedValue, UrlInfo(..))
 import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
                        , (+++))
 import Control.Applicative ((<$>))
@@ -108,7 +108,7 @@ produceServiceJson (s@Service{_id}) baseUrl
         $ fromObject $ toJSON s
 
 produceServiceReply :: Service -> UrlBasedValue
-produceServiceReply (service@Service{..}) baseUrl
+produceServiceReply (service@Service{..}) (UrlInfo {baseUrl})
       = object [ "service" .= produceServiceJson service baseUrl ]
 
 produceEndpointJson :: Endpoint -> M.ObjectId -> String -> Value
@@ -120,11 +120,11 @@ produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
         $ fromObject $ toJSON s
 
 produceEndpointReply :: Endpoint -> M.ObjectId -> UrlBasedValue
-produceEndpointReply (endpoint@Endpoint{..}) serviceId baseUrl
+produceEndpointReply (endpoint@Endpoint{..}) serviceId (UrlInfo {baseUrl})
       = object [ "endpoint" .= produceEndpointJson endpoint serviceId baseUrl ]
 
 produceEndpointsReply :: [(M.ObjectId, Endpoint)] -> UrlBasedValue
-produceEndpointsReply endpoints baseUrl
+produceEndpointsReply endpoints (UrlInfo {baseUrl})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
                                   , "self"     .= (baseUrl ++ "/v3/endpoints")
@@ -136,7 +136,7 @@ produceEndpointsReply endpoints baseUrl
     endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
 
 produceServicesReply :: [Service] -> String -> UrlBasedValue
-produceServicesReply services queryString baseUrl
+produceServicesReply services queryString (UrlInfo {baseUrl})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
                                   , "self"     .= (baseUrl ++ "/v3/services" ++ queryString)

@@ -1,13 +1,14 @@
+{-# Language DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language TemplateHaskell #-}
-{-# Language DeriveDataTypeable #-}
 module Model.User
 where
 
-import Common (fromObject, skipUnderscoreOptions, UrlBasedValue)
+import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
 import Common.Database (affectedDocs, idF, setC)
 
 import Control.Applicative ((<$>))
@@ -62,11 +63,11 @@ produceUserJson (u@User{..}) baseUrl
     $ fromObject $ toJSON u
 
 produceUserReply :: User -> UrlBasedValue
-produceUserReply (user@User{..}) baseUrl
+produceUserReply (user@User{..}) (UrlInfo {baseUrl})
   = object [ "user" .= produceUserJson user baseUrl ]
 
 produceUsersReply :: [User] -> String -> UrlBasedValue
-produceUsersReply users queryString baseUrl
+produceUsersReply users queryString (UrlInfo {baseUrl})
   = object [ "links" .= (object [ "next"     .= Null
                                 , "previous" .= Null
                                 , "self"     .= (baseUrl ++ "/v3/users" ++ queryString)

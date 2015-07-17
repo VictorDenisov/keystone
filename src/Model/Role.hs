@@ -1,5 +1,6 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -7,7 +8,7 @@
 module Model.Role
 where
 
-import Common (fromObject, skipUnderscoreOptions, UrlBasedValue)
+import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
 import Common.Database (idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
@@ -60,11 +61,11 @@ produceRoleJson (role@Role{..}) baseUrl
         $ fromObject $ toJSON role
 
 produceRoleReply :: Role -> UrlBasedValue
-produceRoleReply role baseUrl
+produceRoleReply role (UrlInfo {baseUrl})
       = object [ "role" .= produceRoleJson role baseUrl ]
 
 produceRolesReply :: [Role] -> String -> String -> UrlBasedValue
-produceRolesReply roles pathString queryString baseUrl
+produceRolesReply roles pathString queryString (UrlInfo {baseUrl})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
                                   , "self"     .= (baseUrl ++ pathString ++ queryString)

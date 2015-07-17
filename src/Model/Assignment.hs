@@ -1,11 +1,12 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Model.Assignment
 where
 
-import Common (UrlBasedValue)
+import Common (UrlBasedValue, UrlInfo(..))
 
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
@@ -27,7 +28,6 @@ import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.User as MU
 
-
 collectionName :: M.Collection
 collectionName = "assignment"
 
@@ -48,7 +48,7 @@ produceAssignmentJson (Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId 
                ]
 
 produceAssignmentsReply :: [Assignment] -> String -> UrlBasedValue
-produceAssignmentsReply assignments queryString baseUrl
+produceAssignmentsReply assignments queryString (UrlInfo {baseUrl})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
                                   , "self"     .= (baseUrl ++ "/v3/role_assignments"++ queryString)

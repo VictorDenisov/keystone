@@ -1,12 +1,13 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Model.Project
 where
 
-import Common (fromObject, skipUnderscoreOptions, UrlBasedValue)
+import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
 import Common.Database (idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
@@ -71,11 +72,11 @@ produceProjectJson (project@Project{..}) baseUrl
         $ fromObject $ toJSON project
 
 produceProjectReply :: Project -> UrlBasedValue
-produceProjectReply project baseUrl
+produceProjectReply project (UrlInfo {baseUrl})
       = object [ "project" .= produceProjectJson project baseUrl ]
 
 produceProjectsReply :: [Project] -> String -> String -> UrlBasedValue
-produceProjectsReply projects pathString queryString baseUrl
+produceProjectsReply projects pathString queryString (UrlInfo {baseUrl})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
                                   , "self"     .= (baseUrl ++ pathString ++ queryString)

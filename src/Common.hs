@@ -59,7 +59,13 @@ capitalize s = (toUpper $ head s) : tail s
 fromObject :: Value -> Object
 fromObject (Object o) = o
 
-type UrlBasedValue = String -> Value
+data UrlInfo = UrlInfo
+             { baseUrl :: String
+             , path    :: String
+             , query   :: String
+             }
+
+type UrlBasedValue = UrlInfo -> Value
 
 instance Parsable ObjectId where
   parseParam t = maybe

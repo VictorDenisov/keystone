@@ -7,7 +7,7 @@
 module Main
 where
 
-import Common (loggerName, ScottyM, ActionM, UrlBasedValue)
+import Common (loggerName, ScottyM, ActionM, UrlBasedValue, UrlInfo(..))
 import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
@@ -484,4 +484,4 @@ getBaseUrl config = do
 with_host_url :: KeystoneConfig -> UrlBasedValue -> ActionM ()
 with_host_url config v = do
   url <- getBaseUrl config
-  S.json $ v url
+  S.json $ v (UrlInfo url "" "")

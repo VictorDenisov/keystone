@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Version
 ( apiV3Reply
@@ -5,14 +6,15 @@ module Version
 )
 where
 
+import Common (UrlBasedValue, UrlInfo(..))
 import Data.Aeson.Types (object, (.=), Value)
 
 jsonMediaTypeV3 = object [ "base" .= ("application/json" :: String)
                          , "type" .= ("application/vnd.openstack.identity-v3+json" :: String)
                          ]
 
-apiV3Reply :: String -> Value
-apiV3Reply baseUrl = object ["version" .= apiV3Json baseUrl]
+apiV3Reply :: UrlBasedValue
+apiV3Reply (UrlInfo {baseUrl}) = object ["version" .= apiV3Json baseUrl]
 
 apiV3Json :: String -> Value
 apiV3Json baseUrl = object [ "status"  .= ("stable" :: String)
@@ -25,7 +27,7 @@ apiV3Json baseUrl = object [ "status"  .= ("stable" :: String)
                            , "media-types" .= [jsonMediaTypeV3]
                            ]
 
-apiVersions :: String -> Value
-apiVersions baseUrl = object [ "versions"
+apiVersions :: UrlBasedValue
+apiVersions (UrlInfo {baseUrl}) = object [ "versions"
                                   .= ( object
                                           [ "values" .= [ apiV3Json baseUrl ] ] ) ]
