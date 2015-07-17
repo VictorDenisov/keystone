@@ -173,12 +173,11 @@ application policy config = do
       with_host_url config $ MS.produceServiceReply service
   S.get "/v3/services" $ A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
-    queryString <- BS.unpack <$> rawQueryString <$> S.request
     A.authorize policy A.ListServices token A.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
       S.status status200
-      with_host_url config $ MS.produceServicesReply services queryString
+      with_host_url config $ MS.produceServicesReply services
   S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy A.ShowServiceDetails token A.EmptyResource $ do

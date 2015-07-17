@@ -135,11 +135,11 @@ produceEndpointsReply endpoints (UrlInfo {baseUrl})
   where
     endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
 
-produceServicesReply :: [Service] -> String -> UrlBasedValue
-produceServicesReply services queryString (UrlInfo {baseUrl})
+produceServicesReply :: [Service] -> UrlBasedValue
+produceServicesReply services (UrlInfo {baseUrl, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ "/v3/services" ++ queryString)
+                                  , "self"     .= (baseUrl ++ "/v3/services" ++ query)
                                   ]
                           )
              , "services" .= servicesEntry
