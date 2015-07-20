@@ -20,7 +20,7 @@ import Data.Aeson.Types (FromJSON(..))
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
-import Network.HTTP.Types.Method (StdMethod(GET, HEAD))
+import Network.HTTP.Types.Method (StdMethod(HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, statusCode)
 import Network.Wai (Middleware, rawPathInfo, rawQueryString)
@@ -119,7 +119,7 @@ application policy config = do
         Left errorMessage -> lift $ do
           S.json $ E.unauthorized errorMessage
           S.status status401
-  S.addroute GET "/v3/auth/tokens" $ A.requireToken config $ \token -> do
+  S.get "/v3/auth/tokens" $ A.requireToken config $ \token -> do
     mSubjectToken <- S.header hXSubjectToken
     baseUrl <- getBaseUrl config
     res <- runExceptT $ do
