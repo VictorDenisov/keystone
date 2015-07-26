@@ -14,12 +14,16 @@ need to configure openstack services to use only V3 endpoints. Sometimes it's
 not a trivial endeavour. The details of how you can configure every service to
 work with keystone v3 only are below.
 
+Keystone V3 induces some limitations on openstack: horizon can't work with
+domains and identity panel becomes unavailable. It means you need to work with
+identity services using command line.
+
 Port
 ----
 
 This implementation of keystone is listening on port 35357 by default and can
 be changed using configuration file. Several ports at the same time are not
-allowed. So, you don't have port 5000 available by default.
+allowed. So, you don't have port 5000 available by default in addition to 35357.
 
 Domain Support
 --------------
@@ -27,9 +31,10 @@ Domain Support
 Currently domain support is very limited. You have only one default domain
 with the name Default. You can determine default domain's id if you list all
 domains in your keystone. You can specify domains in your requests, but they
-have no effect on replies.
+have no effect on replies and this implementation doesn't take them into
+account.
 
-Only to api endpoints for domains are available. List domains and show domain
+Only two API handlers for domains are available: list domains and show domain
 details.
 
 Groups Support
@@ -85,7 +90,7 @@ implementation.
 
 ### Glance ###
 
-In order to configure glance to use keystone v3 endpoints only you need to add
+In order to configure glance to use keystone v3 endpoints only, you need to add
 these lines to glance.conf file:
 
 > [keystone_authtoken]
