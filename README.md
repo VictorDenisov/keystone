@@ -110,6 +110,38 @@ these lines to glance.conf file:
 Code and Architecture
 =====================
 
+Policy Configuration
+--------------------
+
+Policy is implemented as a separate json file.
+Section identity of the json document describes rules for all actions available
+in the current implementation of keystone. When you start the keystone server it
+verifies that the policy.json file contains rules for all currently implemented
+actions.
+
+Rules in identity section may directly specify how to verify if the user is
+authorized to perform the action or it can reference another rule from the main
+section of the policy file.
+
+Currently there is one built-in rule. It's rule owner. Authorizing code has
+a concept called resource. What exactly the resource is varies from handler to
+handler. All resources implement method is owner. This method verifies if the
+token provided during the authentication is owner of this resource.
+
+At the moment we suggest to use as a resource something that doesn't require an
+extra round trip to DB. For example when we are manipulating user then
+the resource is user id not the whole user because user id is available from the
+request and full user record will require extra round trip to the database. This
+behavior may be changed in future if it turnes out to be absolutely inevitable
+to retrieve the full resource for the authorization.
+
+Also not every handler that works with resources provides authorization function
+with any resource. Currently only several handlers do that. Most of the handlers
+provide authorization function with EmptyResource. Its isOwner function always
+returns true. It was done because we didn't want any extra work for no reason.
+It was implemented this way after Looking at the default policy file for
+keystone.
+
 Meaning of Suffixes
 -------------------
 
