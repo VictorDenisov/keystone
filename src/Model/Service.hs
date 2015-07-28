@@ -5,25 +5,30 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# Language TemplateHaskell #-}
 module Model.Service
-where
+( module Model.Service
+, module Model.Service.Types
+) where
 
 import Common ( capitalize, dropOptions, fromObject, skipTickOptions
               , skipUnderscoreOptions, (<.>), UrlBasedValue, UrlInfo(..))
-import Common.Database ( affectedDocs, pushC, setC, projectC, unwindC, idF
-                       , (+++))
+import Common.Database ( affectedDocs, pullC, pushC, setC, projectC, unwindC
+                       , idF, (+.+))
 import Control.Applicative ((<$>))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (object, (.=), typeMismatch)
-import Data.Bson (Val(..), (=:), ObjectId)
+import Data.Bson (Val(..), (=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
-import Data.Data (Typeable)
 import Data.HashMap.Strict (insert, delete)
+import Data.List (find)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(..))
+
+import Model.Service.Types
+
 import Text.Read (readMaybe)
 
 import qualified Database.MongoDB as M
@@ -32,37 +37,6 @@ import qualified Data.Text as T
 
 collectionName :: M.Collection
 collectionName = "service"
-
-data Service = Service
-             { _id         :: M.ObjectId
-             , description :: Maybe String
-             , enabled     :: Bool
-             , name        :: Maybe String
-             , type'       :: ServiceType
-             , endpoints   :: [Endpoint]
-             } deriving (Show, Read, Eq, Ord, Typeable)
-
-endpointsF = T.pack $ nameBase 'endpoints
-endpointsA = (M.String $ "$" +++ endpointsF) -- endpoints command for aggregation
-
-data ServiceType = Identity
-                 | Compute
-                 | Image
-                 | Volume
-                 | Network
-                   deriving (Show, Read, Eq, Ord, Typeable)
-
-data Endpoint = Endpoint
-              { einterface :: Interface
-              , eurl       :: String
-              , eenabled   :: Bool
-              , eid        :: ObjectId
-              } deriving (Show, Read, Eq, Ord, Typeable)
-
-data Interface = Admin
-               | Internal
-               | Public
-                 deriving (Show, Read, Eq, Ord, Typeable)
 
 instance FromJSON ServiceType where
   parseJSON (String s) = case readMaybe $ capitalize $ T.unpack s of
@@ -96,7 +70,7 @@ instance Val Interface where
   cast' (M.String s) = readMaybe $ capitalize $ T.unpack s
   cast' _ = Nothing
 
-$(deriveBson (drop 1) ''Endpoint)
+$(deriveBson endpointFieldMod ''Endpoint)
 
 $(deriveJSON (dropOptions 1) ''Endpoint)
 
@@ -163,7 +137,7 @@ listServices mName = do
   docs <- M.rest cur
   mapM fromBson docs
 
-findServiceById :: ObjectId -> M.Action IO (Maybe Service)
+findServiceById :: M.ObjectId -> M.Action IO (Maybe Service)
 findServiceById sid = runMaybeT $ do
   mService <- MaybeT $ M.findOne (M.select [idF =: sid] collectionName)
   fromBson mService
@@ -175,7 +149,7 @@ updateService sid serviceUpdate = do
     Left _  -> return Nothing
     Right v -> Just <$> fromBson v
 
-deleteService :: ObjectId -> M.Action IO OpStatus
+deleteService :: M.ObjectId -> M.Action IO OpStatus
 deleteService sid = do
   M.delete $ M.select [idF =: sid] collectionName
   ad <- affectedDocs
@@ -183,9 +157,11 @@ deleteService sid = do
     then return NotFound
     else return Success
 
-addEndpoint :: ObjectId -> Endpoint -> M.Action IO (Maybe M.ObjectId)
+addEndpoint :: M.ObjectId -> Endpoint -> M.Action IO (Maybe M.ObjectId)
 addEndpoint sid endpoint = do
-  M.modify (M.select [idF =: sid] collectionName) [ pushC =: [endpointsF =: (toBson endpoint)] ]
+  M.modify
+    (M.select [idF =: sid] collectionName)
+    [ pushC =: [endpointsF =: (toBson endpoint)] ]
   count <- affectedDocs
   return $
     if count == 1
@@ -201,6 +177,23 @@ listEndpoints = do
   endpoints <- mapM fromBson eDocs
   let serviceIds = map ((\(M.ObjId i) -> i) . (M.valueAt idF)) docs
   return $ zip serviceIds endpoints
+
+findEndpointById :: M.ObjectId -> M.Action IO (Maybe (M.ObjectId, Endpoint))
+findEndpointById eidToFind = runMaybeT $ do
+  mService <- MaybeT $ M.findOne (M.select [(endpointsF +.+ "id") =: eidToFind] collectionName)
+  service <- fromBson mService
+  endpoint <- MaybeT $ return $ find (\e -> eidToFind == eid e) $ endpoints service
+  return $ (_id service, endpoint)
+
+deleteEndpoint :: M.ObjectId -> M.Action IO OpStatus
+deleteEndpoint eid = do
+  M.modify
+    (M.select [(endpointsF +.+ eidF) =: eid] collectionName)
+    [pullC =: [endpointsF =: [eidF =: eid]]]
+  ad <- affectedDocs
+  if ad == 0
+    then return NotFound
+    else return Success
 
 verifyDatabase :: M.Action IO ()
 verifyDatabase = do

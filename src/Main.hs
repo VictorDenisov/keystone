@@ -228,6 +228,26 @@ application policy config = do
       endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
       S.status status200
       with_host_url config $ MS.produceEndpointsReply endpoints
+  S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
+    (eid :: M.ObjectId) <- parseId "eid"
+    A.authorize policy A.ShowEndpoint token A.EmptyResource $ do
+      mEndpoint <- liftIO $ CD.withDB (database config) $ MS.findEndpointById eid
+      case mEndpoint of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "Endpoint not found"
+        Just (serviceId, endpoint) -> do
+            S.status status200
+            with_host_url config $ MS.produceEndpointReply endpoint serviceId
+  S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
+    (eid :: M.ObjectId) <- parseId "eid"
+    A.authorize policy A.DeleteEndpoint token A.EmptyResource $ do
+      n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid
+      case n of
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find endpoint, " ++ (show eid) ++ "."
+          S.status status404
+        Success -> S.status status204
   -- Domain API
   S.get "/v3/domains" $ A.requireToken config $ \token -> do
     A.authorize policy A.ListDomains token A.EmptyResource $ do

@@ -142,6 +142,20 @@ returns true. It was done because we didn't want any extra work for no reason.
 It was implemented this way after Looking at the default policy file for
 keystone.
 
+TODO
+----
+
+Add note about working with field names in Model classes. (idF, endpointsF, etc)
+
+Directory structure and imports
+-------------------------------
+Normally imports are explicit however sometimes haskell compiler requires us to
+have separate files because of compilation stages. In this case we create
+another satellite file called Types (look at Service and Service.Types modules).
+Module Service.Types is imported into Service module unqualified and without
+explicit declaration of symbols. So, if you can't find where a certain symbol
+comes from then look at satellite Types module.
+
 Meaning of Suffixes
 -------------------
 

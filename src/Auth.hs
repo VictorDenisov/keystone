@@ -81,8 +81,9 @@ data Action = ValidateToken
 
             | AddEndpoint
             | ListEndpoints
+            | ShowEndpoint
             -- | UpdateEndpoint
-            -- | DeleteEndpoint
+            | DeleteEndpoint
 
             -- | AddDomain
             | ListDomains

@@ -17,6 +17,8 @@
 
         "AddEndpoint":             {"rule":"admin_required"},
         "ListEndpoints":           {"rule":"admin_required"},
+        "ShowEndpoint":            {"rule":"admin_required"},
+        "DeleteEndpoint":          {"rule":"admin_required"},
 
         "ListDomains":             {"rule":"admin_required"},
         "ShowDomainDetails":       {"rule":"admin_required"},
