@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# Language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Config
 where
 

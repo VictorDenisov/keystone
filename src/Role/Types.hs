@@ -1,4 +1,4 @@
-{-# Language DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Role.Types
 where
 

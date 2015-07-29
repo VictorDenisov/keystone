@@ -1,9 +1,9 @@
-{-# Language BangPatterns #-}
-{-# Language DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# Language TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Main
 where
 
@@ -237,8 +237,8 @@ application policy config = do
           S.status status404
           S.json $ E.notFound "Endpoint not found"
         Just (serviceId, endpoint) -> do
-            S.status status200
-            with_host_url config $ MS.produceEndpointReply endpoint serviceId
+          S.status status200
+          with_host_url config $ MS.produceEndpointReply endpoint serviceId
   S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy A.DeleteEndpoint token A.EmptyResource $ do

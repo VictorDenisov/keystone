@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# Language DeriveDataTypeable #-}
-{-# Language RecordWildCards #-}
-{-# Language TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Model.Token
 where
 
