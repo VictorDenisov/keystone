@@ -142,19 +142,42 @@ returns true. It was done because we didn't want any extra work for no reason.
 It was implemented this way after Looking at the default policy file for
 keystone.
 
-TODO
-----
+Field Names in Database Layer
+-----------------------------
 
-Add note about working with field names in Model classes. (idF, endpointsF, etc)
+When you need to write requests for mongodb you may need to use record names.
+The field names shouldn't be specified explicitly. They should be derived from
+the entities' datastructures.
+Currently the approach is to create a variable called fieldNameF that contains
+string representation of the field name. This representation should be
+calculated. Here is an example below.
+
+> endpointsF = T.pack $ nameBase 'endpoints
+
+There is a convention to call these variables with ending F.
+
+If there is a modifier applied to the field's name then this modifier should be
+declared separately and used both in field name declaration and in the
+derivement statement.
+
+> endpointFieldMod = drop 1
+>
+> eidF = T.pack $ endpointFieldMod $ nameBase 'eid
+>
+> $(deriveBson endpointFieldMod ''Endpoint)
+
+Maybe it's not the best mechanism, but at least it will provide some protection
+from duplication errors for the time being.
 
 Directory structure and imports
 -------------------------------
 Normally imports are explicit however sometimes haskell compiler requires us to
-have separate files because of compilation stages. In this case we create
-another satellite file called Types (look at Service and Service.Types modules).
-Module Service.Types is imported into Service module unqualified and without
-explicit declaration of symbols. So, if you can't find where a certain symbol
-comes from then look at satellite Types module.
+have separate files because of compilation stages and template haskell features
+we are using. In this case we create another satellite file called Types (look
+at Service and Service.Types modules).  Module Service.Types is imported into
+Service module unqualified and without explicit declaration of symbols. So, if
+you can't find where a certain symbol comes from then look at satellite Types
+module.
 
 Meaning of Suffixes
 -------------------
