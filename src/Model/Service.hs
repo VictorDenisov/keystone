@@ -22,7 +22,7 @@ import Data.Bson (Val(..), (=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.HashMap.Strict (insert, delete)
-import Data.List (find)
+import Data.Maybe (listToMaybe)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(..))
@@ -180,10 +180,19 @@ listEndpoints = do
 
 findEndpointById :: M.ObjectId -> M.Action IO (Maybe (M.ObjectId, Endpoint))
 findEndpointById eidToFind = runMaybeT $ do
-  mService <- MaybeT $ M.findOne (M.select [(endpointsF +.+ "id") =: eidToFind] collectionName)
-  service <- fromBson mService
-  endpoint <- MaybeT $ return $ find (\e -> eidToFind == eid e) $ endpoints service
-  return $ (_id service, endpoint)
+  serviceDoc <- MaybeT $ M.findOne
+                          ((M.select
+                              [(endpointsF +.+ "id") =: eidToFind]
+                              collectionName
+                              )
+                            {M.project = [(endpointsF +.+ "$") =: (M.Int32 1)]})
+  endpointDoc <- MaybeT $ return
+                            $ listToMaybe
+                              $ (\(M.Array a) -> a)
+                                $ M.valueAt endpointsF serviceDoc
+  endpoint <- fromBson $ (\(M.Doc d) -> d) endpointDoc
+  let serviceId = (\(M.ObjId i) -> i) $  (M.valueAt idF) $ serviceDoc
+  return (serviceId, endpoint)
 
 deleteEndpoint :: M.ObjectId -> M.Action IO OpStatus
 deleteEndpoint eid = do
