@@ -9,7 +9,7 @@ module Model.Role
 where
 
 import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
-import Common.Database (idF)
+import Common.Database (affectedDocs, idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -25,7 +25,7 @@ import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
-import Model.Common (listExistingIds)
+import Model.Common (OpStatus(NotFound, Success), listExistingIds)
 
 import qualified Error as E
 import qualified Database.MongoDB as M
@@ -100,6 +100,14 @@ findRoleById :: M.ObjectId -> M.Action IO (Maybe Role)
 findRoleById rid = runMaybeT $ do
   mRole <- MaybeT $ M.findOne (M.select [idF =: rid] collectionName)
   fromBson mRole
+
+deleteRole :: M.ObjectId -> M.Action IO OpStatus
+deleteRole rid = do
+  M.delete $ M.select [idF =: rid] collectionName
+  ad <- affectedDocs
+  if ad == 0
+    then return NotFound
+    else return Success
 
 listExistingRoleIds :: [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingRoleIds = listExistingIds collectionName

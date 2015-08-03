@@ -142,7 +142,7 @@ data Action = ValidateToken
             | ListRoles
             | ShowRoleDetails
             | ListRoleAssignments
-            -- | DeleteRole
+            | DeleteRole
 
             -- | AddPolicy
             -- | ListPolicies

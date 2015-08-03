@@ -40,6 +40,7 @@
         "AddRole":                 {"rule":"admin_required"},
         "ListRoles":               {"rule":"admin_required"},
         "ShowRoleDetails":         {"rule":"admin_required"},
-        "ListRoleAssignments":     {"rule":"admin_required"}
+        "ListRoleAssignments":     {"rule":"admin_required"},
+        "DeleteRole":              {"rule":"admin_required"}
     }
 }

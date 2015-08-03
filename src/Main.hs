@@ -409,6 +409,15 @@ application policy config = do
         Just role -> do
           S.status status200
           with_host_url config $ MR.produceRoleReply role
+  S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
+    (rid :: M.ObjectId) <- parseId "rid"
+    A.authorize policy A.DeleteRole token A.EmptyResource $ do
+      st <- liftIO $ CD.withDB (database config) $ MR.deleteRole rid
+      case st of
+        Success  -> S.status status204
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find role, " ++ (show rid) ++ "."
+          S.status status404
   S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
