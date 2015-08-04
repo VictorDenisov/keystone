@@ -1,9 +1,9 @@
-Imports sorted in alphabetic order.
+Imports are sorted in alphabetic order.
 
-Every symbol should be imported explicitly or qualified.
+Every symbol should be imported explicitly or it should be a qualified import.
 
 Symbols in import lists should be sorted in alphabetic order -
 first lower case in alphabetic order then upper case in alphabetic order.
 
-If the first word if import is different from the one above then the should be
+If the first word of an import is different from the one above then the should be
 an empty line between them.

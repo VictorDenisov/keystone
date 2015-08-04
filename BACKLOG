@@ -3,13 +3,8 @@ clean up dangling role assignments from time to time
 don't restrict the types of services when creating services ?? it gives more flexibility but can cause more errors
 
 retry one more time in case of network failure (valid for replica set)
-implement authentication with token
 
 move produce reply functions one level up
 
 requireAuth opens a separate connection to the database. Make internal action reuse
 the connection.
-
-Add query string to all actions with filters.
-
-Query string may contain extre fields that we are not interested in. What should we do with them regarding self link.
