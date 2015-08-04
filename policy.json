@@ -28,6 +28,7 @@
         "ShowProjectDetails":      {"rule":"admin_required"},
         "ListRolesForProjectUser": {"rule":"admin_required"},
         "GrantRoleToProjectUser":  {"rule":"admin_required"},
+        "DeleteProject":           {"rule":"admin_required"},
 
         "AddUser":                 {"rule":"admin_required"},
         "ListUsers":               {"rule":"admin_required"},

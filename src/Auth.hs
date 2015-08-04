@@ -103,7 +103,7 @@ data Action = ValidateToken
             | ListProjects
             | ShowProjectDetails
             -- | UpdateProject
-            -- | DeleteProject
+            | DeleteProject
             | ListRolesForProjectUser
             | GrantRoleToProjectUser
             -- | CheckRoleForProjectUser

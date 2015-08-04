@@ -25,7 +25,7 @@ import Data.HashMap.Strict (insert, delete)
 import Data.Maybe (listToMaybe)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
-import Model.Common (OpStatus(..))
+import Model.Common (OpStatus(Success, NotFound))
 
 import Model.Service.Types
 

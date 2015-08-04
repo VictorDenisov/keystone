@@ -8,7 +8,7 @@ module Model.Project
 where
 
 import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
-import Common.Database (idF)
+import Common.Database (affectedDocs, idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -24,7 +24,7 @@ import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
-import Model.Common (listExistingIds)
+import Model.Common (listExistingIds, OpStatus(Success, NotFound))
 
 import qualified Error as E
 
@@ -117,6 +117,13 @@ findProjectById pid = runMaybeT $ do
 listExistingProjectIds ::[M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingProjectIds = listExistingIds collectionName
 
+deleteProject :: M.ObjectId -> M.Action IO OpStatus
+deleteProject pid = do
+  M.delete $ M.select [idF =: pid] collectionName
+  ad <- affectedDocs
+  if ad == 0
+    then return NotFound
+    else return Success
 
 verifyDatabase :: M.Action IO ()
 verifyDatabase = do

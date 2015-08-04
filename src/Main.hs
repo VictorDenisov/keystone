@@ -206,10 +206,10 @@ application policy config = do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
       case n of
+        Success -> S.status status204
         NotFound -> do
           S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
           S.status status404
-        Success -> S.status status204
   --- Endpoint API
   S.post "/v3/endpoints" $ A.requireToken config $ \token -> do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest
@@ -244,10 +244,10 @@ application policy config = do
     A.authorize policy A.DeleteEndpoint token A.EmptyResource $ do
       n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid
       case n of
+        Success -> S.status status204
         NotFound -> do
           S.json $ E.notFound $ "Could not find endpoint, " ++ (show eid) ++ "."
           S.status status404
-        Success -> S.status status204
   -- Domain API
   S.get "/v3/domains" $ A.requireToken config $ \token -> do
     A.authorize policy A.ListDomains token A.EmptyResource $ do
@@ -288,6 +288,15 @@ application policy config = do
         Just project -> do
           S.status status200
           with_host_url config $ MP.produceProjectReply project
+  S.delete "/v3/projects/:pid" $ A.requireToken config $ \token -> do
+    (pid :: M.ObjectId) <- parseId "pid"
+    A.authorize policy A.DeleteProject token A.EmptyResource $ do
+      n <- liftIO $ CD.withDB (database config) $ MP.deleteProject pid
+      case n of
+        Success -> S.status status204
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find project, " ++ (show pid) ++ "."
+          S.status status404
   S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
