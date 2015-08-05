@@ -9,21 +9,19 @@ module Model.Service
 , module Model.Service.Types
 ) where
 
-import Common ( capitalize, dropOptions, fromObject, skipTickOptions
-              , skipUnderscoreOptions, (<.>), UrlBasedValue, UrlInfo(..))
+import Common ( capitalize, dropOptions, skipTickOptions
+              , skipUnderscoreOptions, (<.>))
 import Common.Database ( affectedDocs, pullC, pushC, setC, projectC, unwindC
                        , idF, (+.+))
 import Control.Applicative ((<$>))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON)
-import Data.Aeson.Types (object, (.=), typeMismatch)
+import Data.Aeson.Types (typeMismatch)
 import Data.Bson (Val(..), (=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
-import Data.HashMap.Strict (insert, delete)
 import Data.Maybe (listToMaybe)
-import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
 
@@ -73,55 +71,6 @@ instance Val Interface where
 $(deriveBson endpointFieldMod ''Endpoint)
 
 $(deriveJSON (dropOptions 1) ''Endpoint)
-
-produceServiceJson :: Service -> String -> Value
-produceServiceJson (s@Service{_id}) baseUrl
-      = Object
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/services/" ++ (show _id)) ])
-        $ delete (T.pack $ nameBase 'endpoints)
-        $ fromObject $ toJSON s
-
-produceServiceReply :: Service -> UrlBasedValue
-produceServiceReply (service@Service{..}) (UrlInfo {baseUrl})
-      = object [ "service" .= produceServiceJson service baseUrl ]
-
-produceEndpointJson :: Endpoint -> M.ObjectId -> String -> Value
-produceEndpointJson (s@Endpoint{..}) serviceId baseUrl
-      = Object
-        -- Endpoint already has its own id in its structure
-        $ insert "service_id" (String $ T.pack $ show serviceId)
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/endpoints/" ++ (show eid)) ])
-        $ fromObject $ toJSON s
-
-produceEndpointReply :: Endpoint -> M.ObjectId -> UrlBasedValue
-produceEndpointReply (endpoint@Endpoint{..}) serviceId (UrlInfo {baseUrl})
-      = object [ "endpoint" .= produceEndpointJson endpoint serviceId baseUrl ]
-
-produceEndpointsReply :: [(M.ObjectId, Endpoint)] -> UrlBasedValue
-produceEndpointsReply endpoints (UrlInfo {baseUrl, path, query})
-    = object [ "links" .= (object [ "next"     .= Null
-                                  , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ path ++ query)
-                                  ]
-                          )
-             , "endpoints" .= endpointsEntry
-             ]
-  where
-    endpointsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map (\(i, s) -> produceEndpointJson s i) endpoints
-
-produceServicesReply :: [Service] -> UrlBasedValue
-produceServicesReply services (UrlInfo {baseUrl, path, query})
-    = object [ "links" .= (object [ "next"     .= Null
-                                  , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ path ++ query)
-                                  ]
-                          )
-             , "services" .= servicesEntry
-             ]
-  where
-    servicesEntry = Array $ fromList
-                              $ map (\f -> f baseUrl)
-                                  $ map produceServiceJson services
 
 createService :: Service -> M.Action IO M.ObjectId
 createService s = do

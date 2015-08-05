@@ -167,14 +167,14 @@ application policy config = do
       service <- liftIO $ Srv.newRequestToService scr
       sid <- liftIO $ CD.withDB (database config) $ MS.createService service
       S.status status201
-      with_host_url config $ MS.produceServiceReply service
+      with_host_url config $ Srv.produceServiceReply service
   S.get "/v3/services" $ A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
     A.authorize policy A.ListServices token A.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
       S.status status200
-      with_host_url config $ MS.produceServicesReply services
+      with_host_url config $ Srv.produceServicesReply services
   S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy A.ShowServiceDetails token A.EmptyResource $ do
@@ -186,7 +186,7 @@ application policy config = do
           S.json $ E.notFound "Service not found"
         Just service -> do
             S.status status200
-            with_host_url config $ MS.produceServiceReply service
+            with_host_url config $ Srv.produceServiceReply service
   S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
@@ -199,7 +199,7 @@ application policy config = do
           S.json $ E.notFound "Service not found"
         Just service -> do
           S.status status200
-          with_host_url config $ MS.produceServiceReply service
+          with_host_url config $ Srv.produceServiceReply service
   S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy A.DeleteService token A.EmptyResource $ do
@@ -222,12 +222,12 @@ application policy config = do
           S.json $ E.notFound "Service not found"
         Just _eid -> do
           S.status status201
-          with_host_url config $ MS.produceEndpointReply endpoint (Srv.eserviceId ecr)
+          with_host_url config $ Srv.produceEndpointReply endpoint (Srv.eserviceId ecr)
   S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
     A.authorize policy A.ListEndpoints token A.EmptyResource $ do
       endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
       S.status status200
-      with_host_url config $ MS.produceEndpointsReply endpoints
+      with_host_url config $ Srv.produceEndpointsReply endpoints
   S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy A.ShowEndpoint token A.EmptyResource $ do
@@ -238,7 +238,7 @@ application policy config = do
           S.json $ E.notFound "Endpoint not found"
         Just (serviceId, endpoint) -> do
           S.status status200
-          with_host_url config $ MS.produceEndpointReply endpoint serviceId
+          with_host_url config $ Srv.produceEndpointReply endpoint serviceId
   S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy A.DeleteEndpoint token A.EmptyResource $ do
