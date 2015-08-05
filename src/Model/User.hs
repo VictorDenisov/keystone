@@ -8,21 +8,17 @@
 module Model.User
 where
 
-import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
+import Common (skipUnderscoreOptions)
 import Common.Database (affectedDocs, idF, setC)
 
 import Control.Applicative ((<$>))
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson (ToJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON)
-import Data.Aeson.Types (object, (.=))
 import Data.Bson ((=:), ObjectId)
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
-import Data.HashMap.Strict (insert)
-import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
@@ -55,28 +51,6 @@ instance M.Val UserId where
 $(deriveBson id ''User)
 
 $(deriveJSON skipUnderscoreOptions ''User)
-
-produceUserJson :: User -> String -> Value
-produceUserJson (u@User{..}) baseUrl
-  = Object
-    $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/users/" ++ (show _id)) ])
-    $ fromObject $ toJSON u
-
-produceUserReply :: User -> UrlBasedValue
-produceUserReply (user@User{..}) (UrlInfo {baseUrl})
-  = object [ "user" .= produceUserJson user baseUrl ]
-
-produceUsersReply :: [User] -> UrlBasedValue
-produceUsersReply users (UrlInfo {baseUrl, path, query})
-  = object [ "links" .= (object [ "next"     .= Null
-                                , "previous" .= Null
-                                , "self"     .= (baseUrl ++ path ++ query)
-                                ]
-                        )
-           , "users" .= usersEntry
-           ]
-  where
-    usersEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceUserJson users
 
 createUser :: User -> M.Action IO (Either E.Error M.ObjectId)
 createUser u = (do

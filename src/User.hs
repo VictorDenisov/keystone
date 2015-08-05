@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 module User
@@ -6,14 +7,16 @@ module User
 , module User.Types
 ) where
 
-import Common (underscoreOptions, dropOptions, (<.>))
+import Common (fromObject, underscoreOptions, dropOptions, (<.>), UrlBasedValue, UrlInfo(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (makePassword)
-import Data.Aeson (FromJSON(..), (.:), Value(..))
+import Data.Aeson (FromJSON(..), (.:), Value(..), ToJSON(..))
 import Data.Aeson.TH (mkParseJSON)
-import Data.Aeson.Types (typeMismatch)
+import Data.Aeson.Types (typeMismatch, (.=), object)
+import Data.HashMap.Strict (insert)
 import Data.Text (pack)
+import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 
 import User.Types ( ChangePasswordRequest(..)
@@ -60,6 +63,28 @@ changePasswordRequestToDocument ChangePasswordRequest{..} = do
     p1 <- liftIO $ makePassword (BS8.pack p) 17
     return $ BS8.unpack p1
   return $ concat [ (pack $ nameBase 'MU.password) M.=? cryptedPassword ]
+
+produceUserJson :: MU.User -> String -> Value
+produceUserJson (u@MU.User{..}) baseUrl
+  = Object
+    $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/users/" ++ (show _id)) ])
+    $ fromObject $ toJSON u
+
+produceUserReply :: MU.User -> UrlBasedValue
+produceUserReply (user@MU.User{..}) (UrlInfo {baseUrl})
+  = object [ "user" .= produceUserJson user baseUrl ]
+
+produceUsersReply :: [MU.User] -> UrlBasedValue
+produceUsersReply users (UrlInfo {baseUrl, path, query})
+  = object [ "links" .= (object [ "next"     .= Null
+                                , "previous" .= Null
+                                , "self"     .= (baseUrl ++ path ++ query)
+                                ]
+                        )
+           , "users" .= usersEntry
+           ]
+  where
+    usersEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceUserJson users
 
 instance FromJSON ChangePasswordRequest where
   parseJSON (Object v) = do

@@ -323,13 +323,13 @@ application policy config = do
           S.status $ E.code err
         Right rid -> do
           S.status status201
-          with_host_url config $ MU.produceUserReply user
+          with_host_url config $ U.produceUserReply user
   S.get "/v3/users" $ A.requireToken config $ \token -> do
     userName <- parseMaybeString "name"
     A.authorize policy A.ListUsers token A.EmptyResource $ do
       users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
       S.status status200
-      with_host_url config $ MU.produceUsersReply users
+      with_host_url config $ U.produceUsersReply users
   S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy A.ShowUserDetails token A.EmptyResource $ do
@@ -340,7 +340,7 @@ application policy config = do
           S.json $ E.notFound "User not found"
         Just user -> do
           S.status status200
-          with_host_url config $ MU.produceUserReply user
+          with_host_url config $ U.produceUserReply user
   S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
@@ -353,7 +353,7 @@ application policy config = do
           S.json $ E.notFound "User not found"
         Just user -> do
           S.status status200
-          with_host_url config $ MU.produceUserReply user
+          with_host_url config $ U.produceUserReply user
   S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy A.DeleteUser token A.EmptyResource $ do
@@ -387,7 +387,7 @@ application policy config = do
               S.json $ E.notFound "User not found"
             Just modifiedUser -> do
               S.status status200
-              with_host_url config $ MU.produceUserReply modifiedUser
+              with_host_url config $ U.produceUserReply modifiedUser
   -- Role API
   S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest
