@@ -270,13 +270,13 @@ application policy config = do
           S.status $ E.code err
         Right rid -> do
           S.status status201
-          with_host_url config $ MP.produceProjectReply project
+          with_host_url config $ P.produceProjectReply project
   S.get "/v3/projects" $ A.requireToken config $ \token -> do
     projectName <- parseMaybeString "name"
     A.authorize policy A.ListProjects token A.EmptyResource $ do
       projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
       S.status status200
-      with_host_url config $ MP.produceProjectsReply projects
+      with_host_url config $ P.produceProjectsReply projects
   S.get "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     A.authorize policy A.ShowProjectDetails token A.EmptyResource $ do
@@ -287,7 +287,7 @@ application policy config = do
           S.json $ E.notFound "Project not found"
         Just project -> do
           S.status status200
-          with_host_url config $ MP.produceProjectReply project
+          with_host_url config $ P.produceProjectReply project
   S.delete "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     A.authorize policy A.DeleteProject token A.EmptyResource $ do
@@ -368,7 +368,7 @@ application policy config = do
     A.authorize policy A.ListProjectsForUser token (A.UserId uid) $ do
       projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
       S.status status200
-      with_host_url config $ MP.produceProjectsReply projects
+      with_host_url config $ P.produceProjectsReply projects
   S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: U.ChangePasswordRequest) <- parseRequest

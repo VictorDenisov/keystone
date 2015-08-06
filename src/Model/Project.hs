@@ -7,20 +7,16 @@
 module Model.Project
 where
 
-import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
+import Common (skipUnderscoreOptions)
 import Common.Database (affectedDocs, idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson (ToJSON(..), Value(..))
-import Data.Aeson.Types (object, (.=))
 import Data.Aeson.TH (deriveJSON)
 import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
-import Data.HashMap.Strict (insert)
-import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
@@ -64,28 +60,6 @@ instance M.Val ProjectId where
 $(deriveBson id ''Project)
 
 $(deriveJSON skipUnderscoreOptions ''Project)
-
-produceProjectJson :: Project -> String -> Value
-produceProjectJson (project@Project{..}) baseUrl
-      = Object
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/projects/" ++ (show _id)) ])
-        $ fromObject $ toJSON project
-
-produceProjectReply :: Project -> UrlBasedValue
-produceProjectReply project (UrlInfo {baseUrl})
-      = object [ "project" .= produceProjectJson project baseUrl ]
-
-produceProjectsReply :: [Project] -> UrlBasedValue
-produceProjectsReply projects (UrlInfo {baseUrl, path, query})
-    = object [ "links" .= (object [ "next"     .= Null
-                                  , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ path ++ query)
-                                  ]
-                          )
-             , "projects" .= projectsEntry
-             ]
-  where
-    projectsEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceProjectJson projects
 
 createProject :: Project -> M.Action IO (Either E.Error M.ObjectId)
 createProject p = (do
