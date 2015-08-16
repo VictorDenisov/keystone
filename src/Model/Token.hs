@@ -85,9 +85,9 @@ listTokens = do
 
 verifyDatabase :: M.Action IO ()
 verifyDatabase = do
-  M.insert_ "system.indexes" . (\db -> (idxDocument idx db) ++ ["expireAfterSeconds" =: (M.Int32 0)]) =<< M.thisDatabase
+  MA.ensureIndex $ (MA.index
+                        collectionName
+                        [(T.pack $ nameBase 'expiresAt) =: (M.Int32 1)])
+                   {MA.iExpireAfterSeconds = Just 0}
   tokens <- listTokens
   return ()
-  where idx = (MA.index
-                    collectionName
-                    [(T.pack $ nameBase 'expiresAt) =: (M.Int32 1)])
