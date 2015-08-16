@@ -12,7 +12,7 @@ maintainer:          denisovenator@gmail.com
 -- copyright:
 -- category:
 build-type:          Simple
--- extra-source-files:  
+-- extra-source-files:
 cabal-version:       >=1.10
 
 executable keystone
@@ -34,7 +34,7 @@ executable keystone
                      , hslogger == 1.2.8
                      , http-types == 0.8.6
                      , monad-control == 1.0.0.4
-                     , mongoDB == 2.0.3
+                     , mongoDB == 2.0.6
                      , mtl == 2.2.1
                      , pwstore-fast == 2.4.4
                      , resourcet == 1.1.4.1
