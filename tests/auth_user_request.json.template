@@ -7,7 +7,7 @@
             "password": {
                 "user": {
                     "id": "<USER_ID>",
-                    "password": "mypassword"
+                    "password": "<PASSWORD>"
                 }
             },
             "scope": {

@@ -8,11 +8,15 @@ fi
 token_to_verify=$1
 
 if [[ $# -lt 2 ]]; then
-	protocol="http"
+	auth_token="ADMIN"
 else
-	protocol=$2
+	auth_token=$2
 fi
 
+if [[ $# -lt 3 ]]; then
+	protocol="http"
+else
+	protocol=$3
+fi
 
-#curl -v -k -I -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" $protocol://localhost:35357/v3/auth/tokens
-curl -v -k -H "X-Auth-Token: ADMIN" -H "X-Subject-Token: $token_to_verify" $protocol://localhost:35357/v3/auth/tokens
+curl -v -k -H "X-Auth-Token: $auth_token" -H "X-Subject-Token: $token_to_verify" $protocol://localhost:35357/v3/auth/tokens
