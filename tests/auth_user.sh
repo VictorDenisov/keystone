@@ -19,4 +19,4 @@ sed -e "s/<USER_ID>/$user_id/" auth_user_request.json.template > auth_user_reque
 sed -i -e "s/<PROJECT_ID>/$project_id/" auth_user_request.json
 sed -i -e "s/<PASSWORD>/$password/" auth_user_request.json
 
-curl -v -k -d@auth_user_request.json -H "Content-Type: application/json" ${protocol}://localhost:35357/v3/auth/tokens
+curl -v -k -D - -d@auth_user_request.json -H "Content-Type: application/json" ${protocol}://localhost:35357/v3/auth/tokens
