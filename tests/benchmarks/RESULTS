@@ -22,19 +22,19 @@ keystone kilo version commit id 5839ffa23824f503e54beb8ac93d74b192c9d454 configu
 
 real	31m0.279s
 user	0m47.379s
-sys	  1m14.596s
+sys	1m14.596s
 
 ### run 2
 
 real	28m13.253s
 user	0m41.362s
-sys	  1m5.283s
+sys	1m5.283s
 
 ### run 3
 
 real	27m35.021s
 user	0m37.059s
-sys	  0m58.013s
+sys	0m58.013s
 
 keystone kilo version commit id 5839ffa23824f503e54beb8ac93d74b192c9d454 configured with mysql
 ----------------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ keystone kilo version commit id 5839ffa23824f503e54beb8ac93d74b192c9d454 configu
 
 real	9m29.043s
 user	0m49.604s
-sys	  1m16.054s
+sys	1m16.054s
 
 ### run 2
 
@@ -64,7 +64,7 @@ my keystone mongodb driver 2.0.7
 
 real	12m13.653s
 user	0m52.276s
-sys   1m20.744s
+sys	1m20.744s
 
 ### run 2
 
@@ -82,19 +82,19 @@ my keystone
 
 real	1m17.045s
 user	0m37.004s
-sys	  0m36.337s
+sys	0m36.337s
 
 ###  run 2
 
 real	1m16.757s
 user	0m37.173s
-sys	  0m35.856s
+sys	0m35.856s
 
 ### run 3
 
 real	1m20.116s
 user	0m39.069s
-sys	  0m37.026s
+sys	0m37.026s
 
 keystone kilo version
 ---------------------
@@ -103,13 +103,13 @@ keystone kilo version
 
 real	1m48.493s
 user	0m40.591s
-sys	  0m39.098s
+sys	0m39.098s
 
 ### run 2
 
 real	1m46.315s
 user	0m39.236s
-sys	  0m38.709s
+sys	0m38.709s
 
 authenticate 50000 times
 ========================
@@ -119,7 +119,7 @@ my keystone
 
 real	87m11.564s
 user	6m25.635s
-sys	  10m1.632s
+sys	10m1.632s
 
 verify 7000 tokens
 ==================
@@ -132,10 +132,25 @@ my keystone
 
 real	2m12.721s
 user	0m46.352s
-sys	  0m43.831s
+sys	0m43.831s
 
 ### run 2
 
 real	2m10.932s
 user	0m45.565s
-sys	  0m43.089s
+sys	0m43.089s
+
+keystone kilo version commit id 5839ffa23824f503e54beb8ac93d74b192c9d454 configured with mysql
+----------------------------------------------------------------------------------------------
+
+### run 1
+
+real	3m6.111s
+user	0m38.477s
+sys	0m35.656s
+
+### run 2
+
+real	3m7.018s
+user	0m39.646s
+sys	0m36.141s
