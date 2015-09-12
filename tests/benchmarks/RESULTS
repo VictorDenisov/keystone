@@ -154,3 +154,6 @@ sys	0m35.656s
 real	3m7.018s
 user	0m39.646s
 sys	0m36.141s
+
+create user 7000 times
+======================

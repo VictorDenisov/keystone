@@ -5,7 +5,7 @@
         "domain_id": "1789d1",
         "email": "user@mail.ru",
         "enabled": true,
-        "name": "admin",
-        "password": "mypassword"
+        "name": "test_user",
+        "password": "testpassword"
     }
 }
