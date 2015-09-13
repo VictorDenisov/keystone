@@ -9,11 +9,11 @@
                     "id": "<USER_ID>",
                     "password": "<PASSWORD>"
                 }
-            },
-            "scope": {
-                "project": {
-                    "id": "<PROJECT_ID>"
-                }
+            }
+        },
+        "scope": {
+            "project": {
+                "id": "<PROJECT_ID>"
             }
         }
     }

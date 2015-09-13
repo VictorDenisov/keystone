@@ -2,7 +2,7 @@
     "user": {
         "default_project_id": "--default-project-id--",
         "description": "a user",
-        "domain_id": "1789d1",
+        "domain_id": "default",
         "email": "user@mail.ru",
         "enabled": true,
         "name": "test_user",
