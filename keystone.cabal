@@ -5,14 +5,14 @@ name:                keystone
 version:             0.1.0.0
 synopsis:            Replacement of openstack keystone project
 -- description:
--- license:
+license:             GPL2
 license-file:        LICENSE
 author:              Victor Denisov
 maintainer:          denisovenator@gmail.com
 -- copyright:
 -- category:
 build-type:          Simple
--- extra-source-files:
+extra-source-files:  CHANGELOG.md
 cabal-version:       >=1.10
 
 executable keystone
