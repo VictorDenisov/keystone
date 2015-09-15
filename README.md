@@ -113,7 +113,7 @@ Code and Architecture
 Policy Configuration
 --------------------
 
-Policy is implemented as a separate json file.
+Policies are implemented as a separate json file.
 Section identity of the json document describes rules for all actions available
 in the current implementation of keystone. When you start the keystone server it
 verifies that the policy.json file contains rules for all currently implemented
