@@ -26,7 +26,9 @@ install:
  - travis_retry cabal update
  # Install the combined dependencies for this package and all other packages
  # needed to reduce conflicts.
+ - mv cabal.config cabal.config.bak
  - cabal install hpc-coveralls
+ - mv cabal.config.bak cabal.config
  - cabal sandbox init
  - cabal install --only-dependencies --enable-tests . hpc-coveralls
 
