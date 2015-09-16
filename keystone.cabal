@@ -17,13 +17,31 @@ cabal-version:       >=1.10
 
 executable keystone
   main-is:             Main.hs
-  other-modules:       Version
-                     , User
+  other-modules:       Auth
+                     , Domain
+                     , Common
+                     , Common.Database
                      , Config
+                     , Error
+                     , Data.Bson.Mapping
+                     , Model.Assignment
+                     , Model.Common
+                     , Model.Domain
                      , Model.Project
                      , Model.Role
                      , Model.Service
+                     , Model.Service.Types
+                     , Model.Token
                      , Model.User
+                     , Project
+                     , Project.Types
+                     , Role
+                     , Role.Types
+                     , Service
+                     , Service.Types
+                     , User
+                     , User.Types
+                     , Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.8
                      , aeson  == 0.7.0.4
