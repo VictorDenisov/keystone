@@ -13,6 +13,7 @@ env:
 matrix:
   allow_failures:
    # The text here should match the last line above exactly.
+   - env: GHCVER=7.10.1 CABALVER=1.22
    - env: GHCVER=head   CABALVER=head
 
 before_install:
