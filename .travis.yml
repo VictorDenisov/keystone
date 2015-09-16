@@ -6,7 +6,6 @@ services:
 env:
  # We use CABALVER=1.22 everywhere because it uses the flag --enable-coverage
  # instead of --enable-library-coverage used by older versions.
- - GHCVER=7.6.3  CABALVER=1.22
  - GHCVER=7.8.4  CABALVER=1.22
  - GHCVER=7.10.1 CABALVER=1.22
  - GHCVER=head   CABALVER=head
