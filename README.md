@@ -1,6 +1,8 @@
 Keystone
 ========
 
+[![Build Status](https://travis-ci.org/VictorDenisov/keystone.svg)](https://travis-ci.org/VictorDenisov/keystone)
+
 Tested with mongodb version 3.0.3 mmapv2
 
 Documentation
