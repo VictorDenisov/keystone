@@ -1,7 +1,7 @@
 # See https://github.com/hvr/multi-ghc-travis for more information.
 
 services:
-  - keystone
+  - mongodb
 
 env:
  # We use CABALVER=1.22 everywhere because it uses the flag --enable-coverage
@@ -45,6 +45,10 @@ script:
  # 'ghc-prof-options: -auto-all'.
  - cabal check || true
  - cabal sdist
+ - dist/build/keystone/keystone&
+ - sleep 5
+ - cd tests
+ - ./run_api_tests.sh
    #- export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}');
    #cd dist/;
    #if [ -f "$SRC_TGZ" ]; then
