@@ -1,0 +1,7 @@
+export OS_AUTH_URL="http://localhost:35357/v3"
+export OS_PROJECT_NAME=admin_project
+export OS_PROJECT_DOMAIN_NAME=Default
+export OS_USER_DOMAIN_NAME=Default
+export OS_USERNAME=admin_user
+export OS_PASSWORD=admin
+export OS_IDENTITY_API_VERSION=3
