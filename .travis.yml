@@ -50,7 +50,7 @@ script:
  - dist/build/keystone/keystone&
  - sleep 5
  - cd tests
- - ./run_api_tests.sh
+ - ./run_openstack_tests.sh
    #- export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}');
    #cd dist/;
    #if [ -f "$SRC_TGZ" ]; then
