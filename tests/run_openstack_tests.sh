@@ -11,3 +11,7 @@ openstack service create --name nova compute
 openstack service create --name glance image
 openstack service create --name keystone identity
 openstack service create --name cinder volume
+
+openstack endpoint create keystone public http://localhost:35357/v3
+openstack endpoint create keystone internal http://localhost:35357/v3
+openstack endpoint create keystone admin http://localhost:35357/v3
