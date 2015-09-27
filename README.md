@@ -134,7 +134,7 @@ At the moment we suggest to use as a resource something that doesn't require an
 extra round trip to DB. For example when we are manipulating user then
 the resource is user id not the whole user because user id is available from the
 request and full user record will require extra round trip to the database. This
-behavior may be changed in future if it turnes out to be absolutely inevitable
+behavior may be changed in future if it turns out to be absolutely inevitable
 to retrieve the full resource for the authorization.
 
 Also not every handler that works with resources provides authorization function
@@ -149,7 +149,7 @@ Field Names in Database Layer
 
 When you need to write requests for mongodb you may need to use record names.
 The field names shouldn't be specified explicitly. They should be derived from
-the entities' datastructures.
+the entities' data structures.
 Currently the approach is to create a variable called fieldNameF that contains
 string representation of the field name. This representation should be
 calculated. Here is an example below.
