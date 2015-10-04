@@ -1,6 +1,8 @@
 Keystone
 ========
 
+[![Join the chat at https://gitter.im/VictorDenisov/keystone](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/VictorDenisov/keystone?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/VictorDenisov/keystone.svg)](https://travis-ci.org/VictorDenisov/keystone)
 
 Tested with mongodb version 3.0.3 mmapv2
