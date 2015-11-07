@@ -7,7 +7,8 @@ import Control.Exception (catch, SomeException)
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Aeson.Types (typeMismatch)
-import Data.Yaml (decodeFile)
+import Data.Yaml ( decodeFileEither, YamlException(..), ParseException(..)
+                 , YamlMark(..))
 import Language.Haskell.TH.Syntax (nameBase)
 import System.Log.Logger (Priority(NOTICE))
 import Text.Read (readMaybe)
@@ -58,12 +59,28 @@ defaultConfig =
 
 readConfig :: IO KeystoneConfig
 readConfig = do
-  mConf <- catch (decodeFile confFileName) $ \(e::SomeException) ->
-    return $ Just defaultConfig
+  mConf <- catch (decodeFileEither confFileName)
+               $ \(e::SomeException) -> do
+                        putStrLn $ "SomeException" ++ (show e)
+                        return $ Right defaultConfig
   case mConf of
-    Just conf -> return conf
-    Nothing   -> do
+    Right conf -> return conf
+    Left (InvalidYaml Nothing) -> do
       fail $ "Failed to parse existing config file. Please verify the syntax and mandatory values."
+    Left (InvalidYaml (Just (YamlException message))) -> do
+      fail $ "Failed to parse existing config file: " ++ message
+    Left (InvalidYaml (Just (YamlParseException problem context mark))) -> do
+      fail $ "Failed to parse existing config file: "
+                                                ++ problem ++ " "
+                                                ++ context ++ " "
+                                                ++ " - line "
+                                                ++ (show $ yamlLine mark)
+                                                ++ ", col "
+                                                ++ (show $ yamlColumn mark)
+    Left (AesonException message) -> do
+      fail $ "Failed to parse existing config file: " ++ message
+    Left e -> do
+      fail $ "Failed to parse existing config file: " ++ (show e)
 
 instance ToJSON ServerType where
   toJSON t = String $ T.pack $ show t
