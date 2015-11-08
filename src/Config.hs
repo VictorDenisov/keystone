@@ -25,7 +25,12 @@ data KeystoneConfig = KeystoneConfig
                     , logLevel              :: Priority
                     , serverType            :: ServerType
                     , verifyTokenCollection :: Bool
+                    , ldap                  :: Maybe LdapConfig
                     }
+
+data LdapConfig = LdapConfig
+                { ldapHost :: String
+                }
 
 data Database = Database
               { dbHost :: String
@@ -54,6 +59,7 @@ defaultConfig =
     , logLevel              = NOTICE
     , serverType            = Plain
     , verifyTokenCollection = True
+    , ldap                  = Nothing
     }
   where defaultPort = 35357
 
@@ -61,7 +67,8 @@ readConfig :: IO KeystoneConfig
 readConfig = do
   mConf <- catch (decodeFileEither confFileName)
                $ \(e::SomeException) -> do
-                        putStrLn $ "SomeException" ++ (show e)
+                        putStrLn $ "WARNING!!! Failed to parse config file. Using default values."
+                        putStrLn $ show e
                         return $ Right defaultConfig
   case mConf of
     Right conf -> return conf
@@ -101,5 +108,7 @@ instance FromJSON Priority where
   parseJSON v = typeMismatch (nameBase ''Priority) v
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
+
+$(deriveJSON defaultOptions ''LdapConfig)
 
 $(deriveJSON defaultOptions ''Database)
