@@ -166,11 +166,11 @@ data PolicyCompileException = PolicyCompileException String
 
 instance Exception PolicyCompileException
 
-authenticate :: (Maybe AuthScope)
-             -> M.Pipe
+authenticate :: M.Pipe
+             -> (Maybe AuthScope)
              -> AuthMethod
              -> IO (Either String (String, MT.Token))
-authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
+authenticate pipe mScope (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
   res <- CD.runDB pipe $ checkUserPassword mUserId mUserName password
   case res of
     Left  errorMessage -> return $ Left errorMessage

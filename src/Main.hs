@@ -108,7 +108,7 @@ application policy config = do
     baseUrl <- getBaseUrl config
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- liftIO $ mapM (A.authenticate (A.scope au) pipe) (A.methods au)
+      res <- liftIO $ mapM (A.authenticate pipe (A.scope au)) (A.methods au)
       release releaseKey
       case head res of
         Right (tokenId, t) -> lift $ do
