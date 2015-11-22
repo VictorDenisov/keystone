@@ -340,7 +340,7 @@ application policy config = do
   S.get "/v3/users" $ A.requireToken config $ \token -> do
     userName <- parseMaybeString "name"
     A.authorize policy AT.ListUsers token AT.EmptyResource $ do
-      users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
+      users <- lift $ listUsers userName
       S.status status200
       with_host_url config $ U.produceUsersReply users
   S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do

@@ -16,4 +16,5 @@ class BackendApi b where
                -> b (Either String (String, MT.Token))
   findUserById :: ObjectId
                -> b (Maybe MU.User)
+  listUsers :: (Maybe String) -> b [MU.User]
   withHandle :: (BackendHandle b -> b a) -> b a

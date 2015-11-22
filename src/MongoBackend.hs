@@ -34,6 +34,8 @@ instance ( MonadBase IO m
 
   findUserById i = withHandle $ \p -> liftIO $ CD.runDB p $ MU.findUserById i
 
+  listUsers mName = withHandle $ \p -> liftIO $ CD.runDB p $ MU.listUsers mName
+
   withHandle action = do
     d <- ask
     withResource (pool d) action
@@ -42,4 +44,3 @@ runMongoBackend :: C.Database -> MongoBackend IO a -> IO a
 runMongoBackend mongoConfig action = do
   p <- createPool (CD.connect mongoConfig) M.close 1 60 10 -- stripe count, time to live, max resource count
   runReaderT action (MongoData mongoConfig p)
-
