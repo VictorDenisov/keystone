@@ -59,6 +59,7 @@ executable keystone
                      , mtl == 2.2.1
                      , pwstore-fast == 2.4.4
                      , resourcet == 1.1.4.1
+                     , resource-pool == 0.2.3.2
                      , scotty == 0.9.1
                      , split == 0.2.2
                      , template-haskell == 2.9.0.0

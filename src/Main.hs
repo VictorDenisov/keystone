@@ -10,12 +10,11 @@ where
 
 import Backend
 import Common (loggerName, ScottyM, ActionM, UrlBasedValue, UrlInfo(..))
-import Config (readConfig, KeystoneConfig(..), ServerType(..), Database(..))
+import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
-import Control.Monad.Reader (ReaderT(runReaderT))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
@@ -91,10 +90,6 @@ main = do
   case serverType config of
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
-
-runMongoBackend :: Database -> MongoBackend IO a -> IO a
-runMongoBackend mongoConfig action =
-  runReaderT action (MongoData mongoConfig)
 
 application :: ( MonadBase IO (b IO)
                , MonadBaseControl IO (b IO)
@@ -351,7 +346,7 @@ application policy config = do
   S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
-      mUser <- liftIO $ CD.withDB (database config) $ MU.findUserById uid
+      mUser <- lift $ findUserById uid
       case mUser of
         Nothing -> do
           S.status status404
