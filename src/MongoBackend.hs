@@ -32,6 +32,8 @@ instance ( MonadBase IO m
 
   authenticate s m = withHandle $ \p -> liftIO $ A.authenticate p s m
 
+  createUser u = withHandle $ \p -> liftIO $ CD.runDB p $ MU.createUser u
+
   findUserById i = withHandle $ \p -> liftIO $ CD.runDB p $ MU.findUserById i
 
   listUsers mName = withHandle $ \p -> liftIO $ CD.runDB p $ MU.listUsers mName

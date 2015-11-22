@@ -329,7 +329,7 @@ application policy config = do
     (d :: U.UserCreateRequest) <- parseRequest
     user <- liftIO $ U.newRequestToUser d
     A.authorize policy AT.AddUser token AT.EmptyResource $ do
-      mUid <- liftIO $ CD.withDB (database config) $ MU.createUser user
+      mUid <- lift $ createUser user
       case mUid of
         Left err -> do
           S.json err

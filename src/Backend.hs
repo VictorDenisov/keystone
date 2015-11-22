@@ -6,6 +6,7 @@ module Backend where
 import Data.Bson (ObjectId)
 
 import qualified Auth.Types as A
+import qualified Error as E
 import qualified Model.Token as MT
 import qualified Model.User as MU
 
@@ -14,6 +15,7 @@ class BackendApi b where
   authenticate :: (Maybe A.AuthScope)
                -> A.AuthMethod
                -> b (Either String (String, MT.Token))
+  createUser :: MU.User -> b (Either E.Error ObjectId)
   findUserById :: ObjectId
                -> b (Maybe MU.User)
   listUsers :: (Maybe String) -> b [MU.User]
