@@ -6,11 +6,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Auth
 where
-import Prelude hiding (readFile)
+import Auth.Types
+import Backend (BackendApi(..))
 import Common (loggerName, ActionM)
 import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
-import Control.Exception (throwIO, Exception(..))
+import Control.Exception (throwIO)
 import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
@@ -21,16 +22,14 @@ import Data.Aeson.Types ( Value(..), (.=), object, typeMismatch
                         , Object)
 import Data.ByteString.Char8 (pack)
 import Data.ByteString.Lazy (readFile)
-import Data.Data (Typeable)
-import Data.Hashable (Hashable)
 import Data.Maybe (maybeToList, listToMaybe)
 import Data.IORef (IORef(..), readIORef, newIORef, writeIORef)
 import Data.List (find, (\\))
 import Data.Time.Clock (getCurrentTime, addUTCTime)
 import Data.Vector (fromList)
-import GHC.Generics (Generic)
 import Language.Haskell.TH.Syntax (nameBase)
 import Network.HTTP.Types.Status (status401)
+import Prelude hiding (readFile)
 import System.Log.Logger (noticeM)
 import Text.Read (readMaybe)
 
@@ -49,122 +48,6 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Text.Lazy as LT
 import qualified Data.HashMap.Strict as HM
-
-data AuthRequest = AuthRequest
-                 { methods :: [AuthMethod]
-                 , scope   :: Maybe AuthScope
-                 } deriving Show
-
-data AuthMethod = PasswordMethod
-                { userId   :: Maybe M.ObjectId
-                , userName :: Maybe String
-                , domainId :: Maybe M.ObjectId
-                , domainName :: Maybe String
-                , password :: String
-                } deriving Show
-
-data AuthScope = ProjectIdScope
-               { projectId     :: Maybe M.ObjectId
-               , projectName   :: Maybe String
-               , scopeDomainId :: Maybe String
-               } deriving Show
-
-data Action = ValidateToken
-            | CheckToken
-            -- | RevokeToken
-
-            | AddService
-            | ListServices
-            | ShowServiceDetails
-            | UpdateService
-            | DeleteService
-
-            | AddEndpoint
-            | ListEndpoints
-            | ShowEndpoint
-            -- | UpdateEndpoint
-            | DeleteEndpoint
-
-            -- | AddDomain
-            | ListDomains
-            | ShowDomainDetails
-            -- | UpdateDomain
-            -- | DeleteDomain
-            -- | ListRolesForDomainUser
-            -- | GrantRoleToDomainUser
-            -- | CheckRoleForDomainUser
-            -- | RevokeRoleForDomainUser
-            -- | ListRolesForDomainGroup
-            -- | GrantRoleToDomainGroup
-            -- | CheckRoleForDomainGroup
-            -- | RevokeRoleForDomainGroup
-
-            | AddProject
-            | ListProjects
-            | ShowProjectDetails
-            -- | UpdateProject
-            | DeleteProject
-            | ListRolesForProjectUser
-            | GrantRoleToProjectUser
-            -- | CheckRoleForProjectUser
-            -- | RevokeRoleForProjectUser
-            -- | ListRolesForProjectGroup
-            -- | GrantRoleToProjectGroup
-            -- | CheckRoleForProjectGroup
-            -- | RevokeRoleForProjectGroup
-
-            | AddUser
-            | ListUsers
-            | ShowUserDetails
-            | UpdateUser
-            | DeleteUser
-            -- | ListGroupsForUser
-            | ListProjectsForUser
-            | ChangePassword
-
-            -- | AddGroup
-            -- | ListGroups
-            -- | ShowGroupDetails
-            -- | UpdateGroup
-            -- | DeleteGroup
-            -- | ListUsersInGroup
-            -- | AddUserToGroup
-            -- | RemoveUserFromGroup
-            -- | CheckUserMembershipInGroup
-
-            -- | AddCredential
-            -- | ListCredentials
-            -- | ShowCredentialDetails
-            -- | UpdateCredential
-            -- | DeleteCredential
-
-            | AddRole
-            | ListRoles
-            | ShowRoleDetails
-            | ListRoleAssignments
-            | DeleteRole
-
-            -- | AddPolicy
-            -- | ListPolicies
-            -- | ShowPolicyDetails
-            -- | UpdatePolicy
-            -- | DeletePolicy
-              deriving (Show, Read, Eq, Generic, Enum)
-
-instance Hashable Action
-
-data Resource = Token MT.Token
-              | UserId M.ObjectId
-              | EmptyResource
-
-type Policy = HM.HashMap Action Verifier
-
-type Verifier = Resource -> MT.Token -> Bool
-
-data PolicyCompileException = PolicyCompileException String
-                              deriving (Typeable, Show)
-
-instance Exception PolicyCompileException
 
 authenticate :: M.Pipe
              -> (Maybe AuthScope)
@@ -205,12 +88,13 @@ authenticate pipe mScope (PasswordMethod mUserId mUserName mDomainId mDomainName
 
 --authenticate _ _ _ = return $ Left "Method is not supported."
 
-authorize :: (HM.HashMap Action Verifier)
+authorize :: (MonadIO (b IO), BackendApi (b IO))
+          => (HM.HashMap Action Verifier)
           -> Action
           -> MT.Token
           -> Resource
-          -> ActionM ()
-          -> ActionM ()
+          -> ActionM (b IO) ()
+          -> ActionM (b IO) ()
 authorize verifiers action token resource actionToRun =
   if (verifiers HM.! action) resource token
   then actionToRun
@@ -218,9 +102,10 @@ authorize verifiers action token resource actionToRun =
     S.status status401
     S.json $ E.unauthorized "You are not authorized to perform this action"
 
-requireToken :: KeystoneConfig
-            -> (MT.Token -> ActionM ())
-            -> ActionM ()
+requireToken :: (MonadIO (b IO), BackendApi (b IO))
+            => KeystoneConfig
+            -> (MT.Token -> ActionM (b IO) ())
+            -> ActionM (b IO) ()
 requireToken config actionToRun = do
   let adminToken = Config.adminToken config
   req <- S.request

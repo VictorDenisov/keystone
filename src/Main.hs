@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -7,12 +8,17 @@
 module Main
 where
 
+import Backend
 import Common (loggerName, ScottyM, ActionM, UrlBasedValue, UrlInfo(..))
-import Config (readConfig, KeystoneConfig(..), ServerType(..))
+import Config (readConfig, KeystoneConfig(..), ServerType(..), Database(..))
 import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
+import Control.Monad.Base (MonadBase(..))
+import Control.Monad.Catch (MonadThrow(..))
+import Control.Monad.Reader (ReaderT(runReaderT))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
+import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Except (runExceptT, MonadError(throwError))
 import Control.Monad.Trans.Resource (runResourceT, allocate, release)
@@ -20,6 +26,7 @@ import Data.Aeson.Types (FromJSON(..))
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
+import MongoBackend
 import Network.HTTP.Types.Method (StdMethod(HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, statusCode)
@@ -38,6 +45,7 @@ import Text.Read (readMaybe)
 import Version (apiV3Reply, apiVersions)
 
 import qualified Auth as A
+import qualified Auth.Types as AT
 import qualified Common.Database as CD
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text.Lazy as TL
@@ -73,7 +81,8 @@ main = do
   -- ^ we need the evaluation to happen immediatelly
   verifyDatabase config
 
-  app <- S.scottyAppT id id (application policy config)
+  let runMongo = runMongoBackend $ database config
+  app <- S.scottyAppT runMongo runMongo (application policy config)
   let settings = tlsSettings
                       (certificateFile config)
                       (keyFile config)
@@ -83,9 +92,18 @@ main = do
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
 
-application :: A.Policy
+runMongoBackend :: Database -> MongoBackend IO a -> IO a
+runMongoBackend mongoConfig action =
+  runReaderT action (MongoData mongoConfig)
+
+application :: ( MonadBase IO (b IO)
+               , MonadBaseControl IO (b IO)
+               , MonadThrow (b IO)
+               , MonadIO (b IO)
+               , BackendApi (b IO))
+            => AT.Policy
             -> KeystoneConfig
-            -> ScottyM ()
+            -> ScottyM (b IO) ()
 application policy config = do
   S.middleware logRequestResponse
   S.defaultHandler $ \e -> do
@@ -104,11 +122,11 @@ application policy config = do
     with_host_url config apiV3Reply
   -- Token API
   S.post "/v3/auth/tokens" $ do
-    (au :: A.AuthRequest) <- parseRequest
+    (au :: AT.AuthRequest) <- parseRequest
     baseUrl <- getBaseUrl config
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- liftIO $ mapM (A.authenticate pipe (A.scope au)) (A.methods au)
+      res <- liftIO $ mapM (A.authenticate pipe (AT.scope au)) (AT.methods au)
       release releaseKey
       case head res of
         Right (tokenId, t) -> lift $ do
@@ -141,7 +159,7 @@ application policy config = do
       Left errorMessage -> do
         S.status status404
         S.json $ E.notFound errorMessage
-      Right tokenToVerify -> A.authorize policy A.ValidateToken token (A.Token tokenToVerify) $ do
+      Right tokenToVerify -> A.authorize policy AT.ValidateToken token (AT.Token tokenToVerify) $ do
         S.status status200
         S.json $ A.produceTokenResponse tokenToVerify baseUrl
   S.addroute HEAD "/v3/auth/tokens" $ A.requireToken config $ \token -> do
@@ -158,10 +176,10 @@ application policy config = do
       Nothing -> do
         S.status status404
       Just tokenToVerify -> do
-        A.authorize policy A.CheckToken token (A.Token tokenToVerify) $ S.status status204
+        A.authorize policy AT.CheckToken token (AT.Token tokenToVerify) $ S.status status204
   -- Service API
   S.post "/v3/services" $ A.requireToken config $ \token ->
-    A.authorize policy A.AddService token A.EmptyResource $ do
+    A.authorize policy AT.AddService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       (scr :: Srv.ServiceCreateRequest) <- parseRequest
       service <- liftIO $ Srv.newRequestToService scr
@@ -170,14 +188,14 @@ application policy config = do
       with_host_url config $ Srv.produceServiceReply service
   S.get "/v3/services" $ A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
-    A.authorize policy A.ListServices token A.EmptyResource $ do
+    A.authorize policy AT.ListServices token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
       S.status status200
       with_host_url config $ Srv.produceServicesReply services
   S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
-    A.authorize policy A.ShowServiceDetails token A.EmptyResource $ do
+    A.authorize policy AT.ShowServiceDetails token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       mService <- liftIO $ CD.withDB (database config) $ MS.findServiceById sid
       case mService of
@@ -190,7 +208,7 @@ application policy config = do
   S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
-    A.authorize policy A.UpdateService token A.EmptyResource $ do
+    A.authorize policy AT.UpdateService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       mService <- liftIO $ CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
       case mService of
@@ -202,7 +220,7 @@ application policy config = do
           with_host_url config $ Srv.produceServiceReply service
   S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
-    A.authorize policy A.DeleteService token A.EmptyResource $ do
+    A.authorize policy AT.DeleteService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
       case n of
@@ -214,7 +232,7 @@ application policy config = do
   S.post "/v3/endpoints" $ A.requireToken config $ \token -> do
     (ecr :: Srv.EndpointCreateRequest) <- parseRequest
     endpoint <- liftIO $ Srv.newRequestToEndpoint ecr
-    A.authorize policy A.AddEndpoint token A.EmptyResource $ do
+    A.authorize policy AT.AddEndpoint token AT.EmptyResource $ do
       mEid <- liftIO $ CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
       case mEid of
         Nothing -> do
@@ -224,13 +242,13 @@ application policy config = do
           S.status status201
           with_host_url config $ Srv.produceEndpointReply endpoint (Srv.eserviceId ecr)
   S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
-    A.authorize policy A.ListEndpoints token A.EmptyResource $ do
+    A.authorize policy AT.ListEndpoints token AT.EmptyResource $ do
       endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
       S.status status200
       with_host_url config $ Srv.produceEndpointsReply endpoints
   S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
-    A.authorize policy A.ShowEndpoint token A.EmptyResource $ do
+    A.authorize policy AT.ShowEndpoint token AT.EmptyResource $ do
       mEndpoint <- liftIO $ CD.withDB (database config) $ MS.findEndpointById eid
       case mEndpoint of
         Nothing -> do
@@ -241,7 +259,7 @@ application policy config = do
           with_host_url config $ Srv.produceEndpointReply endpoint serviceId
   S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
-    A.authorize policy A.DeleteEndpoint token A.EmptyResource $ do
+    A.authorize policy AT.DeleteEndpoint token AT.EmptyResource $ do
       n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid
       case n of
         Success -> S.status status204
@@ -250,19 +268,19 @@ application policy config = do
           S.status status404
   -- Domain API
   S.get "/v3/domains" $ A.requireToken config $ \token -> do
-    A.authorize policy A.ListDomains token A.EmptyResource $ do
+    A.authorize policy AT.ListDomains token AT.EmptyResource $ do
       S.status status200
       with_host_url config $ D.produceDomainsReply []
   S.get "/v3/domains/:did" $ A.requireToken config $ \token -> do
     (did :: M.ObjectId) <- parseId "did"
-    A.authorize policy A.ShowDomainDetails token A.EmptyResource $ do
+    A.authorize policy AT.ShowDomainDetails token AT.EmptyResource $ do
       S.status status200
       with_host_url config $ D.produceDomainReply MD.Domain
   -- Project API
   S.post "/v3/projects" $ A.requireToken config $ \token -> do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
     project <- liftIO $ P.newRequestToProject pcr
-    A.authorize policy A.AddProject token A.EmptyResource $ do
+    A.authorize policy AT.AddProject token AT.EmptyResource $ do
       mPid <- liftIO $ CD.withDB (database config) $ MP.createProject project
       case mPid of
         Left err -> do
@@ -273,13 +291,13 @@ application policy config = do
           with_host_url config $ P.produceProjectReply project
   S.get "/v3/projects" $ A.requireToken config $ \token -> do
     projectName <- parseMaybeString "name"
-    A.authorize policy A.ListProjects token A.EmptyResource $ do
+    A.authorize policy AT.ListProjects token AT.EmptyResource $ do
       projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
       S.status status200
       with_host_url config $ P.produceProjectsReply projects
   S.get "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
-    A.authorize policy A.ShowProjectDetails token A.EmptyResource $ do
+    A.authorize policy AT.ShowProjectDetails token AT.EmptyResource $ do
       mProject <- liftIO $ CD.withDB (database config) $ MP.findProjectById pid
       case mProject of
         Nothing -> do
@@ -290,7 +308,7 @@ application policy config = do
           with_host_url config $ P.produceProjectReply project
   S.delete "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
-    A.authorize policy A.DeleteProject token A.EmptyResource $ do
+    A.authorize policy AT.DeleteProject token AT.EmptyResource $ do
       n <- liftIO $ CD.withDB (database config) $ MP.deleteProject pid
       case n of
         Success -> S.status status204
@@ -300,7 +318,7 @@ application policy config = do
   S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy A.ListRolesForProjectUser token A.EmptyResource $ do
+    A.authorize policy AT.ListRolesForProjectUser token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
       S.status status200
       with_host_url config $ MR.produceRolesReply roles
@@ -308,14 +326,14 @@ application policy config = do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
     (rid :: M.ObjectId) <- parseId "rid"
-    A.authorize policy A.GrantRoleToProjectUser token A.EmptyResource $ do
+    A.authorize policy AT.GrantRoleToProjectUser token AT.EmptyResource $ do
       res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
       S.status status204
   -- User API
   S.post "/v3/users" $ A.requireToken config $ \token -> do
     (d :: U.UserCreateRequest) <- parseRequest
     user <- liftIO $ U.newRequestToUser d
-    A.authorize policy A.AddUser token A.EmptyResource $ do
+    A.authorize policy AT.AddUser token AT.EmptyResource $ do
       mUid <- liftIO $ CD.withDB (database config) $ MU.createUser user
       case mUid of
         Left err -> do
@@ -326,13 +344,13 @@ application policy config = do
           with_host_url config $ U.produceUserReply user
   S.get "/v3/users" $ A.requireToken config $ \token -> do
     userName <- parseMaybeString "name"
-    A.authorize policy A.ListUsers token A.EmptyResource $ do
+    A.authorize policy AT.ListUsers token AT.EmptyResource $ do
       users <- liftIO $ CD.withDB (database config) $ MU.listUsers userName
       S.status status200
       with_host_url config $ U.produceUsersReply users
   S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy A.ShowUserDetails token A.EmptyResource $ do
+    A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
       mUser <- liftIO $ CD.withDB (database config) $ MU.findUserById uid
       case mUser of
         Nothing -> do
@@ -344,7 +362,7 @@ application policy config = do
   S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
-    A.authorize policy A.UpdateUser token A.EmptyResource $ do
+    A.authorize policy AT.UpdateUser token AT.EmptyResource $ do
       updateDocument <- liftIO $ U.updateRequestToDocument uur
       mUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid updateDocument
       case mUser of
@@ -356,7 +374,7 @@ application policy config = do
           with_host_url config $ U.produceUserReply user
   S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy A.DeleteUser token A.EmptyResource $ do
+    A.authorize policy AT.DeleteUser token AT.EmptyResource $ do
       st <- liftIO $ CD.withDB (database config) $ MU.deleteUser uid
       case st of
         Success  -> S.status status204
@@ -365,14 +383,14 @@ application policy config = do
           S.status status404
   S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy A.ListProjectsForUser token (A.UserId uid) $ do
+    A.authorize policy AT.ListProjectsForUser token (AT.UserId uid) $ do
       projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
       S.status status200
       with_host_url config $ P.produceProjectsReply projects
   S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: U.ChangePasswordRequest) <- parseRequest
-    A.authorize policy A.ChangePassword token (A.UserId uid) $ do
+    A.authorize policy AT.ChangePassword token (AT.UserId uid) $ do
       res <- liftIO $ CD.withDB (database config) $ A.checkUserPassword (Just uid) Nothing (U.poriginalPassword cpr)
       case res of
         Left errorMessage -> do
@@ -392,7 +410,7 @@ application policy config = do
   S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest
     role <- liftIO $ R.newRequestToRole rcr
-    A.authorize policy A.AddRole token A.EmptyResource $ do
+    A.authorize policy AT.AddRole token AT.EmptyResource $ do
       mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
       case mRid of
         Left err -> do
@@ -403,13 +421,13 @@ application policy config = do
           with_host_url config $ MR.produceRoleReply role
   S.get "/v3/roles" $ A.requireToken config $ \token -> do
     roleName <- parseMaybeString "name"
-    A.authorize policy A.ListRoles token A.EmptyResource $ do
+    A.authorize policy AT.ListRoles token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
       S.status status200
       with_host_url config $ MR.produceRolesReply roles
   S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
-    A.authorize policy A.ShowRoleDetails token A.EmptyResource $ do
+    A.authorize policy AT.ShowRoleDetails token AT.EmptyResource $ do
       mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
       case mRole of
         Nothing -> do
@@ -420,7 +438,7 @@ application policy config = do
           with_host_url config $ MR.produceRoleReply role
   S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
-    A.authorize policy A.DeleteRole token A.EmptyResource $ do
+    A.authorize policy AT.DeleteRole token AT.EmptyResource $ do
       st <- liftIO $ CD.withDB (database config) $ MR.deleteRole rid
       case st of
         Success  -> S.status status204
@@ -430,7 +448,7 @@ application policy config = do
   S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
-    A.authorize policy A.ListRoleAssignments token A.EmptyResource $ do
+    A.authorize policy AT.ListRoleAssignments token AT.EmptyResource $ do
       assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
       S.status status200
       with_host_url config $ MA.produceAssignmentsReply assignments
@@ -456,13 +474,13 @@ logRequestResponse app request responder = do
   debugM loggerName $ show request
   app request responder
 
-parseMaybeString :: TL.Text -> ActionM (Maybe String)
+parseMaybeString :: (MonadIO m) => TL.Text -> ActionM m (Maybe String)
 parseMaybeString paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
     return $ Just value
 
-parseMaybeParam :: Read a => TL.Text -> ActionM (Maybe a)
+parseMaybeParam :: (MonadIO m, Read a) => TL.Text -> ActionM m (Maybe a)
 parseMaybeParam paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
     (value :: String) <- S.param paramName
@@ -470,14 +488,18 @@ parseMaybeParam paramName =
       Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (TL.unpack paramName)
       Just v  -> return $ Just v
 
-parseId :: Read a => TL.Text -> ActionM a
+parseId :: (MonadIO m, Read a) => TL.Text -> ActionM m a
 parseId paramName = do
   s <- S.param paramName
   case readMaybe s of
     Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (TL.unpack paramName)
     Just v  -> return v
 
-parseRequest :: (Show a, FromJSON a) => ActionM a
+parseRequest :: ( Show a
+                , FromJSON a
+                , BackendApi (b IO)
+                , MonadIO (b IO))
+                => ActionM (b IO) a
 parseRequest = do
   request <- S.rescue S.jsonData $ \e ->
     S.raise $ E.badRequest $ E.message e
@@ -487,7 +509,9 @@ parseRequest = do
 hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"
 
-host_url :: ServerType -> ActionM (Maybe String)
+host_url :: ( MonadIO (b IO)
+            , BackendApi (b IO))
+            => ServerType -> ActionM (b IO) (Maybe String)
 host_url st = do
   mh <- S.header "host"
   let protocol =
@@ -496,7 +520,9 @@ host_url st = do
             Tls   -> "https"
   return $ fmap (\h -> protocol ++ "://" ++ (TL.unpack h)) mh
 
-getBaseUrl :: KeystoneConfig -> ActionM String
+getBaseUrl :: ( MonadIO (b IO)
+              , BackendApi (b IO))
+              => KeystoneConfig -> ActionM (b IO) String
 getBaseUrl config = do
   case endpoint config of
     Just e -> return e
@@ -506,7 +532,10 @@ getBaseUrl config = do
         Just h -> return h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
 
-with_host_url :: KeystoneConfig -> UrlBasedValue -> ActionM ()
+with_host_url :: ( Functor (b IO)
+                 , MonadIO (b IO)
+                 , BackendApi (b IO))
+                 => KeystoneConfig -> UrlBasedValue -> ActionM (b IO) ()
 with_host_url config v = do
   pathString <- BS.unpack <$> rawPathInfo <$> S.request
   queryString <- BS.unpack <$> rawQueryString <$> S.request

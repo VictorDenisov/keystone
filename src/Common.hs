@@ -27,8 +27,8 @@ databaseVersion = "0.0.1"
 loggerName :: String
 loggerName = "Main"
 
-type ScottyM = S.ScottyT E.Error IO
-type ActionM = ActionT E.Error IO
+type ScottyM m = S.ScottyT E.Error m
+type ActionM m = ActionT E.Error m
 
 instance MonadThrow m => MonadThrow (ActionT E.Error m) where
   throwM = lift . throwM
