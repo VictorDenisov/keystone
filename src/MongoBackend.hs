@@ -10,6 +10,7 @@ import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (ReaderT(runReaderT), MonadReader(ask))
 import Data.Pool (Pool, createPool, withResource)
+import Model.Common (OpStatus(..))
 
 import qualified Auth as A
 import qualified Config as C
@@ -39,6 +40,8 @@ instance ( MonadBase IO m
   listUsers mName = withHandle $ \p -> liftIO $ CD.runDB p $ MU.listUsers mName
 
   updateUser i d = withHandle $ \p -> liftIO $ CD.runDB p $ MU.updateUser i d
+
+  deleteUser i = withHandle $ \p -> liftIO $ CD.runDB p $ MU.deleteUser i
 
   withHandle action = do
     d <- ask

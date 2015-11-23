@@ -370,7 +370,7 @@ application policy config = do
   S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.DeleteUser token AT.EmptyResource $ do
-      st <- liftIO $ CD.withDB (database config) $ MU.deleteUser uid
+      st <- lift $ deleteUser uid
       case st of
         Success  -> S.status status204
         NotFound -> do

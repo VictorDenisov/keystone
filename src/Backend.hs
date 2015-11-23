@@ -4,6 +4,7 @@
 module Backend where
 
 import Data.Bson (ObjectId)
+import Model.Common (OpStatus(..))
 
 import qualified Auth.Types as A
 import qualified Database.MongoDB as M
@@ -21,4 +22,5 @@ class BackendApi b where
                -> b (Maybe MU.User)
   listUsers :: (Maybe String) -> b [MU.User]
   updateUser :: ObjectId -> M.Document -> b (Maybe MU.User)
+  deleteUser :: ObjectId -> b OpStatus
   withHandle :: (BackendHandle b -> b a) -> b a
