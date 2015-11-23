@@ -393,7 +393,7 @@ application policy config = do
           S.json $ E.notFound "User not found"
         Right _ -> do
           updateDocument <- liftIO $ U.changePasswordRequestToDocument cpr
-          mModifiedUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid updateDocument
+          mModifiedUser <- lift $ updateUser uid updateDocument
           case mModifiedUser of
             Nothing -> do
               S.status status404
