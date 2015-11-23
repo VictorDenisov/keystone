@@ -6,6 +6,7 @@ module Backend where
 import Data.Bson (ObjectId)
 
 import qualified Auth.Types as A
+import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Token as MT
 import qualified Model.User as MU
@@ -19,4 +20,5 @@ class BackendApi b where
   findUserById :: ObjectId
                -> b (Maybe MU.User)
   listUsers :: (Maybe String) -> b [MU.User]
+  updateUser :: ObjectId -> M.Document -> b (Maybe MU.User)
   withHandle :: (BackendHandle b -> b a) -> b a

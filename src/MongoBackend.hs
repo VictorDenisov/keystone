@@ -38,6 +38,8 @@ instance ( MonadBase IO m
 
   listUsers mName = withHandle $ \p -> liftIO $ CD.runDB p $ MU.listUsers mName
 
+  updateUser i d = withHandle $ \p -> liftIO $ CD.runDB p $ MU.updateUser i d
+
   withHandle action = do
     d <- ask
     withResource (pool d) action

@@ -359,7 +359,7 @@ application policy config = do
     (uur :: U.UserUpdateRequest) <- parseRequest
     A.authorize policy AT.UpdateUser token AT.EmptyResource $ do
       updateDocument <- liftIO $ U.updateRequestToDocument uur
-      mUser <- liftIO $ CD.withDB (database config) $ MU.updateUser uid updateDocument
+      mUser <- lift $ updateUser uid updateDocument
       case mUser of
         Nothing -> do
           S.status status404
