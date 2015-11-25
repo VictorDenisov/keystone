@@ -49,20 +49,25 @@ import qualified Data.Vector as V
 import qualified Data.Text.Lazy as LT
 import qualified Data.HashMap.Strict as HM
 
-authenticate :: M.Pipe
+authenticate :: (MonadIO m, MonadIO (b m), BackendApi (b m), Functor (b m))
+             => M.Pipe
              -> (Maybe AuthScope)
              -> AuthMethod
-             -> IO (Either String (String, MT.Token))
+             -> b m (Either String (String, MT.Token))
 authenticate pipe mScope (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
-  res <- CD.runDB pipe $ checkUserPassword mUserId mUserName password
+  res <- checkUserPassword mUserId mUserName password
   case res of
     Left  errorMessage -> return $ Left errorMessage
     Right user -> do
-      currentTime  <- liftIO getCurrentTime
-      scopeProject <- CD.runDB pipe $ calcProject mScope
-      scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
-      services     <- CD.runDB pipe $ MS.listServices Nothing
-      tokenId <- liftIO $ M.genObjectId
+      liftIO $ Right <$> (CD.runDB pipe $ produceToken mScope user)
+
+produceToken :: (Maybe AuthScope) -> MU.User -> M.Action IO (String, MT.Token)
+produceToken  mScope user = do
+      currentTime  <- liftIO $ getCurrentTime
+      scopeProject <- calcProject mScope
+      scopeRoles   <- calcRoles scopeProject user
+      services     <- MS.listServices Nothing
+      tokenId      <- liftIO $ M.genObjectId
       let token = MT.Token
                         tokenId
                         currentTime
@@ -71,8 +76,8 @@ authenticate pipe mScope (PasswordMethod mUserId mUserName mDomainId mDomainName
                         scopeProject
                         scopeRoles
                         services
-      mt <- CD.runDB pipe $ MT.createToken token
-      return $ Right (show mt, token)
+      mt <- MT.createToken token
+      return (show mt, token)
   where
     calcProject mScope = runMaybeT $ do
       (ProjectIdScope mPid mPname _) <- MaybeT $ return mScope
@@ -221,12 +226,19 @@ compileExpression verifiers (Object m) = do
     (expr, _) -> throwIO $ PolicyCompileException $ "Unknown expression: " ++ (T.unpack expr)
 compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error while compiling policy expression " ++ (show expr) ++ ". Expecting object instead"
 
-checkUserPassword :: Maybe M.ObjectId -> Maybe String -> String -> M.Action IO (Either String MU.User)
+
+checkUserPassword :: ( MonadIO m
+                     , BackendApi (b m)
+                     , MonadIO (b m)
+                     ) => Maybe M.ObjectId
+                       -> Maybe String
+                       -> String
+                       -> b m (Either String MU.User)
 checkUserPassword mUserId mUserName passwordToCheck = do
   mu <- case mUserId of
-            Just userId -> MU.findUserById userId
+            Just userId -> findUserById userId
             Nothing -> do
-              users <- MU.listUsers mUserName
+              users <- listUsers mUserName
               return $ listToMaybe users
   case mu of
     Nothing -> return $ Left "User is not found."

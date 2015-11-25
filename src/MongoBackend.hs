@@ -10,9 +10,7 @@ import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (ReaderT(runReaderT), MonadReader(ask))
 import Data.Pool (Pool, createPool, withResource)
-import Model.Common (OpStatus(..))
 
-import qualified Auth as A
 import qualified Config as C
 import qualified Common.Database as CD
 import qualified Database.MongoDB as M
@@ -30,8 +28,6 @@ instance ( MonadBase IO m
          , MonadBaseControl IO m
          ) => BackendApi (MongoBackend m) where
   type BackendHandle (MongoBackend m) = M.Pipe
-
-  authenticate s m = withHandle $ \p -> liftIO $ A.authenticate p s m
 
   createUser u = withHandle $ \p -> liftIO $ CD.runDB p $ MU.createUser u
 

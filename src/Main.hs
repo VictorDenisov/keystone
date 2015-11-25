@@ -121,7 +121,7 @@ application policy config = do
     baseUrl <- getBaseUrl config
     runResourceT $ do
       (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- liftIO $ mapM (A.authenticate pipe (AT.scope au)) (AT.methods au)
+      res <- lift $ lift $ mapM (A.authenticate pipe (AT.scope au)) (AT.methods au)
       release releaseKey
       case head res of
         Right (tokenId, t) -> lift $ do
@@ -386,7 +386,7 @@ application policy config = do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: U.ChangePasswordRequest) <- parseRequest
     A.authorize policy AT.ChangePassword token (AT.UserId uid) $ do
-      res <- liftIO $ CD.withDB (database config) $ A.checkUserPassword (Just uid) Nothing (U.poriginalPassword cpr)
+      res <- lift $ A.checkUserPassword (Just uid) Nothing (U.poriginalPassword cpr)
       case res of
         Left errorMessage -> do
           S.status status404
