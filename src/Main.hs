@@ -504,9 +504,7 @@ parseRequest = do
 hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"
 
-host_url :: ( MonadIO (b IO)
-            , BackendApi (b IO))
-            => ServerType -> ActionM (b IO) (Maybe String)
+host_url :: MonadIO b => ServerType -> ActionM b (Maybe String)
 host_url st = do
   mh <- S.header "host"
   let protocol =
@@ -515,9 +513,7 @@ host_url st = do
             Tls   -> "https"
   return $ fmap (\h -> protocol ++ "://" ++ (TL.unpack h)) mh
 
-getBaseUrl :: ( MonadIO (b IO)
-              , BackendApi (b IO))
-              => KeystoneConfig -> ActionM (b IO) String
+getBaseUrl :: MonadIO b => KeystoneConfig -> ActionM b String
 getBaseUrl config = do
   case endpoint config of
     Just e -> return e
@@ -527,10 +523,9 @@ getBaseUrl config = do
         Just h -> return h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
 
-with_host_url :: ( Functor (b IO)
-                 , MonadIO (b IO)
-                 , BackendApi (b IO))
-                 => KeystoneConfig -> UrlBasedValue -> ActionM (b IO) ()
+with_host_url :: ( Functor b
+                 , MonadIO b)
+                 => KeystoneConfig -> UrlBasedValue -> ActionM b ()
 with_host_url config v = do
   pathString <- BS.unpack <$> rawPathInfo <$> S.request
   queryString <- BS.unpack <$> rawQueryString <$> S.request
