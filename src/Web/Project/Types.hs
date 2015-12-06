@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Project.Types
+module Web.Project.Types
 where
 
 import Data.Data (Typeable)

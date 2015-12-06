@@ -57,10 +57,10 @@ import qualified Model.Role as MR
 import qualified Model.Service as MS
 import qualified Model.Token as MT
 import qualified Model.User as MU
-import qualified Project as P
 import qualified Role as R
 import qualified Web.Domain as D
 import qualified Web.Service as Srv
+import qualified Web.Project as P
 import qualified Web.User as U
 import qualified Web.Scotty.Trans as S
 

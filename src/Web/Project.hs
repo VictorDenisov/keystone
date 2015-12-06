@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Project
-( module Project
-, module Project.Types
+module Web.Project
+( module Web.Project
+, module Web.Project.Types
 ) where
 
 import Common (fromObject, underscoreOptions, UrlBasedValue, UrlInfo(..))
@@ -14,7 +14,7 @@ import Data.Aeson.Types (object, typeMismatch, (.=))
 import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
 import Data.Vector (fromList)
-import Project.Types
+import Web.Project.Types
 import Language.Haskell.TH.Syntax (nameBase)
 
 import qualified Database.MongoDB as M
