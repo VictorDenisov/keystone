@@ -64,6 +64,7 @@ import qualified Model.User as MU
 
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
+import qualified Web.Assignment as Assig
 import qualified Web.Domain as D
 import qualified Web.Project as P
 import qualified Web.Role as R
@@ -453,7 +454,7 @@ application policy config = do
     A.authorize policy AT.ListRoleAssignments token AT.EmptyResource $ do
       assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
       S.status status200
-      with_host_url config $ MA.produceAssignmentsReply assignments
+      with_host_url config $ Assig.produceAssignmentsReply assignments
 
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do

@@ -33,6 +33,7 @@ executable keystone
                      , Model.Token
                      , Model.User
                      , MongoBackend
+                     , Web.Assignment
                      , Web.Auth
                      , Web.Auth.Types
                      , Web.Common
