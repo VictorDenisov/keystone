@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Service.Types
+module Web.Service.Types
 where
 
 import Data.Data (Typeable)

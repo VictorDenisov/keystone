@@ -3,14 +3,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Service
-( module Service
-, module Service.Types
+module Web.Service
+( module Web.Service
+, module Web.Service.Types
 ) where
 
 import Common ( skipTickOptions, dropOptions, fromObject, underscoreOptions
               , (<.>), UrlInfo(..), UrlBasedValue)
-import Service.Types
+import Web.Service.Types
 import Data.Aeson (FromJSON(..), ToJSON(..), (.:), Value(..))
 import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (object, typeMismatch, (.=))

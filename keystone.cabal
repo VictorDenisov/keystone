@@ -40,8 +40,8 @@ executable keystone
                      , Project.Types
                      , Role
                      , Role.Types
-                     , Service
-                     , Service.Types
+                     , Web.Service
+                     , Web.Service.Types
                      , Web.User
                      , Web.User.Types
                      , Version

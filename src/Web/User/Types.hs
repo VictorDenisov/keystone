@@ -1,6 +1,9 @@
 module Web.User.Types
 where
 
+-- This separate module Types is necessary because mkParseJson requires them to
+-- be compiled by the time of compiling mkParseJson
+
 data UserCreateRequest = UserCreateRequest
                        { defaultProjectId :: String
                        , description :: Maybe String
