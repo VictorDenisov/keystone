@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Role.Types
+module Web.Role.Types
 where
 
 import Data.Data (Typeable)

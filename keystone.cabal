@@ -35,11 +35,11 @@ executable keystone
                      , Model.Token
                      , Model.User
                      , MongoBackend
-                     , Role
-                     , Role.Types
                      , Web.Domain
                      , Web.Project
                      , Web.Project.Types
+                     , Web.Role
+                     , Web.Role.Types
                      , Web.Service
                      , Web.Service.Types
                      , Web.User

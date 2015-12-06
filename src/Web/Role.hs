@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Role
-( module Role
-, module Role.Types
+module Web.Role
+( module Web.Role
+, module Web.Role.Types
 ) where
 
 import Common (underscoreOptions)
@@ -11,7 +11,7 @@ import Data.Aeson (FromJSON(..), Value(..), (.:))
 import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (typeMismatch)
 import Data.Maybe (fromMaybe)
-import Role.Types
+import Web.Role.Types
 import Language.Haskell.TH.Syntax (nameBase)
 
 import qualified Database.MongoDB as M
