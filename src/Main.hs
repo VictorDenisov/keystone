@@ -49,7 +49,6 @@ import qualified Common.Database as CD
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text.Lazy as TL
 import qualified Database.MongoDB as M
-import qualified Domain as D
 import qualified Error as E
 import qualified Model.Assignment as MA
 import qualified Model.Domain as MD
@@ -60,6 +59,7 @@ import qualified Model.Token as MT
 import qualified Model.User as MU
 import qualified Project as P
 import qualified Role as R
+import qualified Web.Domain as D
 import qualified Web.Service as Srv
 import qualified Web.User as U
 import qualified Web.Scotty.Trans as S

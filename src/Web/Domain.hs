@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Domain
+module Web.Domain
 where
 
 import Common (UrlBasedValue, UrlInfo(..))

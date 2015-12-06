@@ -20,7 +20,6 @@ executable keystone
   other-modules:       Auth
                      , Auth.Types
                      , Backend
-                     , Domain
                      , Common
                      , Common.Database
                      , Config
@@ -40,6 +39,7 @@ executable keystone
                      , Project.Types
                      , Role
                      , Role.Types
+                     , Web.Domain
                      , Web.Service
                      , Web.Service.Types
                      , Web.User
