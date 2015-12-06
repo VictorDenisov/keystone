@@ -3,8 +3,6 @@
 module Common
 where
 
-import Control.Monad.Catch (MonadThrow(..), MonadCatch(..))
-import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Aeson (Value(..), Object)
 import Data.Aeson.TH (defaultOptions, Options(..))
 import Data.Bson (ObjectId(..))
@@ -17,24 +15,12 @@ import Text.Read (readMaybe)
 import Web.Scotty (Parsable(..))
 
 import qualified Data.Text.Lazy as T
-import qualified Error as E
-import qualified Web.Scotty.Trans as S
-import Web.Scotty.Internal.Types (ActionT(..))
 
 databaseVersion :: String
 databaseVersion = "0.0.1"
 
 loggerName :: String
 loggerName = "Main"
-
-type ScottyM m = S.ScottyT E.Error m
-type ActionM m = ActionT E.Error m
-
-instance MonadThrow m => MonadThrow (ActionT E.Error m) where
-  throwM = lift . throwM
-
-instance MonadCatch m => MonadCatch (ActionT E.Error m) where
-  catch (ActionT m) c = ActionT $ catch m (runAM . c)
 
 skipTickOptions = defaultOptions { fieldLabelModifier = filter (/= '\'') }
 
@@ -58,14 +44,6 @@ capitalize s = (toUpper $ head s) : tail s
 
 fromObject :: Value -> Object
 fromObject (Object o) = o
-
-data UrlInfo = UrlInfo
-             { baseUrl :: String
-             , path    :: String
-             , query   :: String
-             }
-
-type UrlBasedValue = UrlInfo -> Value
 
 instance Parsable ObjectId where
   parseParam t = maybe

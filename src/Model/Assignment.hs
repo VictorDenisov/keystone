@@ -6,7 +6,7 @@
 module Model.Assignment
 where
 
-import Common (UrlBasedValue, UrlInfo(..))
+import Web.Common (UrlBasedValue, UrlInfo(..))
 
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))

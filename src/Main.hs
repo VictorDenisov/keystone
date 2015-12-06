@@ -9,7 +9,7 @@ module Main
 where
 
 import Backend
-import Common (loggerName, ScottyM, ActionM, UrlBasedValue, UrlInfo(..))
+import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
 import Control.Monad (when, MonadPlus(mzero))
@@ -42,6 +42,8 @@ import System.Log.Formatter (simpleLogFormatter)
 import Text.Read (readMaybe)
 
 import Version (apiV3Reply, apiVersions)
+
+import Web.Common (ScottyM, ActionM, UrlBasedValue, UrlInfo(..))
 
 import qualified Common.Database as CD
 

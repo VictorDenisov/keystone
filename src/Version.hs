@@ -6,7 +6,7 @@ module Version
 )
 where
 
-import Common (UrlBasedValue, UrlInfo(..))
+import Web.Common (UrlBasedValue, UrlInfo(..))
 import Data.Aeson.Types (object, (.=), Value)
 
 jsonMediaTypeV3 = object [ "base" .= ("application/json" :: String)

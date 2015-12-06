@@ -7,7 +7,7 @@ module Web.User
 , module Web.User.Types
 ) where
 
-import Common (fromObject, underscoreOptions, dropOptions, (<.>), UrlBasedValue, UrlInfo(..))
+import Common (fromObject, underscoreOptions, dropOptions, (<.>))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (makePassword)
@@ -18,6 +18,7 @@ import Data.HashMap.Strict (insert)
 import Data.Text (pack)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
+import Web.Common (UrlBasedValue, UrlInfo(..))
 
 import Web.User.Types ( ChangePasswordRequest(..)
                       , UserCreateRequest(..)

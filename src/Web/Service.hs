@@ -9,7 +9,7 @@ module Web.Service
 ) where
 
 import Common ( skipTickOptions, dropOptions, fromObject, underscoreOptions
-              , (<.>), UrlInfo(..), UrlBasedValue)
+              , (<.>))
 import Web.Service.Types
 import Data.Aeson (FromJSON(..), ToJSON(..), (.:), Value(..))
 import Data.Aeson.TH (mkParseJSON)
@@ -18,6 +18,7 @@ import Data.HashMap.Strict (insert, delete)
 import Data.Text (pack)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
+import Web.Common (UrlInfo(..), UrlBasedValue)
 
 import qualified Database.MongoDB as M
 import qualified Model.Service as MS

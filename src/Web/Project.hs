@@ -7,13 +7,14 @@ module Web.Project
 , module Web.Project.Types
 ) where
 
-import Common (fromObject, underscoreOptions, UrlBasedValue, UrlInfo(..))
+import Common (fromObject, underscoreOptions)
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..), (.:))
 import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (object, typeMismatch, (.=))
 import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
 import Data.Vector (fromList)
+import Web.Common (UrlBasedValue, UrlInfo(..))
 import Web.Project.Types
 import Language.Haskell.TH.Syntax (nameBase)
 

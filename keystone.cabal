@@ -35,6 +35,7 @@ executable keystone
                      , MongoBackend
                      , Web.Auth
                      , Web.Auth.Types
+                     , Web.Common
                      , Web.Domain
                      , Web.Project
                      , Web.Project.Types

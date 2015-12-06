@@ -8,7 +8,7 @@ module Web.Auth
 where
 import Web.Auth.Types
 import Backend (BackendApi(..))
-import Common (loggerName, ActionM)
+import Common (loggerName)
 import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
 import Control.Exception (throwIO)
@@ -32,6 +32,7 @@ import Network.HTTP.Types.Status (status401)
 import Prelude hiding (readFile)
 import System.Log.Logger (noticeM)
 import Text.Read (readMaybe)
+import Web.Common (ActionM)
 
 import qualified Common.Database as CD
 import qualified Error as E

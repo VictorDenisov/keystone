@@ -8,7 +8,8 @@
 module Model.Role
 where
 
-import Common (fromObject, skipUnderscoreOptions, UrlBasedValue, UrlInfo(..))
+import Common (fromObject, skipUnderscoreOptions)
+import Web.Common (UrlBasedValue, UrlInfo(..))
 import Common.Database (affectedDocs, idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))

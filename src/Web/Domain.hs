@@ -3,11 +3,12 @@
 module Web.Domain
 where
 
-import Common (UrlBasedValue, UrlInfo(..))
 
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
 import Data.Vector (fromList)
+
+import Web.Common (UrlBasedValue, UrlInfo(..))
 
 import qualified Model.Domain as MD
 
