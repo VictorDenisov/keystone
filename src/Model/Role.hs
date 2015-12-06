@@ -8,21 +8,16 @@
 module Model.Role
 where
 
-import Common (fromObject, skipUnderscoreOptions)
-import Web.Common (UrlBasedValue, UrlInfo(..))
+import Common (skipUnderscoreOptions)
 import Common.Database (affectedDocs, idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-import Data.Aeson (ToJSON(..), Value(..))
-import Data.Aeson.Types (object, (.=))
 import Data.Aeson.TH (deriveJSON)
 import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Data (Typeable)
-import Data.HashMap.Strict (insert)
-import Data.Vector (fromList)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
@@ -54,28 +49,6 @@ instance M.Val RoleId where
 $(deriveBson id ''Role)
 
 $(deriveJSON skipUnderscoreOptions ''Role)
-
-produceRoleJson :: Role -> String -> Value
-produceRoleJson (role@Role{..}) baseUrl
-      = Object
-        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/roles/" ++ (show _id)) ])
-        $ fromObject $ toJSON role
-
-produceRoleReply :: Role -> UrlBasedValue
-produceRoleReply role (UrlInfo {baseUrl})
-      = object [ "role" .= produceRoleJson role baseUrl ]
-
-produceRolesReply :: [Role] -> UrlBasedValue
-produceRolesReply roles (UrlInfo {baseUrl, path, query})
-    = object [ "links" .= (object [ "next"     .= Null
-                                  , "previous" .= Null
-                                  , "self"     .= (baseUrl ++ path ++ query)
-                                  ]
-                          )
-             , "roles" .= rolesEntry
-             ]
-  where
-    rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceRoleJson roles
 
 createRole :: Role -> M.Action IO (Either E.Error M.ObjectId)
 createRole r = (do

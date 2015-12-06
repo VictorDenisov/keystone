@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -6,13 +7,16 @@ module Web.Role
 , module Web.Role.Types
 ) where
 
-import Common (underscoreOptions)
-import Data.Aeson (FromJSON(..), Value(..), (.:))
+import Common (fromObject, underscoreOptions)
+import Data.Aeson (FromJSON(..), Value(..), (.:), ToJSON(..), Value(..))
 import Data.Aeson.TH (mkParseJSON)
-import Data.Aeson.Types (typeMismatch)
+import Data.Aeson.Types (object, typeMismatch, (.=))
+import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
-import Web.Role.Types
+import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
+import Web.Common (UrlBasedValue, UrlInfo(..))
+import Web.Role.Types
 
 import qualified Database.MongoDB as M
 import qualified Model.Role as MR
@@ -29,4 +33,26 @@ instance FromJSON RoleCreateRequest where
   parseJSON v = typeMismatch (nameBase ''RoleCreateRequest) v
 
 parseRcr = $(mkParseJSON underscoreOptions ''RoleCreateRequest)
+
+produceRoleJson :: MR.Role -> String -> Value
+produceRoleJson (role@MR.Role{..}) baseUrl
+      = Object
+        $ insert "links" (object [ "self" .= (baseUrl ++ "/v3/roles/" ++ (show _id)) ])
+        $ fromObject $ toJSON role
+
+produceRoleReply :: MR.Role -> UrlBasedValue
+produceRoleReply role (UrlInfo {baseUrl})
+      = object [ "role" .= produceRoleJson role baseUrl ]
+
+produceRolesReply :: [MR.Role] -> UrlBasedValue
+produceRolesReply roles (UrlInfo {baseUrl, path, query})
+    = object [ "links" .= (object [ "next"     .= Null
+                                  , "previous" .= Null
+                                  , "self"     .= (baseUrl ++ path ++ query)
+                                  ]
+                          )
+             , "roles" .= rolesEntry
+             ]
+  where
+    rolesEntry = Array $ fromList $ map (\f -> f baseUrl) $ map produceRoleJson roles
 

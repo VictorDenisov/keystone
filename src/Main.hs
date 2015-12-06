@@ -323,7 +323,7 @@ application policy config = do
     A.authorize policy AT.ListRolesForProjectUser token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
       S.status status200
-      with_host_url config $ MR.produceRolesReply roles
+      with_host_url config $ R.produceRolesReply roles
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
@@ -420,13 +420,13 @@ application policy config = do
           S.status $ E.code err
         Right rid -> do
           S.status status201
-          with_host_url config $ MR.produceRoleReply role
+          with_host_url config $ R.produceRoleReply role
   S.get "/v3/roles" $ A.requireToken config $ \token -> do
     roleName <- parseMaybeString "name"
     A.authorize policy AT.ListRoles token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
       S.status status200
-      with_host_url config $ MR.produceRolesReply roles
+      with_host_url config $ R.produceRolesReply roles
   S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy AT.ShowRoleDetails token AT.EmptyResource $ do
@@ -437,7 +437,7 @@ application policy config = do
           S.json $ E.notFound "Role not found"
         Just role -> do
           S.status status200
-          with_host_url config $ MR.produceRoleReply role
+          with_host_url config $ R.produceRoleReply role
   S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy AT.DeleteRole token AT.EmptyResource $ do
