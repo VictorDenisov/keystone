@@ -2,9 +2,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module User
-( module User
-, module User.Types
+module Web.User
+( module Web.User
+, module Web.User.Types
 ) where
 
 import Common (fromObject, underscoreOptions, dropOptions, (<.>), UrlBasedValue, UrlInfo(..))
@@ -19,9 +19,10 @@ import Data.Text (pack)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 
-import User.Types ( ChangePasswordRequest(..)
-                  , UserCreateRequest(..)
-                  , UserUpdateRequest(..))
+import Web.User.Types ( ChangePasswordRequest(..)
+                      , UserCreateRequest(..)
+                      , UserUpdateRequest(..)
+                      )
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M

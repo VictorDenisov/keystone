@@ -1,4 +1,4 @@
-module User.Types
+module Web.User.Types
 where
 
 data UserCreateRequest = UserCreateRequest

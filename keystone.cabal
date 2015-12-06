@@ -42,8 +42,8 @@ executable keystone
                      , Role.Types
                      , Service
                      , Service.Types
-                     , User
-                     , User.Types
+                     , Web.User
+                     , Web.User.Types
                      , Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9

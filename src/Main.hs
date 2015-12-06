@@ -61,7 +61,7 @@ import qualified Model.User as MU
 import qualified Project as P
 import qualified Role as R
 import qualified Service as Srv
-import qualified User as U
+import qualified Web.User as U
 import qualified Web.Scotty.Trans as S
 
 main = do
