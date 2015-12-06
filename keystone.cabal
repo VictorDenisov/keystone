@@ -17,9 +17,7 @@ cabal-version:       >=1.10
 
 executable keystone
   main-is:             Main.hs
-  other-modules:       Auth
-                     , Auth.Types
-                     , Backend
+  other-modules:       Backend
                      , Common
                      , Common.Database
                      , Config
@@ -35,6 +33,8 @@ executable keystone
                      , Model.Token
                      , Model.User
                      , MongoBackend
+                     , Web.Auth
+                     , Web.Auth.Types
                      , Web.Domain
                      , Web.Project
                      , Web.Project.Types

@@ -43,9 +43,6 @@ import Text.Read (readMaybe)
 
 import Version (apiV3Reply, apiVersions)
 
-import qualified Auth as A
-import qualified Auth.Types as AT
-
 import qualified Common.Database as CD
 
 import qualified Data.ByteString.Char8 as BS
@@ -63,6 +60,8 @@ import qualified Model.Service as MS
 import qualified Model.Token as MT
 import qualified Model.User as MU
 
+import qualified Web.Auth as A
+import qualified Web.Auth.Types as AT
 import qualified Web.Domain as D
 import qualified Web.Project as P
 import qualified Web.Role as R

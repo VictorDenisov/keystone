@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Auth.Types where
+module Web.Auth.Types where
 
 import Control.Exception (Exception(..))
 import Data.Hashable (Hashable)
