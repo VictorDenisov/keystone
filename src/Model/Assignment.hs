@@ -22,6 +22,7 @@ import qualified Database.MongoDB.Admin as MA
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.User as MU
+import qualified Model.Mongo.User as MMU
 
 collectionName :: M.Collection
 collectionName = "assignment"
@@ -53,7 +54,7 @@ listAssignments mPid mUid = do
   let userIds    = map ((\(MU.UserId    uid) -> uid) . userId)    assignments
   let projectIds = map ((\(MP.ProjectId pid) -> pid) . projectId) assignments
   existingRoleIds    <- MR.listExistingRoleIds    roleIds
-  existingUserIds    <- MU.listExistingUserIds    userIds
+  existingUserIds    <- MMU.listExistingUserIds   userIds
   existingProjectIds <- MP.listExistingProjectIds projectIds
   return $ filter (\(Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
                       -> (   (rid `elem` existingRoleIds)

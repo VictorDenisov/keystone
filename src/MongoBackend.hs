@@ -14,7 +14,7 @@ import Data.Pool (Pool, createPool, withResource)
 import qualified Config as C
 import qualified Common.Database as CD
 import qualified Database.MongoDB as M
-import qualified Model.User as MU
+import qualified Model.Mongo.User as MMU
 
 type MongoBackend = ReaderT MongoData
 
@@ -29,15 +29,15 @@ instance ( MonadBase IO m
          ) => BackendApi (MongoBackend m) where
   type BackendHandle (MongoBackend m) = M.Pipe
 
-  createUser u = withHandle $ \p -> liftIO $ CD.runDB p $ MU.createUser u
+  createUser u = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.createUser u
 
-  findUserById i = withHandle $ \p -> liftIO $ CD.runDB p $ MU.findUserById i
+  findUserById i = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.findUserById i
 
-  listUsers mName = withHandle $ \p -> liftIO $ CD.runDB p $ MU.listUsers mName
+  listUsers mName = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.listUsers mName
 
-  updateUser i d = withHandle $ \p -> liftIO $ CD.runDB p $ MU.updateUser i d
+  updateUser i d = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.updateUser i d
 
-  deleteUser i = withHandle $ \p -> liftIO $ CD.runDB p $ MU.deleteUser i
+  deleteUser i = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.deleteUser i
 
   withHandle action = do
     d <- ask

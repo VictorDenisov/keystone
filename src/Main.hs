@@ -61,6 +61,7 @@ import qualified Model.Role as MR
 import qualified Model.Service as MS
 import qualified Model.Token as MT
 import qualified Model.User as MU
+import qualified Model.Mongo.User as MMU
 
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
@@ -459,7 +460,7 @@ application policy config = do
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do
   liftIO $ noticeM loggerName "Verifying user collection"
-  MU.verifyDatabase
+  MMU.verifyDatabase
   liftIO $ noticeM loggerName "Verifying role collection"
   MR.verifyDatabase
   liftIO $ noticeM loggerName "Verifying project collection"
