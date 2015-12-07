@@ -43,7 +43,7 @@ import Text.Read (readMaybe)
 
 import Version (apiV3Reply, apiVersions)
 
-import Web.Common ( ScottyM, ActionM, with_host_url, getBaseUrl)
+import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl)
 
 import qualified Common.Database as CD
 
@@ -120,9 +120,9 @@ application policy config = do
         S.json e
   -- Version API
   S.get "/" $ do
-    with_host_url config apiVersions
+    withHostUrl config apiVersions
   S.get "/v3" $ do
-    with_host_url config apiV3Reply
+    withHostUrl config apiV3Reply
   -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: AT.AuthRequest) <- parseRequest
@@ -188,14 +188,14 @@ application policy config = do
       service <- liftIO $ Srv.newRequestToService scr
       sid <- liftIO $ CD.withDB (database config) $ MS.createService service
       S.status status201
-      with_host_url config $ Srv.produceServiceReply service
+      withHostUrl config $ Srv.produceServiceReply service
   S.get "/v3/services" $ A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
     A.authorize policy AT.ListServices token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
       S.status status200
-      with_host_url config $ Srv.produceServicesReply services
+      withHostUrl config $ Srv.produceServicesReply services
   S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy AT.ShowServiceDetails token AT.EmptyResource $ do
@@ -207,7 +207,7 @@ application policy config = do
           S.json $ E.notFound "Service not found"
         Just service -> do
             S.status status200
-            with_host_url config $ Srv.produceServiceReply service
+            withHostUrl config $ Srv.produceServiceReply service
   S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: Srv.ServiceUpdateRequest) <- parseRequest
@@ -220,7 +220,7 @@ application policy config = do
           S.json $ E.notFound "Service not found"
         Just service -> do
           S.status status200
-          with_host_url config $ Srv.produceServiceReply service
+          withHostUrl config $ Srv.produceServiceReply service
   S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy AT.DeleteService token AT.EmptyResource $ do
@@ -243,12 +243,12 @@ application policy config = do
           S.json $ E.notFound "Service not found"
         Just _eid -> do
           S.status status201
-          with_host_url config $ Srv.produceEndpointReply endpoint (Srv.eserviceId ecr)
+          withHostUrl config $ Srv.produceEndpointReply endpoint (Srv.eserviceId ecr)
   S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
     A.authorize policy AT.ListEndpoints token AT.EmptyResource $ do
       endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
       S.status status200
-      with_host_url config $ Srv.produceEndpointsReply endpoints
+      withHostUrl config $ Srv.produceEndpointsReply endpoints
   S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy AT.ShowEndpoint token AT.EmptyResource $ do
@@ -259,7 +259,7 @@ application policy config = do
           S.json $ E.notFound "Endpoint not found"
         Just (serviceId, endpoint) -> do
           S.status status200
-          with_host_url config $ Srv.produceEndpointReply endpoint serviceId
+          withHostUrl config $ Srv.produceEndpointReply endpoint serviceId
   S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy AT.DeleteEndpoint token AT.EmptyResource $ do
@@ -273,12 +273,12 @@ application policy config = do
   S.get "/v3/domains" $ A.requireToken config $ \token -> do
     A.authorize policy AT.ListDomains token AT.EmptyResource $ do
       S.status status200
-      with_host_url config $ D.produceDomainsReply []
+      withHostUrl config $ D.produceDomainsReply []
   S.get "/v3/domains/:did" $ A.requireToken config $ \token -> do
     (did :: M.ObjectId) <- parseId "did"
     A.authorize policy AT.ShowDomainDetails token AT.EmptyResource $ do
       S.status status200
-      with_host_url config $ D.produceDomainReply MD.Domain
+      withHostUrl config $ D.produceDomainReply MD.Domain
   -- Project API
   S.post "/v3/projects" $ A.requireToken config $ \token -> do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
@@ -291,13 +291,13 @@ application policy config = do
           S.status $ E.code err
         Right rid -> do
           S.status status201
-          with_host_url config $ P.produceProjectReply project
+          withHostUrl config $ P.produceProjectReply project
   S.get "/v3/projects" $ A.requireToken config $ \token -> do
     projectName <- parseMaybeString "name"
     A.authorize policy AT.ListProjects token AT.EmptyResource $ do
       projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
       S.status status200
-      with_host_url config $ P.produceProjectsReply projects
+      withHostUrl config $ P.produceProjectsReply projects
   S.get "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     A.authorize policy AT.ShowProjectDetails token AT.EmptyResource $ do
@@ -308,7 +308,7 @@ application policy config = do
           S.json $ E.notFound "Project not found"
         Just project -> do
           S.status status200
-          with_host_url config $ P.produceProjectReply project
+          withHostUrl config $ P.produceProjectReply project
   S.delete "/v3/projects/:pid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     A.authorize policy AT.DeleteProject token AT.EmptyResource $ do
@@ -324,7 +324,7 @@ application policy config = do
     A.authorize policy AT.ListRolesForProjectUser token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
       S.status status200
-      with_host_url config $ R.produceRolesReply roles
+      withHostUrl config $ R.produceRolesReply roles
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
@@ -344,13 +344,13 @@ application policy config = do
           S.status $ E.code err
         Right rid -> do
           S.status status201
-          with_host_url config $ U.produceUserReply user
+          withHostUrl config $ U.produceUserReply user
   S.get "/v3/users" $ A.requireToken config $ \token -> do
     userName <- parseMaybeString "name"
     A.authorize policy AT.ListUsers token AT.EmptyResource $ do
       users <- lift $ listUsers userName
       S.status status200
-      with_host_url config $ U.produceUsersReply users
+      withHostUrl config $ U.produceUsersReply users
   S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
@@ -361,7 +361,7 @@ application policy config = do
           S.json $ E.notFound "User not found"
         Just user -> do
           S.status status200
-          with_host_url config $ U.produceUserReply user
+          withHostUrl config $ U.produceUserReply user
   S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: U.UserUpdateRequest) <- parseRequest
@@ -374,7 +374,7 @@ application policy config = do
           S.json $ E.notFound "User not found"
         Just user -> do
           S.status status200
-          with_host_url config $ U.produceUserReply user
+          withHostUrl config $ U.produceUserReply user
   S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.DeleteUser token AT.EmptyResource $ do
@@ -389,7 +389,7 @@ application policy config = do
     A.authorize policy AT.ListProjectsForUser token (AT.UserId uid) $ do
       projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
       S.status status200
-      with_host_url config $ P.produceProjectsReply projects
+      withHostUrl config $ P.produceProjectsReply projects
   S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: U.ChangePasswordRequest) <- parseRequest
@@ -408,7 +408,7 @@ application policy config = do
               S.json $ E.notFound "User not found"
             Just modifiedUser -> do
               S.status status200
-              with_host_url config $ U.produceUserReply modifiedUser
+              withHostUrl config $ U.produceUserReply modifiedUser
   -- Role API
   S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest
@@ -421,13 +421,13 @@ application policy config = do
           S.status $ E.code err
         Right rid -> do
           S.status status201
-          with_host_url config $ R.produceRoleReply role
+          withHostUrl config $ R.produceRoleReply role
   S.get "/v3/roles" $ A.requireToken config $ \token -> do
     roleName <- parseMaybeString "name"
     A.authorize policy AT.ListRoles token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
       S.status status200
-      with_host_url config $ R.produceRolesReply roles
+      withHostUrl config $ R.produceRolesReply roles
   S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy AT.ShowRoleDetails token AT.EmptyResource $ do
@@ -438,7 +438,7 @@ application policy config = do
           S.json $ E.notFound "Role not found"
         Just role -> do
           S.status status200
-          with_host_url config $ R.produceRoleReply role
+          withHostUrl config $ R.produceRoleReply role
   S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy AT.DeleteRole token AT.EmptyResource $ do
@@ -454,7 +454,7 @@ application policy config = do
     A.authorize policy AT.ListRoleAssignments token AT.EmptyResource $ do
       assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
       S.status status200
-      with_host_url config $ Assig.produceAssignmentsReply assignments
+      withHostUrl config $ Assig.produceAssignmentsReply assignments
 
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do

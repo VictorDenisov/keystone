@@ -38,8 +38,8 @@ data UrlInfo = UrlInfo
 
 type UrlBasedValue = UrlInfo -> Value
 
-host_url :: MonadIO b => ServerType -> ActionM b (Maybe String)
-host_url st = do
+hostUrl :: MonadIO b => ServerType -> ActionM b (Maybe String)
+hostUrl st = do
   mh <- S.header "host"
   let protocol =
           case st of
@@ -52,15 +52,15 @@ getBaseUrl config = do
   case endpoint config of
     Just e -> return e
     Nothing -> do
-      mh <- host_url $ serverType config
+      mh <- hostUrl $ serverType config
       case mh of
         Just h -> return h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
 
-with_host_url :: ( Functor b
+withHostUrl :: ( Functor b
                  , MonadIO b)
                  => KeystoneConfig -> UrlBasedValue -> ActionM b ()
-with_host_url config v = do
+withHostUrl config v = do
   pathString <- BS.unpack <$> rawPathInfo <$> S.request
   queryString <- BS.unpack <$> rawQueryString <$> S.request
   url <- getBaseUrl config
