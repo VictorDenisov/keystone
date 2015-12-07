@@ -2,9 +2,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module MongoBackend where
+module Model.Mongo.IdentityApi where
 
-import Backend
+import Model.IdentityApi
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.IO.Class (MonadIO(..))
@@ -16,7 +16,7 @@ import qualified Common.Database as CD
 import qualified Database.MongoDB as M
 import qualified Model.Mongo.User as MMU
 
-type MongoBackend = ReaderT MongoData
+type MongoIdentityApi = ReaderT MongoData
 
 data MongoData = MongoData
                { mddb :: C.Database
@@ -26,8 +26,8 @@ data MongoData = MongoData
 instance ( MonadBase IO m
          , MonadIO m
          , MonadBaseControl IO m
-         ) => BackendApi (MongoBackend m) where
-  type BackendHandle (MongoBackend m) = M.Pipe
+         ) => IdentityApi (MongoIdentityApi m) where
+  type IdentityApiHandle (MongoIdentityApi m) = M.Pipe
 
   createUser u = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.createUser u
 
@@ -43,7 +43,7 @@ instance ( MonadBase IO m
     d <- ask
     withResource (pool d) action
 
-runMongoBackend :: C.Database -> MongoBackend IO a -> IO a
+runMongoBackend :: C.Database -> MongoIdentityApi IO a -> IO a
 runMongoBackend mongoConfig action = do
   p <- createPool (CD.connect mongoConfig) M.close 1 60 10 -- stripe count, time to live, max resource count
   runReaderT action (MongoData mongoConfig p)

@@ -8,7 +8,6 @@
 module Main
 where
 
-import Backend
 import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
@@ -25,7 +24,8 @@ import Data.Aeson.Types (FromJSON(..))
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
-import MongoBackend
+import Model.IdentityApi
+import Model.Mongo.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, statusCode)
@@ -104,7 +104,7 @@ application :: ( MonadBase IO (b IO)
                , MonadBaseControl IO (b IO)
                , MonadThrow (b IO)
                , MonadIO (b IO)
-               , BackendApi (b IO))
+               , IdentityApi (b IO))
             => AT.Policy
             -> KeystoneConfig
             -> ScottyM (b IO) ()
@@ -501,7 +501,7 @@ parseId paramName = do
 
 parseRequest :: ( Show a
                 , FromJSON a
-                , BackendApi (b IO)
+                , IdentityApi (b IO)
                 , MonadIO (b IO))
                 => ActionM (b IO) a
 parseRequest = do

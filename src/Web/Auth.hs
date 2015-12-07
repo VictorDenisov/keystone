@@ -7,7 +7,7 @@
 module Web.Auth
 where
 import Web.Auth.Types
-import Backend (BackendApi(..))
+import Model.IdentityApi (IdentityApi(..))
 import Common (loggerName)
 import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
@@ -50,7 +50,7 @@ import qualified Data.Vector as V
 import qualified Data.Text.Lazy as LT
 import qualified Data.HashMap.Strict as HM
 
-authenticate :: (MonadIO m, MonadIO (b m), BackendApi (b m), Functor (b m))
+authenticate :: (MonadIO m, MonadIO (b m), IdentityApi (b m), Functor (b m))
              => M.Pipe
              -> (Maybe AuthScope)
              -> AuthMethod
@@ -94,7 +94,7 @@ produceToken  mScope user = do
 
 --authenticate _ _ _ = return $ Left "Method is not supported."
 
-authorize :: (MonadIO (b IO), BackendApi (b IO))
+authorize :: (MonadIO (b IO), IdentityApi (b IO))
           => (HM.HashMap Action Verifier)
           -> Action
           -> MT.Token
@@ -108,7 +108,7 @@ authorize verifiers action token resource actionToRun =
     S.status status401
     S.json $ E.unauthorized "You are not authorized to perform this action"
 
-requireToken :: (MonadIO (b IO), BackendApi (b IO))
+requireToken :: (MonadIO (b IO), IdentityApi (b IO))
             => KeystoneConfig
             -> (MT.Token -> ActionM (b IO) ())
             -> ActionM (b IO) ()
@@ -229,7 +229,7 @@ compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error whi
 
 
 checkUserPassword :: ( MonadIO m
-                     , BackendApi (b m)
+                     , IdentityApi (b m)
                      , MonadIO (b m)
                      ) => Maybe M.ObjectId
                        -> Maybe String

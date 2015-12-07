@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module Backend where
+module Model.IdentityApi where
 
 import Data.Bson (ObjectId)
 import Model.Common (OpStatus(..))
@@ -10,12 +10,12 @@ import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.User as MU
 
-class BackendApi b where
-  type BackendHandle b
+class IdentityApi b where
+  type IdentityApiHandle b
   createUser :: MU.User -> b (Either E.Error ObjectId)
   findUserById :: ObjectId
                -> b (Maybe MU.User)
   listUsers :: (Maybe String) -> b [MU.User]
   updateUser :: ObjectId -> M.Document -> b (Maybe MU.User)
   deleteUser :: ObjectId -> b OpStatus
-  withHandle :: (BackendHandle b -> b a) -> b a
+  withHandle :: (IdentityApiHandle b -> b a) -> b a
