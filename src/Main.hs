@@ -29,7 +29,7 @@ import Model.Mongo.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
 import Network.HTTP.Types.Status ( status200, status201, status204, status401
                                  , status404, statusCode)
-import Network.Wai (Middleware, rawPathInfo, rawQueryString)
+import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
@@ -43,11 +43,10 @@ import Text.Read (readMaybe)
 
 import Version (apiV3Reply, apiVersions)
 
-import Web.Common (ScottyM, ActionM, UrlBasedValue, UrlInfo(..))
+import Web.Common ( ScottyM, ActionM, with_host_url, getBaseUrl)
 
 import qualified Common.Database as CD
 
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text.Lazy as TL
 
 import qualified Database.MongoDB as M
@@ -512,31 +511,3 @@ parseRequest = do
 
 hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"
-
-host_url :: MonadIO b => ServerType -> ActionM b (Maybe String)
-host_url st = do
-  mh <- S.header "host"
-  let protocol =
-          case st of
-            Plain -> "http"
-            Tls   -> "https"
-  return $ fmap (\h -> protocol ++ "://" ++ (TL.unpack h)) mh
-
-getBaseUrl :: MonadIO b => KeystoneConfig -> ActionM b String
-getBaseUrl config = do
-  case endpoint config of
-    Just e -> return e
-    Nothing -> do
-      mh <- host_url $ serverType config
-      case mh of
-        Just h -> return h
-        Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
-
-with_host_url :: ( Functor b
-                 , MonadIO b)
-                 => KeystoneConfig -> UrlBasedValue -> ActionM b ()
-with_host_url config v = do
-  pathString <- BS.unpack <$> rawPathInfo <$> S.request
-  queryString <- BS.unpack <$> rawQueryString <$> S.request
-  url <- getBaseUrl config
-  S.json $ v (UrlInfo url pathString queryString)
