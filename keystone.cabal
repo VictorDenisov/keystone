@@ -46,7 +46,7 @@ executable keystone
                      , Web.Service.Types
                      , Web.User
                      , Web.User.Types
-                     , Version
+                     , Web.Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9
                      , aeson  == 0.7.0.4
