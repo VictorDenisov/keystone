@@ -2,15 +2,17 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Web.Service
 ( module Web.Service
 , module Web.Service.Types
 ) where
 
+import Config (KeystoneConfig(database))
 import Common ( skipTickOptions, dropOptions, fromObject, underscoreOptions
               , (<.>))
-import Web.Service.Types
+import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), (.:), Value(..))
 import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (object, typeMismatch, (.=))
@@ -18,11 +20,112 @@ import Data.HashMap.Strict (insert, delete)
 import Data.Text (pack)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
-import Web.Common (UrlInfo(..), UrlBasedValue)
+import Model.Common (OpStatus(Success, NotFound))
+import Model.IdentityApi (IdentityApi)
+import Network.HTTP.Types.Status (status200, status201, status204, status404)
+import Web.Common ( UrlInfo(..), UrlBasedValue, parseId, withHostUrl
+                  , parseRequest, ScottyM, parseMaybeString)
+import Web.Service.Types
 
-import qualified Database.MongoDB as M
-import qualified Model.Service as MS
 import qualified Data.Text as T
+import qualified Database.MongoDB as M
+import qualified Error as E
+import qualified Model.Mongo.Common as CD
+import qualified Model.Service as MS
+import qualified Web.Auth as A
+import qualified Web.Auth.Types as AT
+import qualified Web.Scotty.Trans as S
+
+serviceCatalogHandlers :: (Functor m, MonadIO m, IdentityApi m) => AT.Policy -> KeystoneConfig -> ScottyM m ()
+serviceCatalogHandlers policy config = do
+  S.post "/v3/services" $ A.requireToken config $ \token ->
+    A.authorize policy AT.AddService token AT.EmptyResource $ do
+    -- Most likely we will never need to restrict access based on service. Role based access is enough
+      (scr :: ServiceCreateRequest) <- parseRequest
+      service <- liftIO $ newRequestToService scr
+      sid <- liftIO $ CD.withDB (database config) $ MS.createService service
+      S.status status201
+      withHostUrl config $ produceServiceReply service
+  S.get "/v3/services" $ A.requireToken config $ \token -> do
+    serviceName <- parseMaybeString "name"
+    A.authorize policy AT.ListServices token AT.EmptyResource $ do
+    -- Most likely we will never need to restrict access based on service. Role based access is enough
+      services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
+      S.status status200
+      withHostUrl config $ produceServicesReply services
+  S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
+    (sid :: M.ObjectId) <- parseId "sid"
+    A.authorize policy AT.ShowServiceDetails token AT.EmptyResource $ do
+    -- Most likely we will never need to restrict access based on service. Role based access is enough
+      mService <- liftIO $ CD.withDB (database config) $ MS.findServiceById sid
+      case mService of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "Service not found"
+        Just service -> do
+            S.status status200
+            withHostUrl config $ produceServiceReply service
+  S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
+    (sid :: M.ObjectId) <- parseId "sid"
+    (sur :: ServiceUpdateRequest) <- parseRequest
+    A.authorize policy AT.UpdateService token AT.EmptyResource $ do
+    -- Most likely we will never need to restrict access based on service. Role based access is enough
+      mService <- liftIO $ CD.withDB (database config) $ MS.updateService sid (updateRequestToDocument sur)
+      case mService of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "Service not found"
+        Just service -> do
+          S.status status200
+          withHostUrl config $ produceServiceReply service
+  S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
+    (sid :: M.ObjectId) <- parseId "sid"
+    A.authorize policy AT.DeleteService token AT.EmptyResource $ do
+    -- Most likely we will never need to restrict access based on service. Role based access is enough
+      n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
+      case n of
+        Success -> S.status status204
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
+          S.status status404
+  -- Endpoint API
+  S.post "/v3/endpoints" $ A.requireToken config $ \token -> do
+    (ecr :: EndpointCreateRequest) <- parseRequest
+    endpoint <- liftIO $ newRequestToEndpoint ecr
+    A.authorize policy AT.AddEndpoint token AT.EmptyResource $ do
+      mEid <- liftIO $ CD.withDB (database config) $ MS.addEndpoint (eserviceId ecr) endpoint
+      case mEid of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "Service not found"
+        Just _eid -> do
+          S.status status201
+          withHostUrl config $ produceEndpointReply endpoint (eserviceId ecr)
+  S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
+    A.authorize policy AT.ListEndpoints token AT.EmptyResource $ do
+      endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
+      S.status status200
+      withHostUrl config $ produceEndpointsReply endpoints
+  S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
+    (eid :: M.ObjectId) <- parseId "eid"
+    A.authorize policy AT.ShowEndpoint token AT.EmptyResource $ do
+      mEndpoint <- liftIO $ CD.withDB (database config) $ MS.findEndpointById eid
+      case mEndpoint of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "Endpoint not found"
+        Just (serviceId, endpoint) -> do
+          S.status status200
+          withHostUrl config $ produceEndpointReply endpoint serviceId
+  S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
+    (eid :: M.ObjectId) <- parseId "eid"
+    A.authorize policy AT.DeleteEndpoint token AT.EmptyResource $ do
+      n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid
+      case n of
+        Success -> S.status status204
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find endpoint, " ++ (show eid) ++ "."
+          S.status status404
 
 newRequestToService :: ServiceCreateRequest -> IO MS.Service
 newRequestToService ServiceCreateRequest{..} = do

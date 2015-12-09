@@ -64,8 +64,8 @@ getBaseUrl config = do
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
 
 withHostUrl :: ( Functor b
-                 , MonadIO b)
-                 => KeystoneConfig -> UrlBasedValue -> ActionM b ()
+               , MonadIO b)
+               => KeystoneConfig -> UrlBasedValue -> ActionM b ()
 withHostUrl config v = do
   pathString <- BS.unpack <$> rawPathInfo <$> S.request
   queryString <- BS.unpack <$> rawQueryString <$> S.request
@@ -87,9 +87,9 @@ parseMaybeString paramName =
 
 parseRequest :: ( Show a
                 , FromJSON a
-                , IdentityApi (b IO)
-                , MonadIO (b IO))
-                => ActionM (b IO) a
+                , IdentityApi b
+                , MonadIO b)
+                => ActionM b a
 parseRequest = do
   request <- S.rescue S.jsonData $ \e ->
     S.raise $ E.badRequest $ E.message e

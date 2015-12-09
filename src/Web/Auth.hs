@@ -50,11 +50,11 @@ import qualified Data.Vector as V
 import qualified Data.Text.Lazy as LT
 import qualified Data.HashMap.Strict as HM
 
-authenticate :: (MonadIO m, MonadIO (b m), IdentityApi (b m), Functor (b m))
+authenticate :: (MonadIO m, IdentityApi m, Functor m)
              => M.Pipe
              -> (Maybe AuthScope)
              -> AuthMethod
-             -> b m (Either String (String, MT.Token))
+             -> m (Either String (String, MT.Token))
 authenticate pipe mScope (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
   res <- checkUserPassword mUserId mUserName password
   case res of
@@ -94,13 +94,13 @@ produceToken  mScope user = do
 
 --authenticate _ _ _ = return $ Left "Method is not supported."
 
-authorize :: (MonadIO (b IO), IdentityApi (b IO))
+authorize :: (MonadIO m, IdentityApi m)
           => (HM.HashMap Action Verifier)
           -> Action
           -> MT.Token
           -> Resource
-          -> ActionM (b IO) ()
-          -> ActionM (b IO) ()
+          -> ActionM m ()
+          -> ActionM m ()
 authorize verifiers action token resource actionToRun =
   if (verifiers HM.! action) resource token
   then actionToRun
@@ -108,10 +108,10 @@ authorize verifiers action token resource actionToRun =
     S.status status401
     S.json $ E.unauthorized "You are not authorized to perform this action"
 
-requireToken :: (MonadIO (b IO), IdentityApi (b IO))
+requireToken :: (MonadIO m, IdentityApi m)
             => KeystoneConfig
-            -> (MT.Token -> ActionM (b IO) ())
-            -> ActionM (b IO) ()
+            -> (MT.Token -> ActionM m ())
+            -> ActionM m ()
 requireToken config actionToRun = do
   let adminToken = Config.adminToken config
   req <- S.request
@@ -228,13 +228,12 @@ compileExpression verifiers (Object m) = do
 compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error while compiling policy expression " ++ (show expr) ++ ". Expecting object instead"
 
 
-checkUserPassword :: ( MonadIO m
-                     , IdentityApi (b m)
-                     , MonadIO (b m)
+checkUserPassword :: ( IdentityApi m
+                     , MonadIO m
                      ) => Maybe M.ObjectId
                        -> Maybe String
                        -> String
-                       -> b m (Either String MU.User)
+                       -> m (Either String MU.User)
 checkUserPassword mUserId mUserName passwordToCheck = do
   mu <- case mUserId of
             Just userId -> findUserById userId

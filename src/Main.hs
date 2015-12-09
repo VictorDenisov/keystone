@@ -50,7 +50,6 @@ import qualified Model.Mongo.Common as CD
 import qualified Data.Text.Lazy as TL
 
 import qualified Database.MongoDB as M
-
 import qualified Error as E
 
 import qualified Model.Assignment as MA
@@ -177,95 +176,8 @@ application policy config = do
         S.status status404
       Just tokenToVerify -> do
         A.authorize policy AT.CheckToken token (AT.Token tokenToVerify) $ S.status status204
-  -- Service API
-  S.post "/v3/services" $ A.requireToken config $ \token ->
-    A.authorize policy AT.AddService token AT.EmptyResource $ do
-    -- Most likely we will never need to restrict access based on service. Role based access is enough
-      (scr :: Srv.ServiceCreateRequest) <- parseRequest
-      service <- liftIO $ Srv.newRequestToService scr
-      sid <- liftIO $ CD.withDB (database config) $ MS.createService service
-      S.status status201
-      withHostUrl config $ Srv.produceServiceReply service
-  S.get "/v3/services" $ A.requireToken config $ \token -> do
-    serviceName <- parseMaybeString "name"
-    A.authorize policy AT.ListServices token AT.EmptyResource $ do
-    -- Most likely we will never need to restrict access based on service. Role based access is enough
-      services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
-      S.status status200
-      withHostUrl config $ Srv.produceServicesReply services
-  S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
-    (sid :: M.ObjectId) <- parseId "sid"
-    A.authorize policy AT.ShowServiceDetails token AT.EmptyResource $ do
-    -- Most likely we will never need to restrict access based on service. Role based access is enough
-      mService <- liftIO $ CD.withDB (database config) $ MS.findServiceById sid
-      case mService of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "Service not found"
-        Just service -> do
-            S.status status200
-            withHostUrl config $ Srv.produceServiceReply service
-  S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
-    (sid :: M.ObjectId) <- parseId "sid"
-    (sur :: Srv.ServiceUpdateRequest) <- parseRequest
-    A.authorize policy AT.UpdateService token AT.EmptyResource $ do
-    -- Most likely we will never need to restrict access based on service. Role based access is enough
-      mService <- liftIO $ CD.withDB (database config) $ MS.updateService sid (Srv.updateRequestToDocument sur)
-      case mService of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "Service not found"
-        Just service -> do
-          S.status status200
-          withHostUrl config $ Srv.produceServiceReply service
-  S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
-    (sid :: M.ObjectId) <- parseId "sid"
-    A.authorize policy AT.DeleteService token AT.EmptyResource $ do
-    -- Most likely we will never need to restrict access based on service. Role based access is enough
-      n <- liftIO $ CD.withDB (database config) $ MS.deleteService sid
-      case n of
-        Success -> S.status status204
-        NotFound -> do
-          S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
-          S.status status404
-  --- Endpoint API
-  S.post "/v3/endpoints" $ A.requireToken config $ \token -> do
-    (ecr :: Srv.EndpointCreateRequest) <- parseRequest
-    endpoint <- liftIO $ Srv.newRequestToEndpoint ecr
-    A.authorize policy AT.AddEndpoint token AT.EmptyResource $ do
-      mEid <- liftIO $ CD.withDB (database config) $ MS.addEndpoint (Srv.eserviceId ecr) endpoint
-      case mEid of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "Service not found"
-        Just _eid -> do
-          S.status status201
-          withHostUrl config $ Srv.produceEndpointReply endpoint (Srv.eserviceId ecr)
-  S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
-    A.authorize policy AT.ListEndpoints token AT.EmptyResource $ do
-      endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
-      S.status status200
-      withHostUrl config $ Srv.produceEndpointsReply endpoints
-  S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
-    (eid :: M.ObjectId) <- parseId "eid"
-    A.authorize policy AT.ShowEndpoint token AT.EmptyResource $ do
-      mEndpoint <- liftIO $ CD.withDB (database config) $ MS.findEndpointById eid
-      case mEndpoint of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "Endpoint not found"
-        Just (serviceId, endpoint) -> do
-          S.status status200
-          withHostUrl config $ Srv.produceEndpointReply endpoint serviceId
-  S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
-    (eid :: M.ObjectId) <- parseId "eid"
-    A.authorize policy AT.DeleteEndpoint token AT.EmptyResource $ do
-      n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid
-      case n of
-        Success -> S.status status204
-        NotFound -> do
-          S.json $ E.notFound $ "Could not find endpoint, " ++ (show eid) ++ "."
-          S.status status404
+  -- Service Catalog API
+  Srv.serviceCatalogHandlers policy config
   -- Domain API
   S.get "/v3/domains" $ A.requireToken config $ \token -> do
     A.authorize policy AT.ListDomains token AT.EmptyResource $ do
