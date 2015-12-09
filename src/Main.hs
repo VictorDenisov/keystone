@@ -20,7 +20,6 @@ import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Except (runExceptT, MonadError(throwError))
 import Control.Monad.Trans.Resource (runResourceT, allocate, release)
-import Data.Aeson.Types (FromJSON(..))
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.Common (OpStatus(..))
@@ -43,7 +42,8 @@ import Text.Read (readMaybe)
 
 import Web.Version (versionHandlers)
 
-import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl)
+import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl
+                  , parseMaybeString, parseId, parseRequest)
 
 import qualified Model.Mongo.Common as CD
 
@@ -474,12 +474,6 @@ logRequestResponse app request responder = do
   debugM loggerName $ show request
   app request responder
 
-parseMaybeString :: (MonadIO m) => TL.Text -> ActionM m (Maybe String)
-parseMaybeString paramName =
-  (flip S.rescue) (\msg -> return Nothing) $ do
-    (value :: String) <- S.param paramName
-    return $ Just value
-
 parseMaybeParam :: (MonadIO m, Read a) => TL.Text -> ActionM m (Maybe a)
 parseMaybeParam paramName =
   (flip S.rescue) (\msg -> return Nothing) $ do
@@ -487,24 +481,6 @@ parseMaybeParam paramName =
     case readMaybe value of
       Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (TL.unpack paramName)
       Just v  -> return $ Just v
-
-parseId :: (MonadIO m, Read a) => TL.Text -> ActionM m a
-parseId paramName = do
-  s <- S.param paramName
-  case readMaybe s of
-    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (TL.unpack paramName)
-    Just v  -> return v
-
-parseRequest :: ( Show a
-                , FromJSON a
-                , IdentityApi (b IO)
-                , MonadIO (b IO))
-                => ActionM (b IO) a
-parseRequest = do
-  request <- S.rescue S.jsonData $ \e ->
-    S.raise $ E.badRequest $ E.message e
-  liftIO $ debugM loggerName $ "Parsed request body: " ++ (show request)
-  return request
 
 hXSubjectToken :: TL.Text
 hXSubjectToken = "X-Subject-Token"

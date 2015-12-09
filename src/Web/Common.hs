@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Web.Common
 where
 
-import Data.Aeson (Value(..))
+import Common (loggerName)
 
 import Config (KeystoneConfig(..), ServerType(..))
 
@@ -11,8 +12,13 @@ import Control.Applicative ((<$>))
 import Control.Monad.Catch (MonadThrow(..), MonadCatch(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
-import Web.Scotty.Internal.Types (ActionT(..))
+import Data.Aeson (Value(..))
+import Data.Aeson.Types (FromJSON)
+import Model.IdentityApi (IdentityApi)
 import Network.Wai (rawPathInfo, rawQueryString)
+import System.Log.Logger (debugM)
+import Text.Read (readMaybe)
+import Web.Scotty.Internal.Types (ActionT(..))
 
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text.Lazy as TL
@@ -65,3 +71,27 @@ withHostUrl config v = do
   queryString <- BS.unpack <$> rawQueryString <$> S.request
   url <- getBaseUrl config
   S.json $ v (UrlInfo url pathString queryString)
+
+parseId :: (MonadIO m, Read a) => TL.Text -> ActionM m a
+parseId paramName = do
+  s <- S.param paramName
+  case readMaybe s of
+    Nothing -> S.raise $ E.badRequest $ "Failed to parse ObjectId from " ++ (TL.unpack paramName)
+    Just v  -> return v
+
+parseMaybeString :: (MonadIO m) => TL.Text -> ActionM m (Maybe String)
+parseMaybeString paramName =
+  (flip S.rescue) (\msg -> return Nothing) $ do
+    (value :: String) <- S.param paramName
+    return $ Just value
+
+parseRequest :: ( Show a
+                , FromJSON a
+                , IdentityApi (b IO)
+                , MonadIO (b IO))
+                => ActionM (b IO) a
+parseRequest = do
+  request <- S.rescue S.jsonData $ \e ->
+    S.raise $ E.badRequest $ E.message e
+  liftIO $ debugM loggerName $ "Parsed request body: " ++ (show request)
+  return request
