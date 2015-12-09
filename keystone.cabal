@@ -18,7 +18,6 @@ cabal-version:       >=1.10
 executable keystone
   main-is:             Main.hs
   other-modules:       Common
-                     , Common.Database
                      , Config
                      , Error
                      , Data.Bson.Mapping
@@ -26,6 +25,7 @@ executable keystone
                      , Model.Common
                      , Model.Domain
                      , Model.IdentityApi
+                     , Model.Mongo.Common
                      , Model.Mongo.IdentityApi
                      , Model.Project
                      , Model.Role

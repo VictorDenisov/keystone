@@ -5,7 +5,7 @@
 module Model.Token
 where
 
-import Common.Database (idF)
+import Model.Mongo.Common (idF)
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))

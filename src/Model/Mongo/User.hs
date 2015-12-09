@@ -3,7 +3,7 @@
 module Model.Mongo.User
 where
 
-import Common.Database (affectedDocs, idF, setC)
+import Model.Mongo.Common (affectedDocs, idF, setC)
 import Control.Applicative ((<$>))
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))

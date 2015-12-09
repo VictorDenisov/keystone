@@ -8,7 +8,7 @@ module Model.Project
 where
 
 import Common (skipUnderscoreOptions)
-import Common.Database (affectedDocs, idF)
+import Model.Mongo.Common (affectedDocs, idF)
 
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))

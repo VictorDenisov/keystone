@@ -11,8 +11,8 @@ module Model.Service
 
 import Common ( capitalize, dropOptions, skipTickOptions
               , skipUnderscoreOptions, (<.>))
-import Common.Database ( affectedDocs, pullC, pushC, setC, projectC, unwindC
-                       , idF, (+.+))
+import Model.Mongo.Common ( affectedDocs, pullC, pushC, setC, projectC, unwindC
+                          , idF, (+.+))
 import Control.Applicative ((<$>))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))

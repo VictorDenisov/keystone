@@ -9,7 +9,7 @@ module Model.User
 where
 
 import Common (skipUnderscoreOptions)
-import Common.Database () -- Import ObjectId fromJson instance
+import Model.Mongo.Common () -- Import ObjectId fromJson instance
 
 import Data.Aeson.TH (deriveJSON)
 import Data.Bson.Mapping (deriveBson)

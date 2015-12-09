@@ -4,7 +4,7 @@
 module Model.Service.Types
 where
 
-import Common.Database ( (+++) )
+import Model.Mongo.Common ( (+++) )
 import Data.Data (Typeable)
 import Language.Haskell.TH.Syntax (nameBase)
 

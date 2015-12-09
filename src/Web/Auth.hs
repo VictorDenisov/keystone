@@ -34,11 +34,11 @@ import System.Log.Logger (noticeM)
 import Text.Read (readMaybe)
 import Web.Common (ActionM)
 
-import qualified Common.Database as CD
 import qualified Error as E
 import qualified Database.MongoDB as M
 import qualified Model.Assignment as MA
 import qualified Model.Domain as MD
+import qualified Model.Mongo.Common as CD
 import qualified Model.User as MU
 import qualified Model.Token as MT
 import qualified Model.Project as MP

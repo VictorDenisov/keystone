@@ -12,7 +12,7 @@ import Control.Monad.Reader (ReaderT(runReaderT), MonadReader(ask))
 import Data.Pool (Pool, createPool, withResource)
 
 import qualified Config as C
-import qualified Common.Database as CD
+import qualified Model.Mongo.Common as CD
 import qualified Database.MongoDB as M
 import qualified Model.Mongo.User as MMU
 

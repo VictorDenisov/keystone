@@ -45,7 +45,7 @@ import Version (apiV3Reply, apiVersions)
 
 import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl)
 
-import qualified Common.Database as CD
+import qualified Model.Mongo.Common as CD
 
 import qualified Data.Text.Lazy as TL
 

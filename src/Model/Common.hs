@@ -1,7 +1,7 @@
 module Model.Common
 where
 
-import Common.Database (idF, inC)
+import Model.Mongo.Common (idF, inC)
 import Control.Monad (forM)
 
 import Data.Bson ((=:))
