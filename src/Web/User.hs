@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Web.User
 ( module Web.User
@@ -8,7 +9,9 @@ module Web.User
 ) where
 
 import Common (fromObject, underscoreOptions, dropOptions, (<.>))
+import Config (KeystoneConfig)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Crypto.PasswordStore (makePassword)
 import Data.Aeson (FromJSON(..), (.:), Value(..), ToJSON(..))
@@ -18,7 +21,11 @@ import Data.HashMap.Strict (insert)
 import Data.Text (pack)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
-import Web.Common (UrlBasedValue, UrlInfo(..))
+import Model.Common (OpStatus(Success, NotFound))
+import Model.IdentityApi (IdentityApi(..))
+import Network.HTTP.Types.Status (status200, status201, status204, status404)
+import Web.Common ( UrlBasedValue, UrlInfo(..), withHostUrl, parseRequest
+                  , parseId, parseMaybeString, ScottyM)
 
 import Web.User.Types ( ChangePasswordRequest(..)
                       , UserCreateRequest(..)
@@ -27,7 +34,84 @@ import Web.User.Types ( ChangePasswordRequest(..)
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M
+import qualified Error as E
 import qualified Model.User as MU
+import qualified Web.Auth as A
+import qualified Web.Auth.Types as AT
+import qualified Web.Scotty.Trans as S
+
+userHandlers :: (Functor m, MonadIO m, IdentityApi m) => AT.Policy -> KeystoneConfig -> ScottyM m ()
+userHandlers policy config = do
+  S.post "/v3/users" $ A.requireToken config $ \token -> do
+    (d :: UserCreateRequest) <- parseRequest
+    user <- liftIO $ newRequestToUser d
+    A.authorize policy AT.AddUser token AT.EmptyResource $ do
+      mUid <- lift $ createUser user
+      case mUid of
+        Left err -> do
+          S.json err
+          S.status $ E.code err
+        Right rid -> do
+          S.status status201
+          withHostUrl config $ produceUserReply user
+  S.get "/v3/users" $ A.requireToken config $ \token -> do
+    userName <- parseMaybeString "name"
+    A.authorize policy AT.ListUsers token AT.EmptyResource $ do
+      users <- lift $ listUsers userName
+      S.status status200
+      withHostUrl config $ produceUsersReply users
+  S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
+    (uid :: M.ObjectId) <- parseId "uid"
+    A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
+      mUser <- lift $ findUserById uid
+      case mUser of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "User not found"
+        Just user -> do
+          S.status status200
+          withHostUrl config $ produceUserReply user
+  S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
+    (uid :: M.ObjectId) <- parseId "uid"
+    (uur :: UserUpdateRequest) <- parseRequest
+    A.authorize policy AT.UpdateUser token AT.EmptyResource $ do
+      updateDocument <- liftIO $ updateRequestToDocument uur
+      mUser <- lift $ updateUser uid updateDocument
+      case mUser of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "User not found"
+        Just user -> do
+          S.status status200
+          withHostUrl config $ produceUserReply user
+  S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
+    (uid :: M.ObjectId) <- parseId "uid"
+    A.authorize policy AT.DeleteUser token AT.EmptyResource $ do
+      st <- lift $ deleteUser uid
+      case st of
+        Success  -> S.status status204
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
+          S.status status404
+  S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
+    (uid :: M.ObjectId) <- parseId "uid"
+    (cpr :: ChangePasswordRequest) <- parseRequest
+    A.authorize policy AT.ChangePassword token (AT.UserId uid) $ do
+      res <- lift $ A.checkUserPassword (Just uid) Nothing (poriginalPassword cpr)
+      case res of
+        Left errorMessage -> do
+          S.status status404
+          S.json $ E.notFound "User not found"
+        Right _ -> do
+          updateDocument <- liftIO $ changePasswordRequestToDocument cpr
+          mModifiedUser <- lift $ updateUser uid updateDocument
+          case mModifiedUser of
+            Nothing -> do
+              S.status status404
+              S.json $ E.notFound "User not found"
+            Just modifiedUser -> do
+              S.status status200
+              withHostUrl config $ produceUserReply modifiedUser
 
 newRequestToUser :: UserCreateRequest -> IO MU.User
 newRequestToUser UserCreateRequest{..} = do

@@ -242,82 +242,13 @@ application policy config = do
       res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
       S.status status204
   -- User API
-  S.post "/v3/users" $ A.requireToken config $ \token -> do
-    (d :: U.UserCreateRequest) <- parseRequest
-    user <- liftIO $ U.newRequestToUser d
-    A.authorize policy AT.AddUser token AT.EmptyResource $ do
-      mUid <- lift $ createUser user
-      case mUid of
-        Left err -> do
-          S.json err
-          S.status $ E.code err
-        Right rid -> do
-          S.status status201
-          withHostUrl config $ U.produceUserReply user
-  S.get "/v3/users" $ A.requireToken config $ \token -> do
-    userName <- parseMaybeString "name"
-    A.authorize policy AT.ListUsers token AT.EmptyResource $ do
-      users <- lift $ listUsers userName
-      S.status status200
-      withHostUrl config $ U.produceUsersReply users
-  S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
-    (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
-      mUser <- lift $ findUserById uid
-      case mUser of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "User not found"
-        Just user -> do
-          S.status status200
-          withHostUrl config $ U.produceUserReply user
-  S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
-    (uid :: M.ObjectId) <- parseId "uid"
-    (uur :: U.UserUpdateRequest) <- parseRequest
-    A.authorize policy AT.UpdateUser token AT.EmptyResource $ do
-      updateDocument <- liftIO $ U.updateRequestToDocument uur
-      mUser <- lift $ updateUser uid updateDocument
-      case mUser of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "User not found"
-        Just user -> do
-          S.status status200
-          withHostUrl config $ U.produceUserReply user
-  S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
-    (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy AT.DeleteUser token AT.EmptyResource $ do
-      st <- lift $ deleteUser uid
-      case st of
-        Success  -> S.status status204
-        NotFound -> do
-          S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
-          S.status status404
+  U.userHandlers policy config
   S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.ListProjectsForUser token (AT.UserId uid) $ do
       projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
       S.status status200
       withHostUrl config $ P.produceProjectsReply projects
-  S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
-    (uid :: M.ObjectId) <- parseId "uid"
-    (cpr :: U.ChangePasswordRequest) <- parseRequest
-    A.authorize policy AT.ChangePassword token (AT.UserId uid) $ do
-      res <- lift $ A.checkUserPassword (Just uid) Nothing (U.poriginalPassword cpr)
-      case res of
-        Left errorMessage -> do
-          S.status status404
-          S.json $ E.notFound "User not found"
-        Right _ -> do
-          updateDocument <- liftIO $ U.changePasswordRequestToDocument cpr
-          mModifiedUser <- lift $ updateUser uid updateDocument
-          case mModifiedUser of
-            Nothing -> do
-              S.status status404
-              S.json $ E.notFound "User not found"
-            Just modifiedUser -> do
-              S.status status200
-              withHostUrl config $ U.produceUserReply modifiedUser
   -- Role API
   S.post "/v3/roles" $ A.requireToken config $ \token -> do
     (rcr :: R.RoleCreateRequest) <- parseRequest
