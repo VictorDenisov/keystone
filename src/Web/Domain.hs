@@ -1,16 +1,39 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Web.Domain
 where
 
-
+import Config (KeystoneConfig(..))
+import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
 import Data.Vector (fromList)
+import Model.IdentityApi (IdentityApi)
+import Network.HTTP.Types.Status (status200)
 
-import Web.Common (UrlBasedValue, UrlInfo(..))
+import Web.Common (UrlBasedValue, UrlInfo(..), ActionM, withHostUrl, parseId)
 
+import qualified Database.MongoDB as M
 import qualified Model.Domain as MD
+import qualified Web.Auth as A
+import qualified Web.Auth.Types as AT
+import qualified Web.Scotty.Trans as S
+
+listDomains :: (Functor m, MonadIO m, IdentityApi m)
+            => AT.Policy -> KeystoneConfig -> ActionM m ()
+listDomains policy config = A.requireToken config $ \token -> do
+    A.authorize policy AT.ListDomains token AT.EmptyResource $ do
+      S.status status200
+      withHostUrl config $ produceDomainsReply []
+
+domainDetails :: (Functor m, MonadIO m, IdentityApi m)
+              => AT.Policy -> KeystoneConfig -> ActionM m ()
+domainDetails policy config = A.requireToken config $ \token -> do
+    (did :: M.ObjectId) <- parseId "did"
+    A.authorize policy AT.ShowDomainDetails token AT.EmptyResource $ do
+      S.status status200
+      withHostUrl config $ produceDomainReply MD.Domain
 
 produceDomainJson :: MD.Domain -> String -> Value
 produceDomainJson domain baseUrl

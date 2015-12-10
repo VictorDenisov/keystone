@@ -53,7 +53,6 @@ import qualified Database.MongoDB as M
 import qualified Error as E
 
 import qualified Model.Assignment as MA
-import qualified Model.Domain as MD
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
@@ -178,6 +177,7 @@ application policy config = do
       Just tokenToVerify -> do
         A.authorize policy AT.CheckToken token (AT.Token tokenToVerify) $ S.status status204
   -- Service Catalog API
+  -- Service API
   S.post   "/v3/services"       $ SC.createService   policy config
   S.get    "/v3/services"       $ SC.listServices    policy config
   S.get    "/v3/services/:sid"  $ SC.serviceDetails  policy config
@@ -189,15 +189,8 @@ application policy config = do
   S.get    "/v3/endpoints/:eid" $ SC.endpointDetails policy config
   S.delete "/v3/endpoints/:eid" $ SC.deleteEndpoint  policy config
   -- Domain API
-  S.get "/v3/domains" $ A.requireToken config $ \token -> do
-    A.authorize policy AT.ListDomains token AT.EmptyResource $ do
-      S.status status200
-      withHostUrl config $ D.produceDomainsReply []
-  S.get "/v3/domains/:did" $ A.requireToken config $ \token -> do
-    (did :: M.ObjectId) <- parseId "did"
-    A.authorize policy AT.ShowDomainDetails token AT.EmptyResource $ do
-      S.status status200
-      withHostUrl config $ D.produceDomainReply MD.Domain
+  S.get    "/v3/domains"        $ D.listDomains      policy config
+  S.get    "/v3/domains/:did"   $ D.domainDetails    policy config
   -- Project API
   S.post "/v3/projects" $ A.requireToken config $ \token -> do
     (pcr :: P.ProjectCreateRequest) <- parseRequest
