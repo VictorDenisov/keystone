@@ -67,7 +67,7 @@ import qualified Web.Assignment as Assig
 import qualified Web.Domain as D
 import qualified Web.Project as P
 import qualified Web.Role as R
-import qualified Web.Service as Srv
+import qualified Web.Service as SC
 import qualified Web.User as U
 import qualified Web.Scotty.Trans as S
 
@@ -178,7 +178,16 @@ application policy config = do
       Just tokenToVerify -> do
         A.authorize policy AT.CheckToken token (AT.Token tokenToVerify) $ S.status status204
   -- Service Catalog API
-  Srv.serviceCatalogHandlers policy config
+  S.post   "/v3/services"       $ SC.createService   policy config
+  S.get    "/v3/services"       $ SC.listServices    policy config
+  S.get    "/v3/services/:sid"  $ SC.serviceDetails  policy config
+  S.patch  "/v3/services/:sid"  $ SC.updateService   policy config
+  S.delete "/v3/services/:sid"  $ SC.deleteService   policy config
+  -- Endpoint API
+  S.post   "/v3/endpoints"      $ SC.createEndpoint  policy config
+  S.get    "/v3/endpoints"      $ SC.listEndpoints   policy config
+  S.get    "/v3/endpoints/:eid" $ SC.endpointDetails policy config
+  S.delete "/v3/endpoints/:eid" $ SC.deleteEndpoint  policy config
   -- Domain API
   S.get "/v3/domains" $ A.requireToken config $ \token -> do
     A.authorize policy AT.ListDomains token AT.EmptyResource $ do

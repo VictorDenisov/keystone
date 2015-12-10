@@ -24,7 +24,7 @@ import Model.Common (OpStatus(Success, NotFound))
 import Model.IdentityApi (IdentityApi)
 import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlInfo(..), UrlBasedValue, parseId, withHostUrl
-                  , parseRequest, ScottyM, parseMaybeString)
+                  , parseRequest, ActionM, parseMaybeString)
 import Web.Service.Types
 
 import qualified Data.Text as T
@@ -36,9 +36,9 @@ import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
-serviceCatalogHandlers :: (Functor m, MonadIO m, IdentityApi m) => AT.Policy -> KeystoneConfig -> ScottyM m ()
-serviceCatalogHandlers policy config = do
-  S.post "/v3/services" $ A.requireToken config $ \token ->
+createService :: (Functor m, MonadIO m, IdentityApi m)
+              => AT.Policy -> KeystoneConfig -> ActionM m ()
+createService policy config = A.requireToken config $ \token ->
     A.authorize policy AT.AddService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       (scr :: ServiceCreateRequest) <- parseRequest
@@ -46,14 +46,20 @@ serviceCatalogHandlers policy config = do
       sid <- liftIO $ CD.withDB (database config) $ MS.createService service
       S.status status201
       withHostUrl config $ produceServiceReply service
-  S.get "/v3/services" $ A.requireToken config $ \token -> do
+
+listServices :: (Functor m, MonadIO m, IdentityApi m)
+               => AT.Policy -> KeystoneConfig -> ActionM m ()
+listServices policy config = A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
     A.authorize policy AT.ListServices token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       services <- liftIO $ CD.withDB (database config) $ MS.listServices serviceName
       S.status status200
       withHostUrl config $ produceServicesReply services
-  S.get "/v3/services/:sid" $ A.requireToken config $ \token -> do
+
+serviceDetails :: (Functor m, MonadIO m, IdentityApi m)
+               => AT.Policy -> KeystoneConfig -> ActionM m ()
+serviceDetails policy config = A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy AT.ShowServiceDetails token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
@@ -65,7 +71,10 @@ serviceCatalogHandlers policy config = do
         Just service -> do
             S.status status200
             withHostUrl config $ produceServiceReply service
-  S.patch "/v3/services/:sid" $ A.requireToken config $ \token -> do
+
+updateService :: (Functor m, MonadIO m, IdentityApi m)
+              => AT.Policy -> KeystoneConfig -> ActionM m ()
+updateService policy config = A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: ServiceUpdateRequest) <- parseRequest
     A.authorize policy AT.UpdateService token AT.EmptyResource $ do
@@ -78,7 +87,10 @@ serviceCatalogHandlers policy config = do
         Just service -> do
           S.status status200
           withHostUrl config $ produceServiceReply service
-  S.delete "/v3/services/:sid" $ A.requireToken config $ \token -> do
+
+deleteService :: (Functor m, MonadIO m, IdentityApi m)
+              => AT.Policy -> KeystoneConfig -> ActionM m ()
+deleteService policy config = A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy AT.DeleteService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
@@ -88,8 +100,10 @@ serviceCatalogHandlers policy config = do
         NotFound -> do
           S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
           S.status status404
-  -- Endpoint API
-  S.post "/v3/endpoints" $ A.requireToken config $ \token -> do
+
+createEndpoint :: (Functor m, MonadIO m, IdentityApi m)
+               => AT.Policy -> KeystoneConfig -> ActionM m ()
+createEndpoint policy config = A.requireToken config $ \token -> do
     (ecr :: EndpointCreateRequest) <- parseRequest
     endpoint <- liftIO $ newRequestToEndpoint ecr
     A.authorize policy AT.AddEndpoint token AT.EmptyResource $ do
@@ -101,12 +115,18 @@ serviceCatalogHandlers policy config = do
         Just _eid -> do
           S.status status201
           withHostUrl config $ produceEndpointReply endpoint (eserviceId ecr)
-  S.get "/v3/endpoints" $ A.requireToken config $ \token -> do
+
+listEndpoints :: (Functor m, MonadIO m, IdentityApi m)
+              => AT.Policy -> KeystoneConfig -> ActionM m ()
+listEndpoints policy config = A.requireToken config $ \token -> do
     A.authorize policy AT.ListEndpoints token AT.EmptyResource $ do
       endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
       S.status status200
       withHostUrl config $ produceEndpointsReply endpoints
-  S.get "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
+
+endpointDetails :: (Functor m, MonadIO m, IdentityApi m)
+                => AT.Policy -> KeystoneConfig -> ActionM m ()
+endpointDetails policy config = A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy AT.ShowEndpoint token AT.EmptyResource $ do
       mEndpoint <- liftIO $ CD.withDB (database config) $ MS.findEndpointById eid
@@ -117,7 +137,10 @@ serviceCatalogHandlers policy config = do
         Just (serviceId, endpoint) -> do
           S.status status200
           withHostUrl config $ produceEndpointReply endpoint serviceId
-  S.delete "/v3/endpoints/:eid" $ A.requireToken config $ \token -> do
+
+deleteEndpoint :: (Functor m, MonadIO m, IdentityApi m)
+               => AT.Policy -> KeystoneConfig -> ActionM m ()
+deleteEndpoint policy config = A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy AT.DeleteEndpoint token AT.EmptyResource $ do
       n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid
