@@ -40,7 +40,7 @@ import System.Log.Formatter (simpleLogFormatter)
 
 import Text.Read (readMaybe)
 
-import Web.Version (versionHandlers)
+import Web.Version (listVersions, v3details)
 
 import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl
                   , parseMaybeString, parseId, parseRequest)
@@ -118,7 +118,8 @@ application policy config = do
       _ -> do
         S.json e
   -- Version API
-  versionHandlers config
+  S.get "/"   $ listVersions config
+  S.get "/v3" $ v3details    config
   -- Token API
   S.post "/v3/auth/tokens" $ do
     (au :: AT.AuthRequest) <- parseRequest

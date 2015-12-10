@@ -1,22 +1,20 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Web.Version
-(versionHandlers)
+(listVersions, v3details)
 where
 
 import Config (KeystoneConfig)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson.Types (object, (.=), Value)
-import Web.Common (ScottyM, UrlBasedValue, UrlInfo(..), withHostUrl)
+import Web.Common (UrlBasedValue, UrlInfo(..), withHostUrl, ActionM)
 
-import qualified Web.Scotty.Trans as S
+listVersions :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
+listVersions config = withHostUrl config apiVersions
 
-versionHandlers :: (Functor m, MonadIO m) => KeystoneConfig -> ScottyM m ()
-versionHandlers config = do
-  S.get "/" $ do
-    withHostUrl config apiVersions
-  S.get "/v3" $ do
-    withHostUrl config apiV3Reply
+v3details :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
+v3details config = withHostUrl config apiV3Reply
+
 
 jsonMediaTypeV3 = object [ "base" .= ("application/json" :: String)
                          , "type" .= ("application/vnd.openstack.identity-v3+json" :: String)
