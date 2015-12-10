@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Web.Role
 ( module Web.Role
@@ -8,6 +9,8 @@ module Web.Role
 ) where
 
 import Common (fromObject, underscoreOptions)
+import Config (KeystoneConfig(..))
+import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (FromJSON(..), Value(..), (.:), ToJSON(..), Value(..))
 import Data.Aeson.TH (mkParseJSON)
 import Data.Aeson.Types (object, typeMismatch, (.=))
@@ -15,11 +18,61 @@ import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
-import Web.Common (UrlBasedValue, UrlInfo(..))
+import Model.Common (OpStatus(Success, NotFound))
+import Model.IdentityApi (IdentityApi(..))
+import Network.HTTP.Types.Status ( status200, status201, status204, status404)
+import Web.Common ( UrlBasedValue, UrlInfo(..), parseId, parseRequest
+                  , withHostUrl, ScottyM, parseMaybeString)
 import Web.Role.Types
 
 import qualified Database.MongoDB as M
+import qualified Error as E
+import qualified Model.Mongo.Common as CD
 import qualified Model.Role as MR
+import qualified Web.Auth as A
+import qualified Web.Auth.Types as AT
+import qualified Web.Scotty.Trans as S
+
+roleHandlers :: (Functor m, MonadIO m, IdentityApi m) => AT.Policy -> KeystoneConfig -> ScottyM m ()
+roleHandlers policy config = do
+  S.post "/v3/roles" $ A.requireToken config $ \token -> do
+    (rcr :: RoleCreateRequest) <- parseRequest
+    role <- liftIO $ newRequestToRole rcr
+    A.authorize policy AT.AddRole token AT.EmptyResource $ do
+      mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
+      case mRid of
+        Left err -> do
+          S.json err
+          S.status $ E.code err
+        Right rid -> do
+          S.status status201
+          withHostUrl config $ produceRoleReply role
+  S.get "/v3/roles" $ A.requireToken config $ \token -> do
+    roleName <- parseMaybeString "name"
+    A.authorize policy AT.ListRoles token AT.EmptyResource $ do
+      roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
+      S.status status200
+      withHostUrl config $ produceRolesReply roles
+  S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
+    (rid :: M.ObjectId) <- parseId "rid"
+    A.authorize policy AT.ShowRoleDetails token AT.EmptyResource $ do
+      mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
+      case mRole of
+        Nothing -> do
+          S.status status404
+          S.json $ E.notFound "Role not found"
+        Just role -> do
+          S.status status200
+          withHostUrl config $ produceRoleReply role
+  S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
+    (rid :: M.ObjectId) <- parseId "rid"
+    A.authorize policy AT.DeleteRole token AT.EmptyResource $ do
+      st <- liftIO $ CD.withDB (database config) $ MR.deleteRole rid
+      case st of
+        Success  -> S.status status204
+        NotFound -> do
+          S.json $ E.notFound $ "Could not find role, " ++ (show rid) ++ "."
+          S.status status404
 
 newRequestToRole :: RoleCreateRequest -> IO MR.Role
 newRequestToRole RoleCreateRequest{..} = do

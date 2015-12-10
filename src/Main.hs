@@ -250,44 +250,7 @@ application policy config = do
       S.status status200
       withHostUrl config $ P.produceProjectsReply projects
   -- Role API
-  S.post "/v3/roles" $ A.requireToken config $ \token -> do
-    (rcr :: R.RoleCreateRequest) <- parseRequest
-    role <- liftIO $ R.newRequestToRole rcr
-    A.authorize policy AT.AddRole token AT.EmptyResource $ do
-      mRid <- liftIO $ liftIO $ CD.withDB (database config) $ MR.createRole role
-      case mRid of
-        Left err -> do
-          S.json err
-          S.status $ E.code err
-        Right rid -> do
-          S.status status201
-          withHostUrl config $ R.produceRoleReply role
-  S.get "/v3/roles" $ A.requireToken config $ \token -> do
-    roleName <- parseMaybeString "name"
-    A.authorize policy AT.ListRoles token AT.EmptyResource $ do
-      roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
-      S.status status200
-      withHostUrl config $ R.produceRolesReply roles
-  S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
-    (rid :: M.ObjectId) <- parseId "rid"
-    A.authorize policy AT.ShowRoleDetails token AT.EmptyResource $ do
-      mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
-      case mRole of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "Role not found"
-        Just role -> do
-          S.status status200
-          withHostUrl config $ R.produceRoleReply role
-  S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
-    (rid :: M.ObjectId) <- parseId "rid"
-    A.authorize policy AT.DeleteRole token AT.EmptyResource $ do
-      st <- liftIO $ CD.withDB (database config) $ MR.deleteRole rid
-      case st of
-        Success  -> S.status status204
-        NotFound -> do
-          S.json $ E.notFound $ "Could not find role, " ++ (show rid) ++ "."
-          S.status status404
+  R.roleHandlers policy config
   S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
