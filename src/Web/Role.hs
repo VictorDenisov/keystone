@@ -22,7 +22,7 @@ import Model.Common (OpStatus(Success, NotFound))
 import Model.IdentityApi (IdentityApi(..))
 import Network.HTTP.Types.Status ( status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), parseId, parseRequest
-                  , withHostUrl, ScottyM, parseMaybeString)
+                  , withHostUrl, parseMaybeString, ActionM)
 import Web.Role.Types
 
 import qualified Database.MongoDB as M
@@ -33,9 +33,9 @@ import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
-roleHandlers :: (Functor m, MonadIO m, IdentityApi m) => AT.Policy -> KeystoneConfig -> ScottyM m ()
-roleHandlers policy config = do
-  S.post "/v3/roles" $ A.requireToken config $ \token -> do
+createRoleH :: (Functor m, MonadIO m, IdentityApi m)
+            => AT.Policy -> KeystoneConfig -> ActionM m ()
+createRoleH policy config = A.requireToken config $ \token -> do
     (rcr :: RoleCreateRequest) <- parseRequest
     role <- liftIO $ newRequestToRole rcr
     A.authorize policy AT.AddRole token AT.EmptyResource $ do
@@ -47,13 +47,19 @@ roleHandlers policy config = do
         Right rid -> do
           S.status status201
           withHostUrl config $ produceRoleReply role
-  S.get "/v3/roles" $ A.requireToken config $ \token -> do
+
+listRolesH :: (Functor m, MonadIO m, IdentityApi m)
+            => AT.Policy -> KeystoneConfig -> ActionM m ()
+listRolesH policy config = A.requireToken config $ \token -> do
     roleName <- parseMaybeString "name"
     A.authorize policy AT.ListRoles token AT.EmptyResource $ do
       roles <- liftIO $ CD.withDB (database config) $ MR.listRoles roleName
       S.status status200
       withHostUrl config $ produceRolesReply roles
-  S.get "/v3/roles/:rid" $ A.requireToken config $ \token -> do
+
+roleDetailsH :: (Functor m, MonadIO m, IdentityApi m)
+             => AT.Policy -> KeystoneConfig -> ActionM m ()
+roleDetailsH policy config = A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy AT.ShowRoleDetails token AT.EmptyResource $ do
       mRole <- liftIO $ CD.withDB (database config) $ MR.findRoleById rid
@@ -64,7 +70,10 @@ roleHandlers policy config = do
         Just role -> do
           S.status status200
           withHostUrl config $ produceRoleReply role
-  S.delete "/v3/roles/:rid" $ A.requireToken config $ \token -> do
+
+deleteRoleH :: (Functor m, MonadIO m, IdentityApi m)
+             => AT.Policy -> KeystoneConfig -> ActionM m ()
+deleteRoleH policy config = A.requireToken config $ \token -> do
     (rid :: M.ObjectId) <- parseId "rid"
     A.authorize policy AT.DeleteRole token AT.EmptyResource $ do
       st <- liftIO $ CD.withDB (database config) $ MR.deleteRole rid

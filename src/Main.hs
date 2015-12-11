@@ -258,7 +258,10 @@ application policy config = do
       S.status status200
       withHostUrl config $ P.produceProjectsReply projects
   -- Role API
-  R.roleHandlers policy config
+  S.post   "/v3/roles"      $ R.createRoleH policy config
+  S.get    "/v3/roles"      $ R.listRolesH  policy config
+  S.get    "/v3/roles/:rid" $ R.roleDetailsH policy config
+  S.delete "/v3/roles/:rid" $ R.deleteRoleH policy config
   S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
     userId <- parseMaybeParam "user.id"
     projectId <- parseMaybeParam "scope.project.id"
