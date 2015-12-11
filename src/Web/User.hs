@@ -25,7 +25,7 @@ import Model.Common (OpStatus(Success, NotFound))
 import Model.IdentityApi (IdentityApi(..))
 import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), withHostUrl, parseRequest
-                  , parseId, parseMaybeString, ScottyM)
+                  , parseId, parseMaybeString, ActionM)
 
 import Web.User.Types ( ChangePasswordRequest(..)
                       , UserCreateRequest(..)
@@ -40,9 +40,9 @@ import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
-userHandlers :: (Functor m, MonadIO m, IdentityApi m) => AT.Policy -> KeystoneConfig -> ScottyM m ()
-userHandlers policy config = do
-  S.post "/v3/users" $ A.requireToken config $ \token -> do
+createUserH :: (Functor m, MonadIO m, IdentityApi m)
+           => AT.Policy -> KeystoneConfig -> ActionM m ()
+createUserH policy config = A.requireToken config $ \token -> do
     (d :: UserCreateRequest) <- parseRequest
     user <- liftIO $ newRequestToUser d
     A.authorize policy AT.AddUser token AT.EmptyResource $ do
@@ -54,13 +54,19 @@ userHandlers policy config = do
         Right rid -> do
           S.status status201
           withHostUrl config $ produceUserReply user
-  S.get "/v3/users" $ A.requireToken config $ \token -> do
+
+listUsersH :: (Functor m, MonadIO m, IdentityApi m)
+           => AT.Policy -> KeystoneConfig -> ActionM m ()
+listUsersH policy config = A.requireToken config $ \token -> do
     userName <- parseMaybeString "name"
     A.authorize policy AT.ListUsers token AT.EmptyResource $ do
       users <- lift $ listUsers userName
       S.status status200
       withHostUrl config $ produceUsersReply users
-  S.get "/v3/users/:uid" $ A.requireToken config $ \token -> do
+
+userDetailsH :: (Functor m, MonadIO m, IdentityApi m)
+             => AT.Policy -> KeystoneConfig -> ActionM m ()
+userDetailsH policy config = A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
       mUser <- lift $ findUserById uid
@@ -71,7 +77,10 @@ userHandlers policy config = do
         Just user -> do
           S.status status200
           withHostUrl config $ produceUserReply user
-  S.patch "/v3/users/:uid" $ A.requireToken config $ \token -> do
+
+updateUserH :: (Functor m, MonadIO m, IdentityApi m)
+            => AT.Policy -> KeystoneConfig -> ActionM m ()
+updateUserH policy config = A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (uur :: UserUpdateRequest) <- parseRequest
     A.authorize policy AT.UpdateUser token AT.EmptyResource $ do
@@ -84,7 +93,10 @@ userHandlers policy config = do
         Just user -> do
           S.status status200
           withHostUrl config $ produceUserReply user
-  S.delete "/v3/users/:uid" $ A.requireToken config $ \token -> do
+
+deleteUserH :: (Functor m, MonadIO m, IdentityApi m)
+            => AT.Policy -> KeystoneConfig -> ActionM m ()
+deleteUserH policy config = A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.DeleteUser token AT.EmptyResource $ do
       st <- lift $ deleteUser uid
@@ -93,7 +105,10 @@ userHandlers policy config = do
         NotFound -> do
           S.json $ E.notFound $ "Could not find user, " ++ (show uid) ++ "."
           S.status status404
-  S.post "/v3/users/:uid/password" $ A.requireToken config $ \token -> do
+
+updateUserPasswordH :: (Functor m, MonadIO m, IdentityApi m)
+                    => AT.Policy -> KeystoneConfig -> ActionM m ()
+updateUserPasswordH policy config = A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: ChangePasswordRequest) <- parseRequest
     A.authorize policy AT.ChangePassword token (AT.UserId uid) $ do

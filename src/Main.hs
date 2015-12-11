@@ -245,7 +245,12 @@ application policy config = do
       res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
       S.status status204
   -- User API
-  U.userHandlers policy config
+  S.post   "/v3/users"               $ U.createUserH  policy config
+  S.get    "/v3/users"               $ U.listUsersH   policy config
+  S.get    "/v3/users/:uid"          $ U.userDetailsH policy config
+  S.patch  "/v3/users/:uid"          $ U.updateUserH  policy config
+  S.delete "/v3/users/:uid"          $ U.deleteUserH  policy config
+  S.post   "/v3/users/:uid/password" $ U.updateUserPasswordH policy config
   S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     A.authorize policy AT.ListProjectsForUser token (AT.UserId uid) $ do
