@@ -22,11 +22,10 @@ import Control.Monad.Except (runExceptT, MonadError(throwError))
 import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
-import Model.Common (OpStatus(..))
 import Model.IdentityApi
 import Model.Mongo.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
-import Network.HTTP.Types.Status ( status200, status201, status204, status401
+import Network.HTTP.Types.Status ( status200, status204, status401
                                  , status404, statusCode)
 import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -43,7 +42,7 @@ import Text.Read (readMaybe)
 import Web.Version (listVersions, v3details)
 
 import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl
-                  , parseMaybeString, parseId, parseRequest)
+                  , parseId, parseRequest)
 
 import qualified Model.Mongo.Common as CD
 
@@ -192,44 +191,10 @@ application policy config = do
   S.get    "/v3/domains"        $ D.listDomains      policy config
   S.get    "/v3/domains/:did"   $ D.domainDetails    policy config
   -- Project API
-  S.post "/v3/projects" $ A.requireToken config $ \token -> do
-    (pcr :: P.ProjectCreateRequest) <- parseRequest
-    project <- liftIO $ P.newRequestToProject pcr
-    A.authorize policy AT.AddProject token AT.EmptyResource $ do
-      mPid <- liftIO $ CD.withDB (database config) $ MP.createProject project
-      case mPid of
-        Left err -> do
-          S.json err
-          S.status $ E.code err
-        Right rid -> do
-          S.status status201
-          withHostUrl config $ P.produceProjectReply project
-  S.get "/v3/projects" $ A.requireToken config $ \token -> do
-    projectName <- parseMaybeString "name"
-    A.authorize policy AT.ListProjects token AT.EmptyResource $ do
-      projects <- liftIO $ CD.withDB (database config) $ MP.listProjects projectName
-      S.status status200
-      withHostUrl config $ P.produceProjectsReply projects
-  S.get "/v3/projects/:pid" $ A.requireToken config $ \token -> do
-    (pid :: M.ObjectId) <- parseId "pid"
-    A.authorize policy AT.ShowProjectDetails token AT.EmptyResource $ do
-      mProject <- liftIO $ CD.withDB (database config) $ MP.findProjectById pid
-      case mProject of
-        Nothing -> do
-          S.status status404
-          S.json $ E.notFound "Project not found"
-        Just project -> do
-          S.status status200
-          withHostUrl config $ P.produceProjectReply project
-  S.delete "/v3/projects/:pid" $ A.requireToken config $ \token -> do
-    (pid :: M.ObjectId) <- parseId "pid"
-    A.authorize policy AT.DeleteProject token AT.EmptyResource $ do
-      n <- liftIO $ CD.withDB (database config) $ MP.deleteProject pid
-      case n of
-        Success -> S.status status204
-        NotFound -> do
-          S.json $ E.notFound $ "Could not find project, " ++ (show pid) ++ "."
-          S.status status404
+  S.post   "/v3/projects"      $ P.createProjectH  policy config
+  S.get    "/v3/projects"      $ P.listProjectsH   policy config
+  S.get    "/v3/projects/:pid" $ P.projectDetailsH policy config
+  S.delete "/v3/projects/:pid" $ P.deleteProjectH  policy config
   S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireToken config $ \token -> do
     (pid :: M.ObjectId) <- parseId "pid"
     (uid :: M.ObjectId) <- parseId "uid"
