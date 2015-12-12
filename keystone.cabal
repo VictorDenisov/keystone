@@ -44,6 +44,7 @@ executable keystone
                      , Web.Role.Types
                      , Web.Service
                      , Web.Service.Types
+                     , Web.Token
                      , Web.User
                      , Web.User.Types
                      , Web.Version

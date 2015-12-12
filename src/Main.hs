@@ -11,22 +11,16 @@ where
 import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), ServerType(..))
 import Control.Applicative ((<$>))
-import Control.Monad (when, MonadPlus(mzero))
+import Control.Monad (when)
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
-import Control.Monad.Trans.Maybe (MaybeT(..))
-import Control.Monad.Except (runExceptT, MonadError(throwError))
-import Control.Monad.Trans.Resource (runResourceT, allocate, release)
-import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 import Model.IdentityApi
 import Model.Mongo.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
-import Network.HTTP.Types.Status ( status200, status204, status401
-                                 , status404, statusCode)
+import Network.HTTP.Types.Status ( status200, status204, statusCode)
 import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
@@ -41,8 +35,7 @@ import Text.Read (readMaybe)
 
 import Web.Version (listVersions, v3details)
 
-import Web.Common ( ScottyM, ActionM, withHostUrl, getBaseUrl
-                  , parseId, parseRequest)
+import Web.Common (ScottyM, ActionM, withHostUrl, parseId)
 
 import qualified Model.Mongo.Common as CD
 
@@ -65,9 +58,10 @@ import qualified Web.Assignment as Assig
 import qualified Web.Domain as D
 import qualified Web.Project as P
 import qualified Web.Role as R
-import qualified Web.Service as SC
-import qualified Web.User as U
 import qualified Web.Scotty.Trans as S
+import qualified Web.Service as SC
+import qualified Web.Token as T
+import qualified Web.User as U
 
 main = do
   config <- readConfig
@@ -119,62 +113,9 @@ application policy config = do
   S.get "/"   $ listVersions config
   S.get "/v3" $ v3details    config
   -- Token API
-  S.post "/v3/auth/tokens" $ do
-    (au :: AT.AuthRequest) <- parseRequest
-    baseUrl <- getBaseUrl config
-    runResourceT $ do
-      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- lift $ lift $ mapM (A.authenticate pipe (AT.scope au)) (AT.methods au)
-      release releaseKey
-      case head res of
-        Right (tokenId, t) -> lift $ do
-          let resp = A.produceTokenResponse t baseUrl
-          S.json resp
-          S.addHeader "X-Subject-Token" (TL.pack tokenId)
-          S.status status200
-        Left errorMessage -> lift $ do
-          S.json $ E.unauthorized errorMessage
-          S.status status401
-  S.get "/v3/auth/tokens" $ A.requireToken config $ \token -> do
-    mSubjectToken <- S.header hXSubjectToken
-    baseUrl <- getBaseUrl config
-    res <- runExceptT $ do
-      when (isNothing mSubjectToken) $ throwError "Could not find token, ."
-      let mst = readMaybe $ TL.unpack $ fromJust mSubjectToken
-
-      when (isNothing mst) $ throwError "Token is not an object id"
-      let st = fromJust mst
-      mToken <- liftIO $ CD.withDB (database config) $ MT.findTokenById st
-
-      when (isNothing mToken) $ throwError $ "Could not find token, " ++ (show st) ++ "."
-      let token = fromJust mToken
-      currentTime <- liftIO getCurrentTime
-
-      when (currentTime > (MT.expiresAt token)) $ throwError $ "Could not find token, " ++ (show st) ++ "."
-      return token
-
-    case res of
-      Left errorMessage -> do
-        S.status status404
-        S.json $ E.notFound errorMessage
-      Right tokenToVerify -> A.authorize policy AT.ValidateToken token (AT.Token tokenToVerify) $ do
-        S.status status200
-        S.json $ A.produceTokenResponse tokenToVerify baseUrl
-  S.addroute HEAD "/v3/auth/tokens" $ A.requireToken config $ \token -> do
-    mSubjectToken <- S.header hXSubjectToken
-    res <- runMaybeT $ do
-      subjectToken <- MaybeT $ return mSubjectToken
-      st <- MaybeT $ return $ readMaybe $ TL.unpack subjectToken
-      token <- MaybeT $ liftIO $ CD.withDB (database config) $ MT.findTokenById st
-      currentTime <- liftIO getCurrentTime
-      when (currentTime > (MT.expiresAt token)) mzero
-      return token
-
-    case res of
-      Nothing -> do
-        S.status status404
-      Just tokenToVerify -> do
-        A.authorize policy AT.CheckToken token (AT.Token tokenToVerify) $ S.status status204
+  S.post "/v3/auth/tokens" $ T.issueTokenH                  config
+  S.get  "/v3/auth/tokens" $ T.receiveExistingTokenH policy config
+  S.addroute HEAD "/v3/auth/tokens" $ T.checkTokenH  policy config
   -- Service Catalog API
   -- Service API
   S.post   "/v3/services"       $ SC.createService   policy config
@@ -263,6 +204,3 @@ parseMaybeParam paramName =
     case readMaybe value of
       Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (TL.unpack paramName)
       Just v  -> return $ Just v
-
-hXSubjectToken :: TL.Text
-hXSubjectToken = "X-Subject-Token"
