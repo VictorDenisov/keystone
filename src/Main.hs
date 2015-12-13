@@ -10,7 +10,6 @@ where
 
 import Common (loggerName)
 import Config (readConfig, KeystoneConfig(..), ServerType(..))
-import Control.Applicative ((<$>))
 import Control.Monad (when)
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
@@ -20,7 +19,7 @@ import Data.Time.Clock (getCurrentTime)
 import Model.IdentityApi
 import Model.Mongo.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
-import Network.HTTP.Types.Status ( status200, status204, statusCode)
+import Network.HTTP.Types.Status ( statusCode)
 import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)
@@ -31,17 +30,12 @@ import System.Log.Logger ( debugM, errorM, setLevel, updateGlobalLogger
                          , noticeM, setHandlers, removeAllHandlers)
 import System.Log.Formatter (simpleLogFormatter)
 
-import Text.Read (readMaybe)
-
 import Web.Version (listVersions, v3details)
 
-import Web.Common (ScottyM, ActionM, withHostUrl, parseId)
+import Web.Common (ScottyM)
 
 import qualified Model.Mongo.Common as CD
 
-import qualified Data.Text.Lazy as TL
-
-import qualified Database.MongoDB as M
 import qualified Error as E
 
 import qualified Model.Assignment as MA
@@ -49,7 +43,6 @@ import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
 import qualified Model.Token as MT
-import qualified Model.User as MU
 import qualified Model.Mongo.User as MMU
 
 import qualified Web.Auth as A
@@ -110,71 +103,49 @@ application policy config = do
       _ -> do
         S.json e
   -- Version API
-  S.get "/"   $ listVersions config
-  S.get "/v3" $ v3details    config
+  S.get           "/"                  $ listVersions                   config
+  S.get           "/v3"                $ v3details                      config
   -- Token API
-  S.post "/v3/auth/tokens" $ T.issueTokenH                  config
-  S.get  "/v3/auth/tokens" $ T.receiveExistingTokenH policy config
-  S.addroute HEAD "/v3/auth/tokens" $ T.checkTokenH  policy config
+  S.post          "/v3/auth/tokens"    $ T.issueTokenH                  config
+  S.get           "/v3/auth/tokens"    $ T.receiveExistingTokenH policy config
+  S.addroute HEAD "/v3/auth/tokens"    $ T.checkTokenH           policy config
   -- Service Catalog API
   -- Service API
-  S.post   "/v3/services"       $ SC.createService   policy config
-  S.get    "/v3/services"       $ SC.listServices    policy config
-  S.get    "/v3/services/:sid"  $ SC.serviceDetails  policy config
-  S.patch  "/v3/services/:sid"  $ SC.updateService   policy config
-  S.delete "/v3/services/:sid"  $ SC.deleteService   policy config
+  S.post          "/v3/services"       $ SC.createService        policy config
+  S.get           "/v3/services"       $ SC.listServices         policy config
+  S.get           "/v3/services/:sid"  $ SC.serviceDetails       policy config
+  S.patch         "/v3/services/:sid"  $ SC.updateService        policy config
+  S.delete        "/v3/services/:sid"  $ SC.deleteService        policy config
   -- Endpoint API
-  S.post   "/v3/endpoints"      $ SC.createEndpoint  policy config
-  S.get    "/v3/endpoints"      $ SC.listEndpoints   policy config
-  S.get    "/v3/endpoints/:eid" $ SC.endpointDetails policy config
-  S.delete "/v3/endpoints/:eid" $ SC.deleteEndpoint  policy config
+  S.post          "/v3/endpoints"      $ SC.createEndpoint       policy config
+  S.get           "/v3/endpoints"      $ SC.listEndpoints        policy config
+  S.get           "/v3/endpoints/:eid" $ SC.endpointDetails      policy config
+  S.delete        "/v3/endpoints/:eid" $ SC.deleteEndpoint       policy config
   -- Domain API
-  S.get    "/v3/domains"        $ D.listDomains      policy config
-  S.get    "/v3/domains/:did"   $ D.domainDetails    policy config
+  S.get           "/v3/domains"        $ D.listDomains           policy config
+  S.get           "/v3/domains/:did"   $ D.domainDetails         policy config
   -- Project API
-  S.post   "/v3/projects"      $ P.createProjectH  policy config
-  S.get    "/v3/projects"      $ P.listProjectsH   policy config
-  S.get    "/v3/projects/:pid" $ P.projectDetailsH policy config
-  S.delete "/v3/projects/:pid" $ P.deleteProjectH  policy config
-  S.get "/v3/projects/:pid/users/:uid/roles" $ A.requireToken config $ \token -> do
-    (pid :: M.ObjectId) <- parseId "pid"
-    (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy AT.ListRolesForProjectUser token AT.EmptyResource $ do
-      roles <- liftIO $ CD.withDB (database config) $ MA.listUserRoles (MP.ProjectId pid) (MU.UserId uid)
-      S.status status200
-      withHostUrl config $ R.produceRolesReply roles
-  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ A.requireToken config $ \token -> do
-    (pid :: M.ObjectId) <- parseId "pid"
-    (uid :: M.ObjectId) <- parseId "uid"
-    (rid :: M.ObjectId) <- parseId "rid"
-    A.authorize policy AT.GrantRoleToProjectUser token AT.EmptyResource $ do
-      res <- liftIO $ CD.withDB (database config) $ MA.addAssignment (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
-      S.status status204
+  S.post          "/v3/projects"       $ P.createProjectH        policy config
+  S.get           "/v3/projects"       $ P.listProjectsH         policy config
+  S.get           "/v3/projects/:pid"  $ P.projectDetailsH       policy config
+  S.delete        "/v3/projects/:pid"  $ P.deleteProjectH        policy config
   -- User API
-  S.post   "/v3/users"               $ U.createUserH  policy config
-  S.get    "/v3/users"               $ U.listUsersH   policy config
-  S.get    "/v3/users/:uid"          $ U.userDetailsH policy config
-  S.patch  "/v3/users/:uid"          $ U.updateUserH  policy config
-  S.delete "/v3/users/:uid"          $ U.deleteUserH  policy config
-  S.post   "/v3/users/:uid/password" $ U.updateUserPasswordH policy config
-  S.get "/v3/users/:uid/projects" $ A.requireToken config $ \token -> do
-    (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy AT.ListProjectsForUser token (AT.UserId uid) $ do
-      projects <- liftIO $ CD.withDB (database config) $ MA.listProjectsForUser (MU.UserId uid)
-      S.status status200
-      withHostUrl config $ P.produceProjectsReply projects
+  S.post          "/v3/users"               $ U.createUserH         policy config
+  S.get           "/v3/users"               $ U.listUsersH          policy config
+  S.get           "/v3/users/:uid"          $ U.userDetailsH        policy config
+  S.patch         "/v3/users/:uid"          $ U.updateUserH         policy config
+  S.delete        "/v3/users/:uid"          $ U.deleteUserH         policy config
+  S.post          "/v3/users/:uid/password" $ U.updateUserPasswordH policy config
   -- Role API
   S.post   "/v3/roles"      $ R.createRoleH policy config
   S.get    "/v3/roles"      $ R.listRolesH  policy config
   S.get    "/v3/roles/:rid" $ R.roleDetailsH policy config
   S.delete "/v3/roles/:rid" $ R.deleteRoleH policy config
-  S.get "/v3/role_assignments" $ A.requireToken config $ \token -> do
-    userId <- parseMaybeParam "user.id"
-    projectId <- parseMaybeParam "scope.project.id"
-    A.authorize policy AT.ListRoleAssignments token AT.EmptyResource $ do
-      assignments <- liftIO $ CD.withDB (database config) $ MA.listAssignments (MP.ProjectId <$> projectId) (MU.UserId <$> userId)
-      S.status status200
-      withHostUrl config $ Assig.produceAssignmentsReply assignments
+  -- Assignment API
+  S.get "/v3/projects/:pid/users/:uid/roles"      $ Assig.listProjectUserRolesH policy config
+  S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ Assig.createAssignmentH     policy config
+  S.get "/v3/users/:uid/projects"                 $ Assig.listUserProjects      policy config
+  S.get "/v3/role_assignments"                    $ Assig.listAssignmentsH      policy config
 
 verifyDatabase :: KeystoneConfig -> IO ()
 verifyDatabase KeystoneConfig{..} = liftIO $ CD.withDB database $ do
@@ -196,11 +167,3 @@ logRequestResponse :: Middleware
 logRequestResponse app request responder = do
   debugM loggerName $ show request
   app request responder
-
-parseMaybeParam :: (MonadIO m, Read a) => TL.Text -> ActionM m (Maybe a)
-parseMaybeParam paramName =
-  (flip S.rescue) (\msg -> return Nothing) $ do
-    (value :: String) <- S.param paramName
-    case readMaybe value of
-      Nothing -> S.raise $ E.badRequest $ "Failed to parse value from " ++ (TL.unpack paramName)
-      Just v  -> return $ Just v
