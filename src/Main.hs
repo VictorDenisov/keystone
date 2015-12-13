@@ -103,32 +103,32 @@ application policy config = do
       _ -> do
         S.json e
   -- Version API
-  S.get           "/"                  $ listVersions                   config
-  S.get           "/v3"                $ v3details                      config
+  S.get           "/"                     $ listVersions                   config
+  S.get           "/v3"                   $ v3details                      config
   -- Token API
-  S.post          "/v3/auth/tokens"    $ T.issueTokenH                  config
-  S.get           "/v3/auth/tokens"    $ T.receiveExistingTokenH policy config
-  S.addroute HEAD "/v3/auth/tokens"    $ T.checkTokenH           policy config
+  S.post          "/v3/auth/tokens"       $ T.issueTokenH                  config
+  S.get           "/v3/auth/tokens"       $ T.receiveExistingTokenH policy config
+  S.addroute HEAD "/v3/auth/tokens"       $ T.checkTokenH           policy config
   -- Service Catalog API
   -- Service API
-  S.post          "/v3/services"       $ SC.createService        policy config
-  S.get           "/v3/services"       $ SC.listServices         policy config
-  S.get           "/v3/services/:sid"  $ SC.serviceDetails       policy config
-  S.patch         "/v3/services/:sid"  $ SC.updateService        policy config
-  S.delete        "/v3/services/:sid"  $ SC.deleteService        policy config
+  S.post          "/v3/services"          $ SC.createService        policy config
+  S.get           "/v3/services"          $ SC.listServices         policy config
+  S.get           "/v3/services/:sid"     $ SC.serviceDetails       policy config
+  S.patch         "/v3/services/:sid"     $ SC.updateService        policy config
+  S.delete        "/v3/services/:sid"     $ SC.deleteService        policy config
   -- Endpoint API
-  S.post          "/v3/endpoints"      $ SC.createEndpoint       policy config
-  S.get           "/v3/endpoints"      $ SC.listEndpoints        policy config
-  S.get           "/v3/endpoints/:eid" $ SC.endpointDetails      policy config
-  S.delete        "/v3/endpoints/:eid" $ SC.deleteEndpoint       policy config
+  S.post          "/v3/endpoints"         $ SC.createEndpoint       policy config
+  S.get           "/v3/endpoints"         $ SC.listEndpoints        policy config
+  S.get           "/v3/endpoints/:eid"    $ SC.endpointDetails      policy config
+  S.delete        "/v3/endpoints/:eid"    $ SC.deleteEndpoint       policy config
   -- Domain API
-  S.get           "/v3/domains"        $ D.listDomains           policy config
-  S.get           "/v3/domains/:did"   $ D.domainDetails         policy config
+  S.get           "/v3/domains"           $ D.listDomains           policy config
+  S.get           "/v3/domains/:did"      $ D.domainDetails         policy config
   -- Project API
-  S.post          "/v3/projects"       $ P.createProjectH        policy config
-  S.get           "/v3/projects"       $ P.listProjectsH         policy config
-  S.get           "/v3/projects/:pid"  $ P.projectDetailsH       policy config
-  S.delete        "/v3/projects/:pid"  $ P.deleteProjectH        policy config
+  S.post          "/v3/projects"          $ P.createProjectH        policy config
+  S.get           "/v3/projects"          $ P.listProjectsH         policy config
+  S.get           "/v3/projects/:pid"     $ P.projectDetailsH       policy config
+  S.delete        "/v3/projects/:pid"     $ P.deleteProjectH        policy config
   -- User API
   S.post          "/v3/users"               $ U.createUserH         policy config
   S.get           "/v3/users"               $ U.listUsersH          policy config
@@ -137,10 +137,10 @@ application policy config = do
   S.delete        "/v3/users/:uid"          $ U.deleteUserH         policy config
   S.post          "/v3/users/:uid/password" $ U.updateUserPasswordH policy config
   -- Role API
-  S.post   "/v3/roles"      $ R.createRoleH policy config
-  S.get    "/v3/roles"      $ R.listRolesH  policy config
-  S.get    "/v3/roles/:rid" $ R.roleDetailsH policy config
-  S.delete "/v3/roles/:rid" $ R.deleteRoleH policy config
+  S.post          "/v3/roles"               $ R.createRoleH         policy config
+  S.get           "/v3/roles"               $ R.listRolesH          policy config
+  S.get           "/v3/roles/:rid"          $ R.roleDetailsH        policy config
+  S.delete        "/v3/roles/:rid"          $ R.deleteRoleH         policy config
   -- Assignment API
   S.get "/v3/projects/:pid/users/:uid/roles"      $ Assig.listProjectUserRolesH policy config
   S.put "/v3/projects/:pid/users/:uid/roles/:rid" $ Assig.createAssignmentH     policy config
