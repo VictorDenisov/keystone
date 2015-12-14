@@ -7,9 +7,9 @@ import Data.Bson (genObjectId)
 import qualified LDAP as L
 import qualified Model.User as MU
 
-listUsers :: L.LDAP -> IO [MU.User]
-listUsers l = do
-  entries <- L.ldapSearch l (Just "ou=users,dc=test,dc=com") L.LdapScopeSubtree Nothing L.LDAPAllUserAttrs False
+listUsers :: String -> L.LDAP -> IO [MU.User]
+listUsers userTreeDn l = do
+  entries <- L.ldapSearch l (Just userTreeDn) L.LdapScopeSubtree Nothing L.LDAPAllUserAttrs False
   putStrLn $ "-----------"
   forM_ entries $ \e -> do
     putStrLn $ "Name is - " ++ (L.ledn e)

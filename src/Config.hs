@@ -29,7 +29,8 @@ data KeystoneConfig = KeystoneConfig
                     }
 
 data LdapConfig = LdapConfig
-                { ldapHost :: String
+                { ldapHost   :: String
+                , userTreeDn :: String
                 }
 
 data Database = Database
