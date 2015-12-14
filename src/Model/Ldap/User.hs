@@ -4,12 +4,13 @@ where
 import Control.Monad (forM_)
 import Data.Bson (genObjectId)
 
+import qualified Config as C
 import qualified LDAP as L
 import qualified Model.User as MU
 
-listUsers :: String -> L.LDAP -> IO [MU.User]
-listUsers userTreeDn l = do
-  entries <- L.ldapSearch l (Just userTreeDn) L.LdapScopeSubtree Nothing L.LDAPAllUserAttrs False
+listUsers :: C.LdapConfig -> L.LDAP -> IO [MU.User]
+listUsers c l = do
+  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree Nothing L.LDAPAllUserAttrs False
   putStrLn $ "-----------"
   forM_ entries $ \e -> do
     putStrLn $ "Name is - " ++ (L.ledn e)
