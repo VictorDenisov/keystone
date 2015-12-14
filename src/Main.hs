@@ -18,6 +18,7 @@ import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Data.Time.Clock (getCurrentTime)
 import Model.IdentityApi
 import Model.Mongo.IdentityApi
+import Model.Ldap.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
 import Network.HTTP.Types.Status ( statusCode)
 import Network.Wai (Middleware)
@@ -72,8 +73,14 @@ main = do
   -- ^ we need the evaluation to happen immediatelly
   verifyDatabase config
 
-  let runMongo = runMongoBackend $ database config
-  app <- S.scottyAppT runMongo runMongo (application policy config)
+  app <- case ldap config of
+    Nothing -> do
+      let runMongo = runMongoBackend $ database config
+      S.scottyAppT runMongo runMongo (application policy config)
+    Just ldapConfig -> do
+      let runLdap = runLdapBackend $ ldapConfig
+      S.scottyAppT runLdap runLdap (application policy config)
+
   let settings = tlsSettings
                       (certificateFile config)
                       (keyFile config)
