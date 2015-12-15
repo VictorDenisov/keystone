@@ -4,6 +4,7 @@ where
 import Data.Maybe (listToMaybe, catMaybes, fromMaybe)
 
 import qualified Config as C
+import qualified Database.MongoDB as M
 import qualified LDAP as L
 import qualified Model.User as MU
 
@@ -12,6 +13,11 @@ listUsers c l = do
   entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree Nothing L.LDAPAllUserAttrs False
   let users = catMaybes $ map (entryToUser c) (filter (isObjectClass $ C.userObjectClass c) entries)
   return users
+
+retrieveUser :: C.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe MU.User)
+retrieveUser c l oid = do
+  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree (Just $ "employeeNumber=" ++ (show oid)) L.LDAPAllUserAttrs False
+  return $ (listToMaybe entries) >>= (entryToUser c)
 
 isObjectClass :: String -> L.LDAPEntry -> Bool
 isObjectClass oc e =
