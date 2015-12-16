@@ -8,9 +8,12 @@ import qualified Database.MongoDB as M
 import qualified LDAP as L
 import qualified Model.User as MU
 
-listUsers :: C.LdapConfig -> L.LDAP -> IO [MU.User]
-listUsers c l = do
-  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree Nothing L.LDAPAllUserAttrs False
+listUsers :: Maybe String -> C.LdapConfig -> L.LDAP -> IO [MU.User]
+listUsers mUserName c l = do
+  let userNameFilter = do
+        userName <- mUserName
+        return $ (C.userNameAttribute c) ++ "=" ++ userName
+  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree userNameFilter L.LDAPAllUserAttrs False
   let users = catMaybes $ map (entryToUser c) (filter (isObjectClass $ C.userObjectClass c) entries)
   return users
 

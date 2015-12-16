@@ -36,7 +36,7 @@ instance ( MonadBase IO m
 
   listUsers mName = do
     d <- ask
-    withHandle $ \l -> liftIO $ MLU.listUsers (ldconf d) l
+    withHandle $ \l -> liftIO $ MLU.listUsers mName (ldconf d) l
 
   updateUser i d = undefined
 
