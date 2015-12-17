@@ -7,9 +7,12 @@ import Model.Mongo.Common (affectedDocs, idF, setC)
 import Control.Applicative ((<$>))
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Control.Monad.Trans.Maybe (MaybeT(..))
+import Crypto.PasswordStore (verifyPassword)
 
 import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..))
+import Data.ByteString.Char8 (pack)
+import Data.Maybe (listToMaybe)
 
 import Language.Haskell.TH.Syntax (nameBase)
 
@@ -66,6 +69,26 @@ deleteUser uid = do
 
 listExistingUserIds :: [M.ObjectId] -> M.Action IO [M.ObjectId]
 listExistingUserIds = listExistingIds collectionName
+
+checkUserPassword :: Maybe M.ObjectId
+                  -> Maybe String
+                  -> String
+                  -> M.Action IO (Either String User)
+checkUserPassword mUserId mUserName passwordToCheck = do
+  mu <- case mUserId of
+            Just userId -> findUserById userId
+            Nothing -> do
+              users <- listUsers mUserName
+              return $ listToMaybe users
+  case mu of
+    Nothing -> return $ Left "User is not found."
+    Just user  ->
+      case password user of
+        Just p ->
+          if verifyPassword (pack passwordToCheck) (pack p)
+            then return $ Right user
+            else return $ Left "The password if incorrect"
+        Nothing -> return $ Left "User exists, but doesn't have any password."
 
 verifyDatabase :: M.Action IO ()
 verifyDatabase = do

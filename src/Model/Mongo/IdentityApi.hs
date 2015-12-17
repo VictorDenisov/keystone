@@ -39,6 +39,9 @@ instance ( MonadBase IO m
 
   deleteUser i = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.deleteUser i
 
+  checkUserPassword mid mUserName password =
+          withHandle $ \p -> liftIO $ CD.runDB p $ MMU.checkUserPassword mid mUserName password
+
   withHandle action = do
     d <- ask
     withResource (pool d) action

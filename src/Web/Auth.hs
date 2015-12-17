@@ -16,11 +16,9 @@ import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
-import Crypto.PasswordStore (verifyPassword)
 import Data.Aeson (FromJSON(..), (.:), (.:?), eitherDecode')
 import Data.Aeson.Types ( Value(..), (.=), object, typeMismatch
                         , Object)
-import Data.ByteString.Char8 (pack)
 import Data.ByteString.Lazy (readFile)
 import Data.Maybe (maybeToList, listToMaybe)
 import Data.IORef (IORef(..), readIORef, newIORef, writeIORef)
@@ -227,28 +225,6 @@ compileExpression verifiers (Object m) = do
     (expr, _) -> throwIO $ PolicyCompileException $ "Unknown expression: " ++ (T.unpack expr)
 compileExpression verifiers expr = throwIO $ PolicyCompileException $ "Error while compiling policy expression " ++ (show expr) ++ ". Expecting object instead"
 
-
-checkUserPassword :: ( IdentityApi m
-                     , MonadIO m
-                     ) => Maybe M.ObjectId
-                       -> Maybe String
-                       -> String
-                       -> m (Either String MU.User)
-checkUserPassword mUserId mUserName passwordToCheck = do
-  mu <- case mUserId of
-            Just userId -> findUserById userId
-            Nothing -> do
-              users <- listUsers mUserName
-              return $ listToMaybe users
-  case mu of
-    Nothing -> return $ Left "User is not found."
-    Just user  ->
-      case MU.password user of
-        Just p ->
-          if verifyPassword (pack passwordToCheck) (pack p)
-            then return $ Right user
-            else return $ Left "The password if incorrect"
-        Nothing -> return $ Left "User exists, but doesn't have any password."
 
 instance FromJSON AuthRequest where
   parseJSON (Object v) = do

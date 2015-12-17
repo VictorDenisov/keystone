@@ -112,7 +112,7 @@ updateUserPasswordH policy config = A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
     (cpr :: ChangePasswordRequest) <- parseRequest
     A.authorize policy AT.ChangePassword token (AT.UserId uid) $ do
-      res <- lift $ A.checkUserPassword (Just uid) Nothing (poriginalPassword cpr)
+      res <- lift $ checkUserPassword (Just uid) Nothing (poriginalPassword cpr)
       case res of
         Left errorMessage -> do
           S.status status404

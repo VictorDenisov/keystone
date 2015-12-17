@@ -32,7 +32,7 @@ instance ( MonadBase IO m
 
   findUserById i = do
     d <- ask
-    withHandle $ \l -> liftIO $ MLU.retrieveUser (ldconf d) l i
+    withHandle $ \l -> liftIO $ MLU.findUserById (ldconf d) l i
 
   listUsers mName = do
     d <- ask
@@ -41,6 +41,10 @@ instance ( MonadBase IO m
   updateUser i d = undefined
 
   deleteUser i = undefined
+
+  checkUserPassword mid mUserName password = do
+    d <- ask
+    withHandle $ \l -> liftIO $ MLU.checkUserPassword (ldconf d) l mid mUserName password
 
   withHandle action = do
     d <- ask

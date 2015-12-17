@@ -19,3 +19,4 @@ class IdentityApi b where
   updateUser :: ObjectId -> M.Document -> b (Maybe MU.User)
   deleteUser :: ObjectId -> b OpStatus
   withHandle :: (IdentityApiHandle b -> b a) -> b a
+  checkUserPassword :: Maybe M.ObjectId -> Maybe String -> String -> b (Either String MU.User)
