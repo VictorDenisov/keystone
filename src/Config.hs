@@ -30,6 +30,8 @@ data KeystoneConfig = KeystoneConfig
 
 data LdapConfig = LdapConfig
                 { ldapHost             :: String
+                , userDn               :: String
+                , password             :: String
                 , userTreeDn           :: String
                 , userFilter           :: String
                 , userObjectClass      :: String

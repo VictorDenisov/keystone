@@ -53,10 +53,12 @@ instance ( MonadBase IO m
 runLdapBackend :: C.LdapConfig -> LdapBackend IO a -> IO a
 runLdapBackend ldapConfig action = do
   let h = C.ldapHost ldapConfig
-  p <- createPool (doConnect h) (\_ -> return ()) 1 60 10 -- stripe count, time to live, max resource count
+  let userName = C.userDn ldapConfig
+  let password = C.password ldapConfig
+  p <- createPool (doConnect userName password h) (\_ -> return ()) 1 60 10 -- stripe count, time to live, max resource count
   runReaderT action (LdapData ldapConfig p)
-  where
-    doConnect h = do
-      l <- L.ldapInit h 389
-      L.ldapSimpleBind l "cn=admin,dc=test,dc=com" "qwerty"
-      return l
+
+doConnect userName password h = do
+  l <- L.ldapInit h 389
+  L.ldapSimpleBind l userName password
+  return l

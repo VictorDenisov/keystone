@@ -2,3 +2,6 @@ dist/
 cabal.sandbox.config
 .cabal-sandbox/
 keystone.log
+keystone.conf
+tags
+tests/auth_user_request.json

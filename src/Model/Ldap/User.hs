@@ -52,7 +52,9 @@ checkUserPassword c l mUserId mUserName passwordToCheck = do
             Just u -> return $ Right u
         )
         $ \(L.LDAPException code description  caller) -> return $ Left "Authentication failed"
-      L.ldapSimpleBind l "cn=admin,dc=test,dc=com" "qwerty"
+      let userName = C.userDn c
+      let password = C.password c
+      L.ldapSimpleBind l userName password
       return user
 
 isObjectClass :: String -> L.LDAPEntry -> Bool
