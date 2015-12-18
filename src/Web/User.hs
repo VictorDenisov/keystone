@@ -68,7 +68,7 @@ userDetailsH :: (Functor m, MonadIO m, IdentityApi m)
              => AT.Policy -> KeystoneConfig -> ActionM m ()
 userDetailsH policy config = A.requireToken config $ \token -> do
     (uid :: M.ObjectId) <- parseId "uid"
-    A.authorize policy AT.ShowUserDetails token AT.EmptyResource $ do
+    A.authorize policy AT.ShowUserDetails token (AT.UserId uid) $ do
       mUser <- lift $ findUserById uid
       case mUser of
         Nothing -> do
