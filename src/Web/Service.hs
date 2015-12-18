@@ -36,9 +36,9 @@ import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
-createService :: (Functor m, MonadIO m, IdentityApi m)
+createServiceH :: (Functor m, MonadIO m, IdentityApi m)
               => AT.Policy -> KeystoneConfig -> ActionM m ()
-createService policy config = A.requireToken config $ \token ->
+createServiceH policy config = A.requireToken config $ \token ->
     A.authorize policy AT.AddService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
       (scr :: ServiceCreateRequest) <- parseRequest
@@ -47,9 +47,9 @@ createService policy config = A.requireToken config $ \token ->
       S.status status201
       withHostUrl config $ produceServiceReply service
 
-listServices :: (Functor m, MonadIO m, IdentityApi m)
+listServicesH :: (Functor m, MonadIO m, IdentityApi m)
                => AT.Policy -> KeystoneConfig -> ActionM m ()
-listServices policy config = A.requireToken config $ \token -> do
+listServicesH policy config = A.requireToken config $ \token -> do
     serviceName <- parseMaybeString "name"
     A.authorize policy AT.ListServices token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
@@ -57,9 +57,9 @@ listServices policy config = A.requireToken config $ \token -> do
       S.status status200
       withHostUrl config $ produceServicesReply services
 
-serviceDetails :: (Functor m, MonadIO m, IdentityApi m)
+serviceDetailsH :: (Functor m, MonadIO m, IdentityApi m)
                => AT.Policy -> KeystoneConfig -> ActionM m ()
-serviceDetails policy config = A.requireToken config $ \token -> do
+serviceDetailsH policy config = A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy AT.ShowServiceDetails token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
@@ -72,9 +72,9 @@ serviceDetails policy config = A.requireToken config $ \token -> do
             S.status status200
             withHostUrl config $ produceServiceReply service
 
-updateService :: (Functor m, MonadIO m, IdentityApi m)
+updateServiceH :: (Functor m, MonadIO m, IdentityApi m)
               => AT.Policy -> KeystoneConfig -> ActionM m ()
-updateService policy config = A.requireToken config $ \token -> do
+updateServiceH policy config = A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     (sur :: ServiceUpdateRequest) <- parseRequest
     A.authorize policy AT.UpdateService token AT.EmptyResource $ do
@@ -88,9 +88,9 @@ updateService policy config = A.requireToken config $ \token -> do
           S.status status200
           withHostUrl config $ produceServiceReply service
 
-deleteService :: (Functor m, MonadIO m, IdentityApi m)
+deleteServiceH :: (Functor m, MonadIO m, IdentityApi m)
               => AT.Policy -> KeystoneConfig -> ActionM m ()
-deleteService policy config = A.requireToken config $ \token -> do
+deleteServiceH policy config = A.requireToken config $ \token -> do
     (sid :: M.ObjectId) <- parseId "sid"
     A.authorize policy AT.DeleteService token AT.EmptyResource $ do
     -- Most likely we will never need to restrict access based on service. Role based access is enough
@@ -101,9 +101,9 @@ deleteService policy config = A.requireToken config $ \token -> do
           S.json $ E.notFound $ "Could not find service, " ++ (show sid) ++ "."
           S.status status404
 
-createEndpoint :: (Functor m, MonadIO m, IdentityApi m)
+createEndpointH :: (Functor m, MonadIO m, IdentityApi m)
                => AT.Policy -> KeystoneConfig -> ActionM m ()
-createEndpoint policy config = A.requireToken config $ \token -> do
+createEndpointH policy config = A.requireToken config $ \token -> do
     (ecr :: EndpointCreateRequest) <- parseRequest
     endpoint <- liftIO $ newRequestToEndpoint ecr
     A.authorize policy AT.AddEndpoint token AT.EmptyResource $ do
@@ -116,17 +116,17 @@ createEndpoint policy config = A.requireToken config $ \token -> do
           S.status status201
           withHostUrl config $ produceEndpointReply endpoint (eserviceId ecr)
 
-listEndpoints :: (Functor m, MonadIO m, IdentityApi m)
+listEndpointsH :: (Functor m, MonadIO m, IdentityApi m)
               => AT.Policy -> KeystoneConfig -> ActionM m ()
-listEndpoints policy config = A.requireToken config $ \token -> do
+listEndpointsH policy config = A.requireToken config $ \token -> do
     A.authorize policy AT.ListEndpoints token AT.EmptyResource $ do
       endpoints <- liftIO $ CD.withDB (database config) $ MS.listEndpoints
       S.status status200
       withHostUrl config $ produceEndpointsReply endpoints
 
-endpointDetails :: (Functor m, MonadIO m, IdentityApi m)
+endpointDetailsH :: (Functor m, MonadIO m, IdentityApi m)
                 => AT.Policy -> KeystoneConfig -> ActionM m ()
-endpointDetails policy config = A.requireToken config $ \token -> do
+endpointDetailsH policy config = A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy AT.ShowEndpoint token AT.EmptyResource $ do
       mEndpoint <- liftIO $ CD.withDB (database config) $ MS.findEndpointById eid
@@ -138,9 +138,9 @@ endpointDetails policy config = A.requireToken config $ \token -> do
           S.status status200
           withHostUrl config $ produceEndpointReply endpoint serviceId
 
-deleteEndpoint :: (Functor m, MonadIO m, IdentityApi m)
+deleteEndpointH :: (Functor m, MonadIO m, IdentityApi m)
                => AT.Policy -> KeystoneConfig -> ActionM m ()
-deleteEndpoint policy config = A.requireToken config $ \token -> do
+deleteEndpointH policy config = A.requireToken config $ \token -> do
     (eid :: M.ObjectId) <- parseId "eid"
     A.authorize policy AT.DeleteEndpoint token AT.EmptyResource $ do
       n <- liftIO $ CD.withDB (database config) $ MS.deleteEndpoint eid

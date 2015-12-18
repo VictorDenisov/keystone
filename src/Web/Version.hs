@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Web.Version
-(listVersions, v3details)
+(listVersionsH, v3detailsH)
 where
 
 import Config (KeystoneConfig)
@@ -9,11 +9,11 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson.Types (object, (.=), Value)
 import Web.Common (UrlBasedValue, UrlInfo(..), withHostUrl, ActionM)
 
-listVersions :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
-listVersions config = withHostUrl config apiVersions
+listVersionsH :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
+listVersionsH config = withHostUrl config apiVersions
 
-v3details :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
-v3details config = withHostUrl config apiV3Reply
+v3detailsH :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
+v3detailsH config = withHostUrl config apiV3Reply
 
 
 jsonMediaTypeV3 = object [ "base" .= ("application/json" :: String)

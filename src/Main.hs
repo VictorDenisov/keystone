@@ -31,7 +31,7 @@ import System.Log.Logger ( debugM, errorM, setLevel, updateGlobalLogger
                          , noticeM, setHandlers, removeAllHandlers)
 import System.Log.Formatter (simpleLogFormatter)
 
-import Web.Version (listVersions, v3details)
+import Web.Version (listVersionsH, v3detailsH)
 
 import Web.Common (ScottyM)
 
@@ -110,27 +110,27 @@ application policy config = do
       _ -> do
         S.json e
   -- Version API
-  S.get           "/"                     $ listVersions                   config
-  S.get           "/v3"                   $ v3details                      config
+  S.get           "/"                     $ listVersionsH                  config
+  S.get           "/v3"                   $ v3detailsH                     config
   -- Token API
   S.post          "/v3/auth/tokens"       $ T.issueTokenH                  config
   S.get           "/v3/auth/tokens"       $ T.receiveExistingTokenH policy config
   S.addroute HEAD "/v3/auth/tokens"       $ T.checkTokenH           policy config
   -- Service Catalog API
   -- Service API
-  S.post          "/v3/services"          $ SC.createService        policy config
-  S.get           "/v3/services"          $ SC.listServices         policy config
-  S.get           "/v3/services/:sid"     $ SC.serviceDetails       policy config
-  S.patch         "/v3/services/:sid"     $ SC.updateService        policy config
-  S.delete        "/v3/services/:sid"     $ SC.deleteService        policy config
+  S.post          "/v3/services"          $ SC.createServiceH       policy config
+  S.get           "/v3/services"          $ SC.listServicesH        policy config
+  S.get           "/v3/services/:sid"     $ SC.serviceDetailsH      policy config
+  S.patch         "/v3/services/:sid"     $ SC.updateServiceH       policy config
+  S.delete        "/v3/services/:sid"     $ SC.deleteServiceH       policy config
   -- Endpoint API
-  S.post          "/v3/endpoints"         $ SC.createEndpoint       policy config
-  S.get           "/v3/endpoints"         $ SC.listEndpoints        policy config
-  S.get           "/v3/endpoints/:eid"    $ SC.endpointDetails      policy config
-  S.delete        "/v3/endpoints/:eid"    $ SC.deleteEndpoint       policy config
+  S.post          "/v3/endpoints"         $ SC.createEndpointH      policy config
+  S.get           "/v3/endpoints"         $ SC.listEndpointsH       policy config
+  S.get           "/v3/endpoints/:eid"    $ SC.endpointDetailsH     policy config
+  S.delete        "/v3/endpoints/:eid"    $ SC.deleteEndpointH      policy config
   -- Domain API
-  S.get           "/v3/domains"           $ D.listDomains           policy config
-  S.get           "/v3/domains/:did"      $ D.domainDetails         policy config
+  S.get           "/v3/domains"           $ D.listDomainsH          policy config
+  S.get           "/v3/domains/:did"      $ D.domainDetailsH        policy config
   -- Project API
   S.post          "/v3/projects"          $ P.createProjectH        policy config
   S.get           "/v3/projects"          $ P.listProjectsH         policy config

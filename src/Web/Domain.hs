@@ -20,16 +20,16 @@ import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
-listDomains :: (Functor m, MonadIO m, IdentityApi m)
+listDomainsH :: (Functor m, MonadIO m, IdentityApi m)
             => AT.Policy -> KeystoneConfig -> ActionM m ()
-listDomains policy config = A.requireToken config $ \token -> do
+listDomainsH policy config = A.requireToken config $ \token -> do
     A.authorize policy AT.ListDomains token AT.EmptyResource $ do
       S.status status200
       withHostUrl config $ produceDomainsReply []
 
-domainDetails :: (Functor m, MonadIO m, IdentityApi m)
+domainDetailsH :: (Functor m, MonadIO m, IdentityApi m)
               => AT.Policy -> KeystoneConfig -> ActionM m ()
-domainDetails policy config = A.requireToken config $ \token -> do
+domainDetailsH policy config = A.requireToken config $ \token -> do
     (did :: M.ObjectId) <- parseId "did"
     A.authorize policy AT.ShowDomainDetails token AT.EmptyResource $ do
       S.status status200
