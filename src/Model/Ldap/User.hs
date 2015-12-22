@@ -9,6 +9,8 @@ import Data.Either (lefts, rights)
 
 import System.Log.Logger (warningM)
 
+import Text.Read (readMaybe)
+
 import qualified Config as C
 import qualified Database.MongoDB as M
 import qualified LDAP as L
@@ -83,15 +85,24 @@ isObjectClass oc e =
 entryToUser :: C.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) MU.User
 entryToUser c e = do
   name <- getUserAttributeE (C.userNameAttribute c) e
-  soid  <- getUserAttributeE (C.userIdAttribute c) e -- TODO parse soid separately
+  oid  <- readUserId c e
   return (MU.User
-              (read soid)
+              oid
               (Just "Description")
               (getUserAttributeM (C.userMailAttribute c) e)
               True
               name
               (getUserAttributeM (C.userPassAttribute c) e)
          )
+
+readUserId :: C.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) M.ObjectId
+readUserId c e =
+  case getUserAttributeE (C.userIdAttribute c) e of
+    Left err  -> Left err
+    Right uid ->
+      case readMaybe uid of
+        Nothing -> Left ("Failed to parse user id from attribute " ++ (C.userIdAttribute c), e)
+        Just v  -> Right v
 
 getUserAttributeM :: String -> L.LDAPEntry -> Maybe String
 getUserAttributeM attribute (L.LDAPEntry _ leattrs) = do
