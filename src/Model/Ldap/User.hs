@@ -1,8 +1,13 @@
 module Model.Ldap.User
 where
 
-import Data.Maybe (listToMaybe, fromMaybe)
-import Data.Either (rights)
+import Common (loggerName)
+import Control.Monad (forM_)
+
+import Data.Maybe (listToMaybe)
+import Data.Either (lefts, rights)
+
+import System.Log.Logger (warningM)
 
 import qualified Config as C
 import qualified Database.MongoDB as M
@@ -13,7 +18,10 @@ listUsers :: Maybe String -> C.LdapConfig -> L.LDAP -> IO [MU.User]
 listUsers mUserName c l = do
   entries <- listUserEntries mUserName c l
   let eUsers = map (entryToUser c) (filter (isObjectClass $ C.userObjectClass c) entries)
-  return $ rights eUsers -- log rights
+
+  forM_ (lefts eUsers) $ \(err, entry) -> do
+    warningM loggerName $ "Failed to interpret ldap user. Error: " ++ err ++ ". User: " ++ (show entry)
+  return $ rights eUsers
 
 listUserEntries :: Maybe String -> C.LdapConfig -> L.LDAP -> IO [L.LDAPEntry]
 listUserEntries mUserName c l = do
@@ -30,7 +38,9 @@ findUserById c l oid = do
     Nothing -> return Nothing
     Just v  -> do
       case entryToUser c v of
-        Left err -> return Nothing -- TODO log err
+        Left (err, entry) -> do
+          warningM loggerName $ "Failed to interpret ldap user. Error: " ++ err ++ ". User: " ++ (show entry)
+          return Nothing
         Right u -> return $ Just u
 
 findUserEntryById :: C.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe L.LDAPEntry)
@@ -54,7 +64,7 @@ checkUserPassword c l mUserId mUserName passwordToCheck = do
           L.ldapSimpleBind l dn passwordToCheck
           let eu = entryToUser c userEntry
           case eu of
-            Left e -> return $ Left $ "Failed to parse user from entry: " ++ e
+            Left e -> return $ Left $ "Failed to parse user from entry: " ++ (show e)
             Right u -> return $ Right u
         )
         $ \(L.LDAPException code description  caller) -> return $ Left "Authentication failed"
@@ -70,26 +80,27 @@ isObjectClass oc e =
     Nothing     -> False
     Just values -> elem oc values
 
-entryToUser :: C.LdapConfig -> L.LDAPEntry -> Either String MU.User
+entryToUser :: C.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) MU.User
 entryToUser c e = do
-  name <- getUserAttributeE (C.userNameAttribute c) (L.leattrs e)
-  soid  <- getUserAttributeE (C.userIdAttribute c) (L.leattrs e)
+  name <- getUserAttributeE (C.userNameAttribute c) e
+  soid  <- getUserAttributeE (C.userIdAttribute c) e -- TODO parse soid separately
   return (MU.User
               (read soid)
               (Just "Description")
-              (getUserAttributeM (C.userMailAttribute c) (L.leattrs e))
+              (getUserAttributeM (C.userMailAttribute c) e)
               True
-              (fromMaybe "" $ getUserAttributeM (C.userNameAttribute c) (L.leattrs e))
-              (getUserAttributeM (C.userPassAttribute c) (L.leattrs e))
+              name
+              (getUserAttributeM (C.userPassAttribute c) e)
          )
 
-getUserAttributeM :: String -> [(String, [String])] -> Maybe String
-getUserAttributeM attribute leattrs = do
+getUserAttributeM :: String -> L.LDAPEntry -> Maybe String
+getUserAttributeM attribute (L.LDAPEntry _ leattrs) = do
   attrs <- lookup attribute leattrs
   listToMaybe attrs
 
-getUserAttributeE :: String -> [(String, [String])] -> Either String String
-getUserAttributeE attribute leattrs =
-  maybe (Left $ "Missing attribute " ++ attribute) Right $ do
-    attrs <- lookup attribute leattrs
-    listToMaybe attrs
+getUserAttributeE :: String -> L.LDAPEntry -> Either (String, L.LDAPEntry) String
+getUserAttributeE attribute entry =
+  maybe
+    (Left ("Missing attribute " ++ attribute, entry))
+    Right
+    (getUserAttributeM attribute entry)
