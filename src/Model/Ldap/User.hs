@@ -47,7 +47,7 @@ findUserById c l oid = do
 
 findUserEntryById :: C.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe L.LDAPEntry)
 findUserEntryById c l oid = do
-  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree (Just $ "employeeNumber=" ++ (show oid)) L.LDAPAllUserAttrs False
+  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree (Just $ (C.userIdAttribute c) ++ "=" ++ (show oid)) L.LDAPAllUserAttrs False
   return $ listToMaybe entries
 
 checkUserPassword :: C.LdapConfig -> L.LDAP -> Maybe M.ObjectId -> Maybe String -> String -> IO (Either String MU.User)
