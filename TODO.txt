@@ -1,0 +1,12 @@
+# Add new changes to changelog file
+
+# Move verifyDatabase to backend specific files
+
+# Determine how to handle several users with the same name (in LDAP and Mongo)
+
+Database will complain about duplicate entry if we create such user
+Duplicate entries should be avoided
+
+# Implement IdentityApi dependent user ids (if this is necessary at all)
+
+# Utilize db pool in all accessing db operations
