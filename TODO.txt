@@ -10,3 +10,5 @@ Duplicate entries should be avoided
 # Implement IdentityApi dependent user ids (if this is necessary at all)
 
 # Utilize db pool in all accessing db operations
+
+# Clean up dangling assignments from time to time and on startup of the app
