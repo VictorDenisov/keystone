@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased] - unreleased
+
+### Added
+
+- Ability to select between ldap or database backend for identity service
+  (currently user operations only)
+
 ## [0.1.0.0] - 2015-09-17
 
 ### Added
