@@ -12,3 +12,7 @@ Duplicate entries should be avoided
 # Utilize db pool in all accessing db operations
 
 # Clean up dangling assignments from time to time and on startup of the app
+
+# Make pool sizes configurable
+
+# Setup default config file and extra config file that can be supplied by the user.
