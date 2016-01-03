@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.User
+module Keystone.Model.User
 where
 
 import Common (skipUnderscoreOptions)

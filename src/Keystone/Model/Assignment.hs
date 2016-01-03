@@ -3,7 +3,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Assignment
+module Keystone.Model.Assignment
 where
 
 import Data.Bson ((=:))
@@ -21,7 +21,7 @@ import qualified Database.MongoDB.Admin as MA
 
 import qualified Model.Project as MP
 import qualified Model.Role as MR
-import qualified Model.User as MU
+import qualified Keystone.Model.User as MU
 import qualified Model.Mongo.User as MMU
 
 collectionName :: M.Collection

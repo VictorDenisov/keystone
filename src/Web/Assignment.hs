@@ -10,7 +10,6 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
 import Data.Vector (fromList)
-import Model.Assignment (Assignment(..))
 import Model.IdentityApi (IdentityApi)
 import Network.HTTP.Types.Status (status200, status204)
 import Text.Read (readMaybe)
@@ -22,11 +21,11 @@ import qualified Database.MongoDB as M
 
 import qualified Error as E
 
-import qualified Model.Assignment as MA
+import qualified Keystone.Model.Assignment as MA
 import qualified Model.Mongo.Common as CD
 import qualified Model.Project as MP
 import qualified Model.Role as MR
-import qualified Model.User as MU
+import qualified Keystone.Model.User as MU
 
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
@@ -73,9 +72,9 @@ listAssignmentsH policy config = A.requireToken config $ \token -> do
       S.status status200
       withHostUrl config $ produceAssignmentsReply assignments
 
-produceAssignmentJson :: Assignment -> String -> Value
+produceAssignmentJson :: MA.Assignment -> String -> Value
 produceAssignmentJson
-          (Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
+          (MA.Assignment (MP.ProjectId pid) (MU.UserId uid) (MR.RoleId rid))
           baseUrl
       = object [ "role" .= (object ["id" .= rid])
                , "user" .= (object ["id" .= uid])
@@ -83,7 +82,7 @@ produceAssignmentJson
                , "links" .= (object ["assignment" .= (baseUrl ++ "/v3/projects/" ++ (show pid) ++ "/users/" ++ (show uid) ++ "/roles/" ++ (show rid))])
                ]
 
-produceAssignmentsReply :: [Assignment] -> UrlBasedValue
+produceAssignmentsReply :: [MA.Assignment] -> UrlBasedValue
 produceAssignmentsReply assignments (UrlInfo {baseUrl, path, query})
     = object [ "links" .= (object [ "next"     .= Null
                                   , "previous" .= Null

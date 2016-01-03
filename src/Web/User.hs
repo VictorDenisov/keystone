@@ -35,7 +35,7 @@ import Web.User.Types ( ChangePasswordRequest(..)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M
 import qualified Error as E
-import qualified Model.User as MU
+import qualified Keystone.Model.User as MU
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S

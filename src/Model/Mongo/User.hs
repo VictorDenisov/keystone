@@ -17,7 +17,7 @@ import Data.Maybe (listToMaybe)
 import Language.Haskell.TH.Syntax (nameBase)
 
 import Model.Common (OpStatus(..), listExistingIds)
-import Model.User (User(..))
+import Keystone.Model.User (User(..))
 
 import qualified Error as E
 import qualified Database.MongoDB as M

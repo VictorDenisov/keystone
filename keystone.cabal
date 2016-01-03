@@ -16,12 +16,12 @@ extra-source-files:  CHANGELOG.md
 cabal-version:       >=1.10
 
 executable keystone
-  main-is:             Main.hs
+  main-is:             Keystone.hs
   other-modules:       Common
                      , Config
                      , Error
                      , Data.Bson.Mapping
-                     , Model.Assignment
+                     , Keystone.Model.Assignment
                      , Model.Common
                      , Model.Domain
                      , Model.IdentityApi
@@ -33,7 +33,7 @@ executable keystone
                      , Model.Service
                      , Model.Service.Types
                      , Model.Token
-                     , Model.User
+                     , Keystone.Model.User
                      , Web.Assignment
                      , Web.Auth
                      , Web.Auth.Types

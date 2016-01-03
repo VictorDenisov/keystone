@@ -25,7 +25,7 @@ import qualified Database.MongoDB.Admin as MA
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
-import qualified Model.User as MU
+import qualified Keystone.Model.User as MU
 
 collectionName :: M.Collection
 collectionName = "token"

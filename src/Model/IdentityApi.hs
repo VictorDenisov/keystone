@@ -8,7 +8,7 @@ import Model.Common (OpStatus(..))
 
 import qualified Database.MongoDB as M
 import qualified Error as E
-import qualified Model.User as MU
+import qualified Keystone.Model.User as MU
 
 class IdentityApi b where
   type IdentityApiHandle b

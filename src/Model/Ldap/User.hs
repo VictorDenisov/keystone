@@ -14,7 +14,7 @@ import Text.Read (readMaybe)
 import qualified Config as C
 import qualified Database.MongoDB as M
 import qualified LDAP as L
-import qualified Model.User as MU
+import qualified Keystone.Model.User as MU
 
 listUsers :: Maybe String -> C.LdapConfig -> L.LDAP -> IO [MU.User]
 listUsers mUserName c l = do

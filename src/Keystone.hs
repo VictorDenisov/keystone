@@ -39,7 +39,7 @@ import qualified Model.Mongo.Common as CD
 
 import qualified Error as E
 
-import qualified Model.Assignment as MA
+import qualified Keystone.Model.Assignment as MA
 import qualified Model.Project as MP
 import qualified Model.Role as MR
 import qualified Model.Service as MS
