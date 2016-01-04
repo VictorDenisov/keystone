@@ -4,8 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Service
-( module Model.Service
+module Keystone.Model.Service
+( module Keystone.Model.Service
 , module Model.Service.Types
 ) where
 

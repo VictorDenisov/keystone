@@ -23,8 +23,8 @@ import qualified Error as E
 
 import qualified Keystone.Model.Assignment as MA
 import qualified Model.Mongo.Common as CD
-import qualified Model.Project as MP
-import qualified Model.Role as MR
+import qualified Keystone.Model.Project as MP
+import qualified Keystone.Model.Role as MR
 import qualified Keystone.Model.User as MU
 
 import qualified Web.Auth as A

@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Token
+module Keystone.Model.Token
 where
 
 import Model.Mongo.Common (idF)
@@ -22,9 +22,9 @@ import Language.Haskell.TH.Syntax (nameBase)
 import qualified Data.Text as T
 import qualified Database.MongoDB as M
 import qualified Database.MongoDB.Admin as MA
-import qualified Model.Project as MP
-import qualified Model.Role as MR
-import qualified Model.Service as MS
+import qualified Keystone.Model.Project as MP
+import qualified Keystone.Model.Role as MR
+import qualified Keystone.Model.Service as MS
 import qualified Keystone.Model.User as MU
 
 collectionName :: M.Collection

@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Role
+module Keystone.Model.Role
 where
 
 import Common (skipUnderscoreOptions)

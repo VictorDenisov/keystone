@@ -28,7 +28,7 @@ import Language.Haskell.TH.Syntax (nameBase)
 import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Mongo.Common as CD
-import qualified Model.Project as MP
+import qualified Keystone.Model.Project as MP
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S

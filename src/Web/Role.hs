@@ -28,7 +28,7 @@ import Web.Role.Types
 import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Mongo.Common as CD
-import qualified Model.Role as MR
+import qualified Keystone.Model.Role as MR
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S

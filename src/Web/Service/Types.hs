@@ -4,7 +4,7 @@ where
 
 import Data.Data (Typeable)
 
-import qualified Model.Service as MS
+import qualified Keystone.Model.Service as MS
 import qualified Database.MongoDB as M
 
 data ServiceCreateRequest = ServiceCreateRequest

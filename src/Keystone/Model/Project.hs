@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Project
+module Keystone.Model.Project
 where
 
 import Common (skipUnderscoreOptions)

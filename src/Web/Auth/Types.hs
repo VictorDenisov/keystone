@@ -9,7 +9,7 @@ import GHC.Generics (Generic)
 
 import qualified Database.MongoDB as M
 import qualified Data.HashMap.Strict as HM
-import qualified Model.Token as MT
+import qualified Keystone.Model.Token as MT
 
 data AuthRequest = AuthRequest
                  { methods :: [AuthMethod]

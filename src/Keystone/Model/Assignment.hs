@@ -19,8 +19,8 @@ import qualified Data.Text as T
 import qualified Database.MongoDB as M
 import qualified Database.MongoDB.Admin as MA
 
-import qualified Model.Project as MP
-import qualified Model.Role as MR
+import qualified Keystone.Model.Project as MP
+import qualified Keystone.Model.Role as MR
 import qualified Keystone.Model.User as MU
 import qualified Model.Mongo.User as MMU
 

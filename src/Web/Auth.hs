@@ -38,10 +38,10 @@ import qualified Keystone.Model.Assignment as MA
 import qualified Model.Domain as MD
 import qualified Model.Mongo.Common as CD
 import qualified Keystone.Model.User as MU
-import qualified Model.Token as MT
-import qualified Model.Project as MP
-import qualified Model.Role as MR
-import qualified Model.Service as MS
+import qualified Keystone.Model.Token as MT
+import qualified Keystone.Model.Project as MP
+import qualified Keystone.Model.Role as MR
+import qualified Keystone.Model.Service as MS
 import qualified Web.Scotty.Trans as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
