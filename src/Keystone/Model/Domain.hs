@@ -1,4 +1,4 @@
-module Model.Domain
+module Keystone.Model.Domain
 where
 
 data Domain = Domain
