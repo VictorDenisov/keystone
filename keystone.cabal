@@ -31,7 +31,7 @@ executable keystone
                      , Keystone.Model.Project
                      , Keystone.Model.Role
                      , Keystone.Model.Service
-                     , Model.Service.Types
+                     , Keystone.Model.Service.Types
                      , Keystone.Model.Token
                      , Keystone.Model.User
                      , Web.Assignment

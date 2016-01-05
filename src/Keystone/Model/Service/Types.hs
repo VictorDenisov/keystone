@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Service.Types
+module Keystone.Model.Service.Types
 where
 
 import Model.Mongo.Common ( (+++) )

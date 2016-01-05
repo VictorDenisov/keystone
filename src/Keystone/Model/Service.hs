@@ -6,7 +6,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Keystone.Model.Service
 ( module Keystone.Model.Service
-, module Model.Service.Types
+, module Keystone.Model.Service.Types
 ) where
 
 import Common ( capitalize, dropOptions, skipTickOptions
@@ -25,7 +25,7 @@ import Data.Maybe (listToMaybe)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
 
-import Model.Service.Types
+import Keystone.Model.Service.Types
 
 import Text.Read (readMaybe)
 
