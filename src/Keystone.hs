@@ -16,7 +16,7 @@ import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Data.Time.Clock (getCurrentTime)
-import Model.IdentityApi
+import Keystone.Model.IdentityApi
 import Model.Mongo.IdentityApi
 import Model.Ldap.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))

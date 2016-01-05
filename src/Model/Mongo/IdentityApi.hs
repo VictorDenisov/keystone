@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Model.Mongo.IdentityApi where
 
-import Model.IdentityApi
+import Keystone.Model.IdentityApi
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.IO.Class (MonadIO(..))

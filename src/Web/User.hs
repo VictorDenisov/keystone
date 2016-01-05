@@ -22,7 +22,7 @@ import Data.Text (pack)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
-import Model.IdentityApi (IdentityApi(..))
+import Keystone.Model.IdentityApi (IdentityApi(..))
 import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), withHostUrl, parseRequest
                   , parseId, parseMaybeString, ActionM)

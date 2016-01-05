@@ -7,7 +7,7 @@
 module Web.Auth
 where
 import Web.Auth.Types
-import Model.IdentityApi (IdentityApi(..))
+import Keystone.Model.IdentityApi (IdentityApi(..))
 import Common (loggerName)
 import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))

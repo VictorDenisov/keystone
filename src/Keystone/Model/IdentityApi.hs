@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module Model.IdentityApi where
+module Keystone.Model.IdentityApi where
 
 import Data.Bson (ObjectId)
 import Model.Common (OpStatus(..))

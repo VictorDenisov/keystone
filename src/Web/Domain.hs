@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
 import Data.Vector (fromList)
-import Model.IdentityApi (IdentityApi)
+import Keystone.Model.IdentityApi (IdentityApi)
 import Network.HTTP.Types.Status (status200)
 
 import Web.Common (UrlBasedValue, UrlInfo(..), ActionM, withHostUrl, parseId)

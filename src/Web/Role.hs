@@ -19,7 +19,7 @@ import Data.Maybe (fromMaybe)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
-import Model.IdentityApi (IdentityApi(..))
+import Keystone.Model.IdentityApi (IdentityApi(..))
 import Network.HTTP.Types.Status ( status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), parseId, parseRequest
                   , withHostUrl, parseMaybeString, ActionM)

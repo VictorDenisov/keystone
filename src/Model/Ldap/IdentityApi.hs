@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.Reader (ReaderT(runReaderT), MonadReader(ask))
 import Data.Pool (Pool, createPool, withResource)
-import Model.IdentityApi
+import Keystone.Model.IdentityApi
 
 import qualified Config as C
 import qualified LDAP as L

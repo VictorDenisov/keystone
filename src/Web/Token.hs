@@ -19,7 +19,7 @@ import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 
-import Model.IdentityApi (IdentityApi)
+import Keystone.Model.IdentityApi (IdentityApi)
 
 import Network.HTTP.Types.Status (status200, status204, status401, status404)
 
