@@ -17,8 +17,8 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Data.Time.Clock (getCurrentTime)
 import Keystone.Model.IdentityApi
-import Model.Mongo.IdentityApi
-import Model.Ldap.IdentityApi
+import Keystone.Model.Mongo.IdentityApi
+import Keystone.Model.Ldap.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
 import Network.HTTP.Types.Status ( statusCode)
 import Network.Wai (Middleware)
@@ -44,7 +44,7 @@ import qualified Keystone.Model.Project as MP
 import qualified Keystone.Model.Role as MR
 import qualified Keystone.Model.Service as MS
 import qualified Keystone.Model.Token as MT
-import qualified Model.Mongo.User as MMU
+import qualified Keystone.Model.Mongo.User as MMU
 
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT

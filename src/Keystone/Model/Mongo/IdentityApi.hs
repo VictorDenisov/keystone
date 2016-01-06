@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module Model.Mongo.IdentityApi where
+module Keystone.Model.Mongo.IdentityApi where
 
 import Keystone.Model.IdentityApi
 import Control.Monad.Base (MonadBase(..))
@@ -14,7 +14,7 @@ import Data.Pool (Pool, createPool, withResource)
 import qualified Config as C
 import qualified Model.Mongo.Common as CD
 import qualified Database.MongoDB as M
-import qualified Model.Mongo.User as MMU
+import qualified Keystone.Model.Mongo.User as MMU
 
 type MongoIdentityApi = ReaderT MongoData
 

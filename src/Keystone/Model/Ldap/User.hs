@@ -1,4 +1,4 @@
-module Model.Ldap.User
+module Keystone.Model.Ldap.User
 where
 
 import Common (loggerName)

@@ -25,9 +25,9 @@ executable keystone
                      , Model.Common
                      , Keystone.Model.Domain
                      , Keystone.Model.IdentityApi
-                     , Model.Ldap.IdentityApi
+                     , Keystone.Model.Ldap.IdentityApi
                      , Model.Mongo.Common
-                     , Model.Mongo.IdentityApi
+                     , Keystone.Model.Mongo.IdentityApi
                      , Keystone.Model.Project
                      , Keystone.Model.Role
                      , Keystone.Model.Service

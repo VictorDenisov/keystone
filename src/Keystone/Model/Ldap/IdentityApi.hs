@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module Model.Ldap.IdentityApi where
+module Keystone.Model.Ldap.IdentityApi where
 
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.IO.Class (MonadIO(..))
@@ -13,7 +13,7 @@ import Keystone.Model.IdentityApi
 
 import qualified Config as C
 import qualified LDAP as L
-import qualified Model.Ldap.User as MLU
+import qualified Keystone.Model.Ldap.User as MLU
 
 type LdapBackend = ReaderT LdapData
 

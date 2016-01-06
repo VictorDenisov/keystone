@@ -22,7 +22,7 @@ import qualified Database.MongoDB.Admin as MA
 import qualified Keystone.Model.Project as MP
 import qualified Keystone.Model.Role as MR
 import qualified Keystone.Model.User as MU
-import qualified Model.Mongo.User as MMU
+import qualified Keystone.Model.Mongo.User as MMU
 
 collectionName :: M.Collection
 collectionName = "assignment"

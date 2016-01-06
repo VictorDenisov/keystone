@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Model.Mongo.User
+module Keystone.Model.Mongo.User
 where
 
 import Model.Mongo.Common (affectedDocs, idF, setC)
