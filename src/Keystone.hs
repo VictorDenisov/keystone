@@ -50,7 +50,7 @@ import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
 import qualified Web.Assignment as Assig
 import qualified Web.Domain as D
-import qualified Web.Project as P
+import qualified Keystone.Web.Project as P
 import qualified Web.Role as R
 import qualified Web.Scotty.Trans as S
 import qualified Web.Service as SC

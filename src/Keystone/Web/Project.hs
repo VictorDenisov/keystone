@@ -3,9 +3,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Web.Project
-( module Web.Project
-, module Web.Project.Types
+module Keystone.Web.Project
+( module Keystone.Web.Project
+, module Keystone.Web.Project.Types
 ) where
 
 import Common (fromObject, underscoreOptions)
@@ -22,7 +22,7 @@ import Keystone.Model.IdentityApi (IdentityApi)
 import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), withHostUrl, parseRequest
                   , ActionM, parseMaybeString, parseId)
-import Web.Project.Types
+import Keystone.Web.Project.Types
 import Language.Haskell.TH.Syntax (nameBase)
 
 import qualified Database.MongoDB as M

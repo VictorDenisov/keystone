@@ -29,7 +29,7 @@ import qualified Keystone.Model.User as MU
 
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
-import qualified Web.Project as P
+import qualified Keystone.Web.Project as P
 import qualified Web.Role as R
 import qualified Web.Scotty.Trans as S
 

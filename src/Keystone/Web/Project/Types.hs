@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Web.Project.Types
+module Keystone.Web.Project.Types
 where
 
 import Data.Data (Typeable)

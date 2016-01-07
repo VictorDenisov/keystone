@@ -39,8 +39,8 @@ executable keystone
                      , Web.Auth.Types
                      , Web.Common
                      , Web.Domain
-                     , Web.Project
-                     , Web.Project.Types
+                     , Keystone.Web.Project
+                     , Keystone.Web.Project.Types
                      , Web.Role
                      , Web.Role.Types
                      , Web.Service
