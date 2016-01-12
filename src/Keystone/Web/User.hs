@@ -3,9 +3,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Web.User
-( module Web.User
-, module Web.User.Types
+module Keystone.Web.User
+( module Keystone.Web.User
+, module Keystone.Web.User.Types
 ) where
 
 import Common (fromObject, underscoreOptions, dropOptions, (<.>))
@@ -27,10 +27,10 @@ import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), withHostUrl, parseRequest
                   , parseId, parseMaybeString, ActionM)
 
-import Web.User.Types ( ChangePasswordRequest(..)
-                      , UserCreateRequest(..)
-                      , UserUpdateRequest(..)
-                      )
+import Keystone.Web.User.Types ( ChangePasswordRequest(..)
+                               , UserCreateRequest(..)
+                               , UserUpdateRequest(..)
+                               )
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M

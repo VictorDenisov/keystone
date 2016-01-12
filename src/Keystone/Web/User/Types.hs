@@ -1,4 +1,4 @@
-module Web.User.Types
+module Keystone.Web.User.Types
 where
 
 -- This separate module Types is necessary because mkParseJson requires them to

@@ -46,8 +46,8 @@ executable keystone
                      , Web.Service
                      , Web.Service.Types
                      , Web.Token
-                     , Web.User
-                     , Web.User.Types
+                     , Keystone.Web.User
+                     , Keystone.Web.User.Types
                      , Web.Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9

@@ -55,7 +55,7 @@ import qualified Web.Role as R
 import qualified Web.Scotty.Trans as S
 import qualified Web.Service as SC
 import qualified Web.Token as T
-import qualified Web.User as U
+import qualified Keystone.Web.User as U
 
 main = do
   config <- readConfig
