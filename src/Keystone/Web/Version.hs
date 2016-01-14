@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Web.Version
+module Keystone.Web.Version
 (listVersionsH, v3detailsH)
 where
 

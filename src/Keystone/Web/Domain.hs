@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Web.Domain
+module Keystone.Web.Domain
 where
 
 import Config (KeystoneConfig(..))

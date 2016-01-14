@@ -31,7 +31,7 @@ import System.Log.Logger ( debugM, errorM, setLevel, updateGlobalLogger
                          , noticeM, setHandlers, removeAllHandlers)
 import System.Log.Formatter (simpleLogFormatter)
 
-import Web.Version (listVersionsH, v3detailsH)
+import Keystone.Web.Version (listVersionsH, v3detailsH)
 
 import Web.Common (ScottyM)
 
@@ -48,13 +48,13 @@ import qualified Keystone.Model.Mongo.User as MMU
 
 import qualified Web.Auth as A
 import qualified Web.Auth.Types as AT
-import qualified Web.Assignment as Assig
-import qualified Web.Domain as D
+import qualified Keystone.Web.Assignment as Assig
+import qualified Keystone.Web.Domain as D
 import qualified Keystone.Web.Project as P
 import qualified Web.Role as R
 import qualified Web.Scotty.Trans as S
 import qualified Keystone.Web.Service as SC
-import qualified Web.Token as T
+import qualified Keystone.Web.Token as T
 import qualified Keystone.Web.User as U
 
 main = do

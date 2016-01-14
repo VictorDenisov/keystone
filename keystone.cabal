@@ -34,21 +34,21 @@ executable keystone
                      , Keystone.Model.Service.Types
                      , Keystone.Model.Token
                      , Keystone.Model.User
-                     , Web.Assignment
+                     , Keystone.Web.Assignment
                      , Web.Auth
                      , Web.Auth.Types
                      , Web.Common
-                     , Web.Domain
+                     , Keystone.Web.Domain
                      , Keystone.Web.Project
                      , Keystone.Web.Project.Types
                      , Web.Role
                      , Web.Role.Types
                      , Keystone.Web.Service
                      , Keystone.Web.Service.Types
-                     , Web.Token
+                     , Keystone.Web.Token
                      , Keystone.Web.User
                      , Keystone.Web.User.Types
-                     , Web.Version
+                     , Keystone.Web.Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9
                      , aeson  == 0.7.0.4

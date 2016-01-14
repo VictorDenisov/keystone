@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Web.Token
+module Keystone.Web.Token
 where
 
 import Config (KeystoneConfig(database))

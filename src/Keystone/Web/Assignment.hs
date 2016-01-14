@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Web.Assignment
+module Keystone.Web.Assignment
 where
 
 import Config (KeystoneConfig(..))
