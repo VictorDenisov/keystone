@@ -4,9 +4,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Web.Service
-( module Web.Service
-, module Web.Service.Types
+module Keystone.Web.Service
+( module Keystone.Web.Service
+, module Keystone.Web.Service.Types
 ) where
 
 import Config (KeystoneConfig(database))
@@ -25,7 +25,7 @@ import Keystone.Model.IdentityApi (IdentityApi)
 import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlInfo(..), UrlBasedValue, parseId, withHostUrl
                   , parseRequest, ActionM, parseMaybeString)
-import Web.Service.Types
+import Keystone.Web.Service.Types
 
 import qualified Data.Text as T
 import qualified Database.MongoDB as M

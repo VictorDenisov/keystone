@@ -43,8 +43,8 @@ executable keystone
                      , Keystone.Web.Project.Types
                      , Web.Role
                      , Web.Role.Types
-                     , Web.Service
-                     , Web.Service.Types
+                     , Keystone.Web.Service
+                     , Keystone.Web.Service.Types
                      , Web.Token
                      , Keystone.Web.User
                      , Keystone.Web.User.Types
