@@ -27,10 +27,10 @@ import qualified Keystone.Model.Project as MP
 import qualified Keystone.Model.Role as MR
 import qualified Keystone.Model.User as MU
 
-import qualified Web.Auth as A
-import qualified Web.Auth.Types as AT
+import qualified Keystone.Web.Auth as A
+import qualified Keystone.Web.Auth.Types as AT
 import qualified Keystone.Web.Project as P
-import qualified Web.Role as R
+import qualified Keystone.Web.Role as R
 import qualified Web.Scotty.Trans as S
 
 listProjectUserRolesH :: (Functor m, MonadIO m, IdentityApi m)

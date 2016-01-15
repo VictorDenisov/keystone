@@ -3,9 +3,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Web.Role
-( module Web.Role
-, module Web.Role.Types
+module Keystone.Web.Role
+( module Keystone.Web.Role
+, module Keystone.Web.Role.Types
 ) where
 
 import Common (fromObject, underscoreOptions)
@@ -23,14 +23,14 @@ import Keystone.Model.IdentityApi (IdentityApi(..))
 import Network.HTTP.Types.Status ( status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), parseId, parseRequest
                   , withHostUrl, parseMaybeString, ActionM)
-import Web.Role.Types
+import Keystone.Web.Role.Types
 
 import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Mongo.Common as CD
 import qualified Keystone.Model.Role as MR
-import qualified Web.Auth as A
-import qualified Web.Auth.Types as AT
+import qualified Keystone.Web.Auth as A
+import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
 createRoleH :: (Functor m, MonadIO m, IdentityApi m)

@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Web.Role.Types
+module Keystone.Web.Role.Types
 where
 
 import Data.Data (Typeable)

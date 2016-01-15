@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Web.Auth.Types where
+module Keystone.Web.Auth.Types where
 
 import Control.Exception (Exception(..))
 import Data.Hashable (Hashable)

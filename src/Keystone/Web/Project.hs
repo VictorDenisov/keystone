@@ -29,8 +29,8 @@ import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Mongo.Common as CD
 import qualified Keystone.Model.Project as MP
-import qualified Web.Auth as A
-import qualified Web.Auth.Types as AT
+import qualified Keystone.Web.Auth as A
+import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 
 createProjectH :: (Functor m, MonadIO m, IdentityApi m)

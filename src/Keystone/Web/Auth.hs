@@ -4,9 +4,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Web.Auth
+module Keystone.Web.Auth
 where
-import Web.Auth.Types
+import Keystone.Web.Auth.Types
 import Keystone.Model.IdentityApi (IdentityApi(..))
 import Common (loggerName)
 import Config (KeystoneConfig(..))

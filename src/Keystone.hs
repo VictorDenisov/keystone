@@ -46,12 +46,12 @@ import qualified Keystone.Model.Service as MS
 import qualified Keystone.Model.Token as MT
 import qualified Keystone.Model.Mongo.User as MMU
 
-import qualified Web.Auth as A
-import qualified Web.Auth.Types as AT
+import qualified Keystone.Web.Auth as A
+import qualified Keystone.Web.Auth.Types as AT
 import qualified Keystone.Web.Assignment as Assig
 import qualified Keystone.Web.Domain as D
 import qualified Keystone.Web.Project as P
-import qualified Web.Role as R
+import qualified Keystone.Web.Role as R
 import qualified Web.Scotty.Trans as S
 import qualified Keystone.Web.Service as SC
 import qualified Keystone.Web.Token as T

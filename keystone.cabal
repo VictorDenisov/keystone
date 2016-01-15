@@ -35,14 +35,14 @@ executable keystone
                      , Keystone.Model.Token
                      , Keystone.Model.User
                      , Keystone.Web.Assignment
-                     , Web.Auth
-                     , Web.Auth.Types
+                     , Keystone.Web.Auth
+                     , Keystone.Web.Auth.Types
                      , Web.Common
                      , Keystone.Web.Domain
                      , Keystone.Web.Project
                      , Keystone.Web.Project.Types
-                     , Web.Role
-                     , Web.Role.Types
+                     , Keystone.Web.Role
+                     , Keystone.Web.Role.Types
                      , Keystone.Web.Service
                      , Keystone.Web.Service.Types
                      , Keystone.Web.Token
