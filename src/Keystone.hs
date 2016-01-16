@@ -9,7 +9,7 @@ module Main
 where
 
 import Common (loggerName)
-import Config (readConfig, KeystoneConfig(..), ServerType(..))
+import Config (readConfig, KeystoneConfig(..), ServerType(..), confFileName)
 import Control.Monad (when)
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
@@ -58,7 +58,7 @@ import qualified Keystone.Web.Token as T
 import qualified Keystone.Web.User as U
 
 main = do
-  config <- readConfig
+  config <- readConfig confFileName
   let logFormatter = simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg"
   stdoutHandler <- streamHandler stdout (logLevel config)
   fileHandler <- fileHandler "keystone.log" (logLevel config)

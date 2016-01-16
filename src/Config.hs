@@ -7,6 +7,7 @@ import Control.Exception (catch, SomeException)
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Aeson.Types (typeMismatch)
+import Data.Default (Default(..))
 import Data.Yaml ( decodeFileEither, YamlException(..), ParseException(..)
                  , YamlMark(..))
 import Language.Haskell.TH.Syntax (nameBase)
@@ -73,13 +74,13 @@ defaultConfig =
     }
   where defaultPort = 35357
 
-readConfig :: IO KeystoneConfig
-readConfig = do
-  mConf <- catch (decodeFileEither confFileName)
+readConfig :: (Default a, FromJSON a) => String -> IO a
+readConfig filename = do
+  mConf <- catch (decodeFileEither filename)
                $ \(e::SomeException) -> do
                         putStrLn $ "WARNING!!! Failed to parse config file. Using default values."
                         putStrLn $ show e
-                        return $ Right defaultConfig
+                        return $ Right def
   case mConf of
     Right conf -> return conf
     Left (InvalidYaml Nothing) -> do
@@ -116,6 +117,9 @@ instance FromJSON Priority where
                            Just v  -> return v
                            Nothing -> fail "Failed to parse Priority"
   parseJSON v = typeMismatch (nameBase ''Priority) v
+
+instance Default KeystoneConfig where
+  def = defaultConfig
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
 
