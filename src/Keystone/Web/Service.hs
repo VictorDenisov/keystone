@@ -9,7 +9,6 @@ module Keystone.Web.Service
 , module Keystone.Web.Service.Types
 ) where
 
-import Config (KeystoneConfig(database))
 import Common ( skipTickOptions, dropOptions, fromObject, underscoreOptions
               , (<.>))
 import Control.Monad.IO.Class (MonadIO(..))
@@ -19,6 +18,7 @@ import Data.Aeson.Types (object, typeMismatch, (.=))
 import Data.HashMap.Strict (insert, delete)
 import Data.Text (pack)
 import Data.Vector (fromList)
+import Keystone.Config (KeystoneConfig(database))
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
 import Keystone.Model.IdentityApi (IdentityApi)

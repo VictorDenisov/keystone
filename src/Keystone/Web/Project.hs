@@ -9,7 +9,6 @@ module Keystone.Web.Project
 ) where
 
 import Common (fromObject, underscoreOptions)
-import Config (KeystoneConfig(database))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..), (.:))
 import Data.Aeson.TH (mkParseJSON)
@@ -17,8 +16,9 @@ import Data.Aeson.Types (object, typeMismatch, (.=))
 import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
 import Data.Vector (fromList)
-import Model.Common (OpStatus(Success, NotFound))
+import Keystone.Config (KeystoneConfig(database))
 import Keystone.Model.IdentityApi (IdentityApi)
+import Model.Common (OpStatus(Success, NotFound))
 import Network.HTTP.Types.Status (status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), withHostUrl, parseRequest
                   , ActionM, parseMaybeString, parseId)

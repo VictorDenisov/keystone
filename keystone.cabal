@@ -23,6 +23,7 @@ executable keystone
                      , Data.Bson.Mapping
                      , Keystone.Model.Assignment
                      , Model.Common
+                     , Keystone.Config
                      , Keystone.Model.Domain
                      , Keystone.Model.IdentityApi
                      , Keystone.Model.Ldap.IdentityApi

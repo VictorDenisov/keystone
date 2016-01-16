@@ -11,14 +11,14 @@ import Control.Monad.Reader (ReaderT(runReaderT), MonadReader(ask))
 import Data.Pool (Pool, createPool, withResource)
 import Keystone.Model.IdentityApi
 
-import qualified Config as C
 import qualified LDAP as L
+import qualified Keystone.Config as KC
 import qualified Keystone.Model.Ldap.User as MLU
 
 type LdapBackend = ReaderT LdapData
 
 data LdapData = LdapData
-               { ldconf :: C.LdapConfig
+               { ldconf :: KC.LdapConfig
                , pool   :: Pool L.LDAP
                }
 
@@ -50,11 +50,11 @@ instance ( MonadBase IO m
     d <- ask
     withResource (pool d) action
 
-runLdapBackend :: C.LdapConfig -> LdapBackend IO a -> IO a
+runLdapBackend :: KC.LdapConfig -> LdapBackend IO a -> IO a
 runLdapBackend ldapConfig action = do
-  let h = C.ldapHost ldapConfig
-  let userName = C.userDn ldapConfig
-  let password = C.password ldapConfig
+  let h = KC.ldapHost ldapConfig
+  let userName = KC.userDn ldapConfig
+  let password = KC.password ldapConfig
   p <- createPool (doConnect userName password h) (\_ -> return ()) 1 60 10 -- stripe count, time to live, max resource count
   runReaderT action (LdapData ldapConfig p)
 

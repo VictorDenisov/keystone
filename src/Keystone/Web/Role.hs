@@ -9,7 +9,6 @@ module Keystone.Web.Role
 ) where
 
 import Common (fromObject, underscoreOptions)
-import Config (KeystoneConfig(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (FromJSON(..), Value(..), (.:), ToJSON(..), Value(..))
 import Data.Aeson.TH (mkParseJSON)
@@ -19,6 +18,7 @@ import Data.Maybe (fromMaybe)
 import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
+import Keystone.Config (KeystoneConfig(..))
 import Keystone.Model.IdentityApi (IdentityApi(..))
 import Network.HTTP.Types.Status ( status200, status201, status204, status404)
 import Web.Common ( UrlBasedValue, UrlInfo(..), parseId, parseRequest

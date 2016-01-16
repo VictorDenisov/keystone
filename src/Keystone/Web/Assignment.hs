@@ -4,12 +4,12 @@
 module Keystone.Web.Assignment
 where
 
-import Config (KeystoneConfig(..))
 import Control.Applicative ((<$>))
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (object, (.=))
 import Data.Vector (fromList)
+import Keystone.Config (KeystoneConfig(..))
 import Keystone.Model.IdentityApi (IdentityApi)
 import Network.HTTP.Types.Status (status200, status204)
 import Text.Read (readMaybe)

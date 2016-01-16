@@ -9,7 +9,6 @@ module Keystone.Web.User
 ) where
 
 import Common (fromObject, underscoreOptions, dropOptions, (<.>))
-import Config (KeystoneConfig)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -20,6 +19,7 @@ import Data.Aeson.Types (typeMismatch, (.=), object)
 import Data.HashMap.Strict (insert)
 import Data.Text (pack)
 import Data.Vector (fromList)
+import Keystone.Config (KeystoneConfig)
 import Language.Haskell.TH.Syntax (nameBase)
 import Model.Common (OpStatus(Success, NotFound))
 import Keystone.Model.IdentityApi (IdentityApi(..))

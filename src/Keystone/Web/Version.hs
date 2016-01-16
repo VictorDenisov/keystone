@@ -4,9 +4,9 @@ module Keystone.Web.Version
 (listVersionsH, v3detailsH)
 where
 
-import Config (KeystoneConfig)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Aeson.Types (object, (.=), Value)
+import Keystone.Config (KeystoneConfig)
 import Web.Common (UrlBasedValue, UrlInfo(..), withHostUrl, ActionM)
 
 listVersionsH :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()

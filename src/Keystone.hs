@@ -9,13 +9,14 @@ module Main
 where
 
 import Common (loggerName)
-import Config (readConfig, KeystoneConfig(..), ServerType(..), confFileName)
+import Config (readConfig, ServerType(..))
 import Control.Monad (when)
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Data.Time.Clock (getCurrentTime)
+import Keystone.Config (KeystoneConfig(..), confFileName)
 import Keystone.Model.IdentityApi
 import Keystone.Model.Mongo.IdentityApi
 import Keystone.Model.Ldap.IdentityApi

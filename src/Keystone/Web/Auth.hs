@@ -9,7 +9,6 @@ where
 import Keystone.Web.Auth.Types
 import Keystone.Model.IdentityApi (IdentityApi(..))
 import Common (loggerName)
-import Config (KeystoneConfig(..))
 import Control.Applicative ((<*>), (<$>))
 import Control.Exception (throwIO)
 import Control.Monad (forM)
@@ -34,6 +33,7 @@ import Web.Common (ActionM)
 
 import qualified Error as E
 import qualified Database.MongoDB as M
+import qualified Keystone.Config as KC
 import qualified Keystone.Model.Assignment as MA
 import qualified Keystone.Model.Domain as MD
 import qualified Model.Mongo.Common as CD
@@ -107,11 +107,11 @@ authorize verifiers action token resource actionToRun =
     S.json $ E.unauthorized "You are not authorized to perform this action"
 
 requireToken :: (MonadIO m, IdentityApi m)
-            => KeystoneConfig
+            => KC.KeystoneConfig
             -> (MT.Token -> ActionM m ())
             -> ActionM m ()
 requireToken config actionToRun = do
-  let adminToken = Config.adminToken config
+  let adminToken = KC.adminToken config
   req <- S.request
   mToken <- S.header hXAuthToken
   case mToken of
@@ -129,7 +129,7 @@ requireToken config actionToRun = do
               S.status status401
               S.json $ E.unauthorized "Wrong token"
             Just tokenId  -> do
-              mToken <- liftIO $ CD.withDB (database config) $ MT.findTokenById tokenId
+              mToken <- liftIO $ CD.withDB (KC.database config) $ MT.findTokenById tokenId
               case mToken of
                 Nothing -> do
                   S.status status401

@@ -4,8 +4,6 @@
 module Keystone.Web.Token
 where
 
-import Config (KeystoneConfig(database))
-
 import Control.Monad (when, MonadPlus(mzero))
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
@@ -19,6 +17,7 @@ import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 import Data.Maybe (isNothing, fromJust)
 import Data.Time.Clock (getCurrentTime)
 
+import Keystone.Config (KeystoneConfig(database))
 import Keystone.Model.IdentityApi (IdentityApi)
 
 import Network.HTTP.Types.Status (status200, status204, status401, status404)

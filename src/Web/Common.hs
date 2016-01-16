@@ -6,7 +6,7 @@ where
 
 import Common (loggerName)
 
-import Config (KeystoneConfig(..), ServerType(..))
+import Config (ServerType(..))
 
 import Control.Applicative ((<$>))
 import Control.Monad.Catch (MonadThrow(..), MonadCatch(..))
@@ -14,6 +14,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (FromJSON)
+import Keystone.Config (KeystoneConfig(..))
 import Keystone.Model.IdentityApi (IdentityApi)
 import Network.Wai (rawPathInfo, rawQueryString)
 import System.Log.Logger (debugM)

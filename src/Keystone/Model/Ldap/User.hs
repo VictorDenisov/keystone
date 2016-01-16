@@ -11,29 +11,29 @@ import System.Log.Logger (warningM)
 
 import Text.Read (readMaybe)
 
-import qualified Config as C
 import qualified Database.MongoDB as M
-import qualified LDAP as L
+import qualified Keystone.Config as KC
 import qualified Keystone.Model.User as MU
+import qualified LDAP as L
 
-listUsers :: Maybe String -> C.LdapConfig -> L.LDAP -> IO [MU.User]
+listUsers :: Maybe String -> KC.LdapConfig -> L.LDAP -> IO [MU.User]
 listUsers mUserName c l = do
   entries <- listUserEntries mUserName c l
-  let eUsers = map (entryToUser c) (filter (isObjectClass $ C.userObjectClass c) entries)
+  let eUsers = map (entryToUser c) (filter (isObjectClass $ KC.userObjectClass c) entries)
 
   forM_ (lefts eUsers) $ \(err, entry) -> do
     warningM loggerName $ "Failed to interpret ldap user. Error: " ++ err ++ ". User: " ++ (show entry)
   return $ rights eUsers
 
-listUserEntries :: Maybe String -> C.LdapConfig -> L.LDAP -> IO [L.LDAPEntry]
+listUserEntries :: Maybe String -> KC.LdapConfig -> L.LDAP -> IO [L.LDAPEntry]
 listUserEntries mUserName c l = do
   let userNameFilter = do
         userName <- mUserName
-        return $ (C.userNameAttribute c) ++ "=" ++ userName
-  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree userNameFilter L.LDAPAllUserAttrs False
+        return $ (KC.userNameAttribute c) ++ "=" ++ userName
+  entries <- L.ldapSearch l (Just $ KC.userTreeDn c) L.LdapScopeSubtree userNameFilter L.LDAPAllUserAttrs False
   return entries
 
-findUserById :: C.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe MU.User)
+findUserById :: KC.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe MU.User)
 findUserById c l oid = do
   e <- findUserEntryById c l oid
   case e of
@@ -45,12 +45,12 @@ findUserById c l oid = do
           return Nothing
         Right u -> return $ Just u
 
-findUserEntryById :: C.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe L.LDAPEntry)
+findUserEntryById :: KC.LdapConfig -> L.LDAP -> M.ObjectId -> IO (Maybe L.LDAPEntry)
 findUserEntryById c l oid = do
-  entries <- L.ldapSearch l (Just $ C.userTreeDn c) L.LdapScopeSubtree (Just $ (C.userIdAttribute c) ++ "=" ++ (show oid)) L.LDAPAllUserAttrs False
+  entries <- L.ldapSearch l (Just $ KC.userTreeDn c) L.LdapScopeSubtree (Just $ (KC.userIdAttribute c) ++ "=" ++ (show oid)) L.LDAPAllUserAttrs False
   return $ listToMaybe entries
 
-checkUserPassword :: C.LdapConfig -> L.LDAP -> Maybe M.ObjectId -> Maybe String -> String -> IO (Either String MU.User)
+checkUserPassword :: KC.LdapConfig -> L.LDAP -> Maybe M.ObjectId -> Maybe String -> String -> IO (Either String MU.User)
 checkUserPassword c l mUserId mUserName passwordToCheck = do
   mu <- case mUserId of
             Just userId -> findUserEntryById c l userId
@@ -70,8 +70,8 @@ checkUserPassword c l mUserId mUserName passwordToCheck = do
             Right u -> return $ Right u
         )
         $ \(L.LDAPException code description  caller) -> return $ Left "Authentication failed"
-      let userName = C.userDn c
-      let password = C.password c
+      let userName = KC.userDn c
+      let password = KC.password c
       L.ldapSimpleBind l userName password
       return user
 
@@ -82,26 +82,26 @@ isObjectClass oc e =
     Nothing     -> False
     Just values -> elem oc values
 
-entryToUser :: C.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) MU.User
+entryToUser :: KC.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) MU.User
 entryToUser c e = do
-  name <- getUserAttributeE (C.userNameAttribute c) e
+  name <- getUserAttributeE (KC.userNameAttribute c) e
   oid  <- readUserId c e
   return (MU.User
               oid
               (Just "Description")
-              (getUserAttributeM (C.userMailAttribute c) e)
+              (getUserAttributeM (KC.userMailAttribute c) e)
               True
               name
-              (getUserAttributeM (C.userPassAttribute c) e)
+              (getUserAttributeM (KC.userPassAttribute c) e)
          )
 
-readUserId :: C.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) M.ObjectId
+readUserId :: KC.LdapConfig -> L.LDAPEntry -> Either (String, L.LDAPEntry) M.ObjectId
 readUserId c e =
-  case getUserAttributeE (C.userIdAttribute c) e of
+  case getUserAttributeE (KC.userIdAttribute c) e of
     Left err  -> Left err
     Right uid ->
       case readMaybe uid of
-        Nothing -> Left ("Failed to parse user id from attribute " ++ (C.userIdAttribute c), e)
+        Nothing -> Left ("Failed to parse user id from attribute " ++ (KC.userIdAttribute c), e)
         Just v  -> Right v
 
 getUserAttributeM :: String -> L.LDAPEntry -> Maybe String

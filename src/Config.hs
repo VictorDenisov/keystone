@@ -11,37 +11,11 @@ import Data.Default (Default(..))
 import Data.Yaml ( decodeFileEither, YamlException(..), ParseException(..)
                  , YamlMark(..))
 import Language.Haskell.TH.Syntax (nameBase)
-import System.Log.Logger (Priority(NOTICE))
+import System.Log.Logger (Priority)
 import Text.Read (readMaybe)
 
 import qualified Data.Text as T
 
-data KeystoneConfig = KeystoneConfig
-                    { adminToken            :: String
-                    , certificateFile       :: FilePath -- TLS runner checks if this file exists
-                    , keyFile               :: FilePath -- TLS runner checks if this file exists
-                    , port                  :: Int      -- Port won't bind if it's busy
-                    , endpoint              :: Maybe String
-                    , database              :: Database
-                    , logLevel              :: Priority
-                    , serverType            :: ServerType
-                    , verifyTokenCollection :: Bool
-                    , ldap                  :: Maybe LdapConfig
-                    }
-
-data LdapConfig = LdapConfig
-                { ldapHost             :: String
-                , userDn               :: String
-                , password             :: String
-                , userTreeDn           :: String
-                , userFilter           :: String
-                , userObjectClass      :: String
-                , userIdAttribute      :: String
-                , userNameAttribute    :: String
-                , userMailAttribute    :: String
-                , userPassAttribute    :: String
-                , userEnabledAttribute :: String
-                }
 
 data Database = Database
               { dbHost :: String
@@ -51,28 +25,6 @@ data Database = Database
 data ServerType = Tls
                 | Plain
                   deriving (Read, Show)
-
-confFileName :: String
-confFileName = "keystone.conf"
-
-defaultConfig :: KeystoneConfig
-defaultConfig =
-  KeystoneConfig
-    { adminToken            = "ADMIN_TOKEN"
-    , certificateFile       = "server.crt"
-    , keyFile               = "server.key"
-    , port                  = defaultPort
-    , endpoint              = Nothing
-    , database              = Database
-                              { dbHost = "localhost"
-                              , dbPort = 27017
-                              }
-    , logLevel              = NOTICE
-    , serverType            = Plain
-    , verifyTokenCollection = True
-    , ldap                  = Nothing
-    }
-  where defaultPort = 35357
 
 readConfig :: (Default a, FromJSON a) => String -> IO a
 readConfig filename = do
@@ -117,12 +69,5 @@ instance FromJSON Priority where
                            Just v  -> return v
                            Nothing -> fail "Failed to parse Priority"
   parseJSON v = typeMismatch (nameBase ''Priority) v
-
-instance Default KeystoneConfig where
-  def = defaultConfig
-
-$(deriveJSON defaultOptions ''KeystoneConfig)
-
-$(deriveJSON defaultOptions ''LdapConfig)
 
 $(deriveJSON defaultOptions ''Database)
