@@ -21,7 +21,7 @@ import Keystone.Model.IdentityApi
 import Keystone.Model.Mongo.IdentityApi
 import Keystone.Model.Ldap.IdentityApi
 import Network.HTTP.Types.Method (StdMethod(HEAD))
-import Network.HTTP.Types.Status ( statusCode)
+import Network.HTTP.Types.Status (statusCode)
 import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import System.IO (stdout)

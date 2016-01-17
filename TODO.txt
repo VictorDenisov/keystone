@@ -16,3 +16,7 @@ Duplicate entries should be avoided
 # Make pool sizes configurable
 
 # Setup default config file and extra config file that can be supplied by the user.
+
+# implement verifyDatabase in Glance
+
+# move policy handling to a common place
