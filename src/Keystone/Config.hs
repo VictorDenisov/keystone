@@ -2,7 +2,7 @@
 module Keystone.Config
 where
 
-import Config (Database(..), ServerType(), ServerType(..))
+import Config (Database(..), ServerType(), ServerType(..), BaseConfig(..))
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Default (Default(..))
 import System.Log.Logger (Priority(NOTICE))
@@ -58,6 +58,10 @@ defaultConfig =
 
 instance Default KeystoneConfig where
   def = defaultConfig
+
+instance BaseConfig KeystoneConfig where
+  getEndpoint = endpoint
+  getServerType = serverType
 
 $(deriveJSON defaultOptions ''KeystoneConfig)
 

@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main
@@ -15,6 +16,7 @@ import Data.Aeson (encode)
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Time.Clock (getCurrentTime)
 import Glance.Config (confFileName, GlanceConfig(..))
+import Glance.Web.Version (listVersionsH)
 import Network.HTTP.Types.Status (statusCode)
 import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -73,6 +75,7 @@ application policy config = do
         S.json $ e {E.message = "Internal error. Server time - " ++ (show time)}
       _ -> do
         S.json e
+  S.get           "/"                     $ listVersionsH                  config
 
 verifyDatabase :: GlanceConfig -> IO ()
 verifyDatabase GlanceConfig{..} = return () -- TODO

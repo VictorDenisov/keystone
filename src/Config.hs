@@ -16,6 +16,9 @@ import Text.Read (readMaybe)
 
 import qualified Data.Text as T
 
+class BaseConfig a where
+  getEndpoint :: a -> Maybe String
+  getServerType :: a -> ServerType
 
 data Database = Database
               { dbHost :: String

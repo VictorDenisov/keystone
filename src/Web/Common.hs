@@ -6,7 +6,7 @@ where
 
 import Common (loggerName)
 
-import Config (ServerType(..))
+import Config (ServerType(..), BaseConfig(..))
 
 import Control.Applicative ((<$>))
 import Control.Monad.Catch (MonadThrow(..), MonadCatch(..))
@@ -14,7 +14,6 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (FromJSON)
-import Keystone.Config (KeystoneConfig(..))
 import Keystone.Model.IdentityApi (IdentityApi)
 import Network.Wai (rawPathInfo, rawQueryString)
 import System.Log.Logger (debugM)
@@ -54,19 +53,20 @@ hostUrl st = do
             Tls   -> "https"
   return $ fmap (\h -> protocol ++ "://" ++ (TL.unpack h)) mh
 
-getBaseUrl :: MonadIO b => KeystoneConfig -> ActionM b String
+getBaseUrl :: (MonadIO b, BaseConfig bc) => bc -> ActionM b String
 getBaseUrl config = do
-  case endpoint config of
+  case getEndpoint config of
     Just e -> return e
     Nothing -> do
-      mh <- hostUrl $ serverType config
+      mh <- hostUrl $ getServerType config
       case mh of
         Just h -> return h
         Nothing -> S.raise $ E.badRequest "Host header is required or endpoint should be set"
 
 withHostUrl :: ( Functor b
-               , MonadIO b)
-               => KeystoneConfig -> UrlBasedValue -> ActionM b ()
+               , MonadIO b
+               , BaseConfig bc)
+               => bc -> UrlBasedValue -> ActionM b ()
 withHostUrl config v = do
   pathString <- BS.unpack <$> rawPathInfo <$> S.request
   queryString <- BS.unpack <$> rawQueryString <$> S.request

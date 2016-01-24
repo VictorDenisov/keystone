@@ -2,7 +2,7 @@
 module Glance.Config
 where
 
-import Config (Database(..), ServerType(..))
+import Config (Database(..), ServerType(..), BaseConfig(..))
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import Data.Default (Default(..))
 import System.Log.Logger (Priority(NOTICE))
@@ -35,6 +35,10 @@ defaultConfig =
 
 instance Default GlanceConfig where
   def = defaultConfig
+
+instance BaseConfig GlanceConfig where
+  getEndpoint = endpoint
+  getServerType = serverType
 
 confFileName :: String
 confFileName = "glance.conf"

@@ -15,7 +15,6 @@ listVersionsH config = withHostUrl config apiVersions
 v3detailsH :: (Functor m, MonadIO m) => KeystoneConfig -> ActionM m ()
 v3detailsH config = withHostUrl config apiV3Reply
 
-
 jsonMediaTypeV3 = object [ "base" .= ("application/json" :: String)
                          , "type" .= ("application/vnd.openstack.identity-v3+json" :: String)
                          ]
