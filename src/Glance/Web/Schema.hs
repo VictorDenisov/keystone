@@ -33,3 +33,13 @@ imageSchemaH c = do
       throwError $ S.stringError "Failed  to parse image_schema.json file"
     Just v ->
       S.json v
+
+metadefsNamespaceSchemaH :: (Functor m, MonadIO m)
+                         => GlanceConfig -> ActionM m ()
+metadefsNamespaceSchemaH c = do
+  schema <- liftIO $ LBS.readFile "metadefs_namespace_schema.json"
+  case (decode schema :: Maybe Value) of
+    Nothing ->
+      throwError $ S.stringError "Failed  to parse metadefs_namespace_schema.json file"
+    Just v ->
+      S.json v
