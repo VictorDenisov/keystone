@@ -18,7 +18,13 @@ import Data.ByteString.Lazy.Char8 (unpack, pack)
 import Data.Time.Clock (getCurrentTime)
 import Glance.Config (confFileName, GlanceConfig(..))
 import Glance.Web.Version (listVersionsH)
-import Glance.Web.Schema (imagesSchemaH, imageSchemaH, metadefsNamespaceSchemaH)
+import Glance.Web.Schema ( imagesSchemaH, imageSchemaH
+                         , metadefsNamespaceSchemaH, metadefsResourceTypeSchemaH
+                         , metadefsNamespacesSchemaH, metadefsObjectsSchemaH
+                         , metadefsResourceTypesSchemaH, metadefsTagSchemaH
+                         , metadefsTagsSchemaH, metadefsObjectSchemaH
+                         , metadefsPropertySchemaH, metadefsPropertiesSchemaH
+                         )
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -79,11 +85,20 @@ application policy config = do
         S.json $ e {E.message = "Internal error. Server time - " ++ (show time)}
       _ -> do
         S.json e
-  S.get   "/"                              $ listVersionsH            config
-  S.get   "/versions"                      $ listVersionsH            config
-  S.get   "/v2/schemas/images"             $ imagesSchemaH            config
-  S.get   "/v2/schemas/image"              $ imageSchemaH             config
-  S.get   "/v2/schemas/metadefs/namespace" $ metadefsNamespaceSchemaH config
+  S.get   "/"                                   $ listVersionsH                config
+  S.get   "/versions"                           $ listVersionsH                config
+  S.get   "/v2/schemas/images"                  $ imagesSchemaH                config
+  S.get   "/v2/schemas/image"                   $ imageSchemaH                 config
+  S.get   "/v2/schemas/metadefs/namespace"      $ metadefsNamespaceSchemaH     config
+  S.get   "/v2/schemas/metadefs/namespaces"     $ metadefsNamespacesSchemaH    config
+  S.get   "/v2/schemas/metadefs/object"         $ metadefsObjectSchemaH        config
+  S.get   "/v2/schemas/metadefs/objects"        $ metadefsObjectsSchemaH       config
+  S.get   "/v2/schemas/metadefs/property"       $ metadefsPropertySchemaH      config
+  S.get   "/v2/schemas/metadefs/properties"     $ metadefsPropertiesSchemaH    config
+  S.get   "/v2/schemas/metadefs/resource_type"  $ metadefsResourceTypeSchemaH  config
+  S.get   "/v2/schemas/metadefs/resource_types" $ metadefsResourceTypesSchemaH config
+  S.get   "/v2/schemas/metadefs/tag"            $ metadefsTagSchemaH           config
+  S.get   "/v2/schemas/metadefs/tags"           $ metadefsTagsSchemaH          config
 
 verifyDatabase :: GlanceConfig -> IO ()
 verifyDatabase GlanceConfig{..} = return () -- TODO

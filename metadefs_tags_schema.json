@@ -1,0 +1,53 @@
+{
+  "properties": {
+    "tags": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "updated_at": {
+            "format": "date-time",
+            "description": "Date and time of the last tag modification (READ-ONLY)",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "description": "Date and time of tag creation (READ-ONLY)",
+            "type": "string"
+          }
+        },
+        "name": "tag",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "first": {
+      "type": "string"
+    },
+    "schema": {
+      "type": "string"
+    },
+    "next": {
+      "type": "string"
+    }
+  },
+  "links": [
+    {
+      "rel": "first",
+      "href": "{first}"
+    },
+    {
+      "rel": "next",
+      "href": "{next}"
+    },
+    {
+      "rel": "describedby",
+      "href": "{schema}"
+    }
+  ],
+  "name": "tags"
+}

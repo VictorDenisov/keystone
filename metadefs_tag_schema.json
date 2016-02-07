@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "updated_at": {
+      "format": "date-time",
+      "description": "Date and time of the last tag modification (READ-ONLY)",
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "description": "Date and time of tag creation (READ-ONLY)",
+      "type": "string"
+    }
+  },
+  "name": "tag",
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
