@@ -24,6 +24,14 @@ imageSchemaH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
 imageSchemaH c = do
   handleSchema "image_schema.json"
 
+membersSchemaH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
+membersSchemaH c = do
+  handleSchema "members_schema.json"
+
+memberSchemaH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
+memberSchemaH c = do
+  handleSchema "member_schema.json"
+
 metadefsNamespaceSchemaH :: (Functor m, MonadIO m)
                          => GlanceConfig -> ActionM m ()
 metadefsNamespaceSchemaH c = do

@@ -1,0 +1,51 @@
+{
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "schema": {
+            "type": "string"
+          },
+          "member_id": {
+            "description": "An identifier for the image member (tenantId)",
+            "type": "string"
+          },
+          "image_id": {
+            "description": "An identifier for the image",
+            "type": "string",
+            "pattern": "^([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}$"
+          },
+          "updated_at": {
+            "description": "Date and time of last modification of image member",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "Date and time of image member creation",
+            "type": "string"
+          },
+          "status": {
+            "description": "The status of this image member",
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected"
+            ]
+          }
+        },
+        "name": "member"
+      }
+    }
+  },
+  "links": [
+    {
+      "rel": "describedby",
+      "href": "{schema}"
+    }
+  ],
+  "name": "members"
+}

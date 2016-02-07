@@ -24,6 +24,7 @@ import Glance.Web.Schema ( imagesSchemaH, imageSchemaH
                          , metadefsResourceTypesSchemaH, metadefsTagSchemaH
                          , metadefsTagsSchemaH, metadefsObjectSchemaH
                          , metadefsPropertySchemaH, metadefsPropertiesSchemaH
+                         , memberSchemaH, membersSchemaH
                          )
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
@@ -89,6 +90,8 @@ application policy config = do
   S.get   "/versions"                           $ listVersionsH                config
   S.get   "/v2/schemas/images"                  $ imagesSchemaH                config
   S.get   "/v2/schemas/image"                   $ imageSchemaH                 config
+  S.get   "/v2/schemas/members"                 $ membersSchemaH               config
+  S.get   "/v2/schemas/member"                  $ memberSchemaH                config
   S.get   "/v2/schemas/metadefs/namespace"      $ metadefsNamespaceSchemaH     config
   S.get   "/v2/schemas/metadefs/namespaces"     $ metadefsNamespacesSchemaH    config
   S.get   "/v2/schemas/metadefs/object"         $ metadefsObjectSchemaH        config
