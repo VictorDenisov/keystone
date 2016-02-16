@@ -3,10 +3,11 @@ module Glance.Web.Image.Types
 where
 
 import Data.Data (Typeable)
+import Glance.Model.Image (Visibility)
 
 data ImageCreateRequest = ImageCreateRequest
                         { name            :: String
-                        , visibility      :: Maybe Bool
+                        , visibility      :: Maybe Visibility
                         , tags            :: Maybe [String]
                         , containerFormat :: String
                         , diskFormat      :: String

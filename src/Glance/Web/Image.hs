@@ -7,18 +7,14 @@ where
 
 import Common (fromObject, underscoreOptions)
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.Aeson ( ToJSON(..), object, (.=), Object(..), FromJSON(..), (.:)
-                  , Value(..))
+import Data.Aeson ( object, (.=), Object(..), FromJSON(..), Value(..))
 import Data.Aeson.TH (mkParseJSON, mkToJSON)
-import Data.Aeson.Types (typeMismatch)
 import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
 import Data.String (IsString(fromString))
 import Glance.Config (GlanceConfig(database))
 --import Glance.Model.Image (createImage)
 import Glance.Web.Image.Types (ImageCreateRequest(..))
-import Glance.Web.Image.Types
-import Language.Haskell.TH.Syntax (nameBase)
 import Web.Common (ActionM, parseRequest)
 
 import qualified Database.MongoDB as M
@@ -46,7 +42,8 @@ newRequestToImage ImageCreateRequest{..} = do
   return $ MI.Image
                 imageId
                 name
-                --(fromMaybe True visibility)
+                (fromMaybe MI.Private visibility)
+                MI.Queued
                 (fromMaybe [] tags)
                 containerFormat
                 diskFormat
@@ -55,9 +52,7 @@ newRequestToImage ImageCreateRequest{..} = do
                 (fromMaybe False protected)
 
 instance FromJSON ImageCreateRequest where
-  parseJSON v = do
-    parseIcr v
-  parseJSON v = typeMismatch (nameBase ''ImageCreateRequest) v
+  parseJSON v = parseIcr v
 
 parseIcr = $(mkParseJSON underscoreOptions ''ImageCreateRequest)
 
