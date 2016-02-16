@@ -20,6 +20,8 @@ executable glance
   other-modules:       Common
                      , Config
                      , Error
+                     , Glance.Web.Image
+                     , Glance.Web.Schema
                      , Glance.Web.Version
   build-depends:       base >=4.7 && <4.9
                      , aeson  == 0.7.0.4

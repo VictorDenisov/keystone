@@ -17,7 +17,7 @@ import Data.Aeson (encode)
 import Data.ByteString.Lazy.Char8 (unpack, pack)
 import Data.Time.Clock (getCurrentTime)
 import Glance.Config (confFileName, GlanceConfig(..))
-import Glance.Web.Version (listVersionsH)
+import Glance.Web.Image (listImagesH, createImageH)
 import Glance.Web.Schema ( imagesSchemaH, imageSchemaH
                          , metadefsNamespaceSchemaH, metadefsResourceTypeSchemaH
                          , metadefsNamespacesSchemaH, metadefsObjectsSchemaH
@@ -26,6 +26,7 @@ import Glance.Web.Schema ( imagesSchemaH, imageSchemaH
                          , metadefsPropertySchemaH, metadefsPropertiesSchemaH
                          , memberSchemaH, membersSchemaH
                          )
+import Glance.Web.Version (listVersionsH)
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -102,6 +103,8 @@ application policy config = do
   S.get   "/v2/schemas/metadefs/resource_types" $ metadefsResourceTypesSchemaH config
   S.get   "/v2/schemas/metadefs/tag"            $ metadefsTagSchemaH           config
   S.get   "/v2/schemas/metadefs/tags"           $ metadefsTagsSchemaH          config
+  S.get   "/v2/images"                          $ listImagesH
+  S.post  "/v2/images"                          $ createImageH                 config
 
 verifyDatabase :: GlanceConfig -> IO ()
 verifyDatabase GlanceConfig{..} = return () -- TODO

@@ -14,7 +14,6 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Data.Aeson (Value(..))
 import Data.Aeson.Types (FromJSON)
-import Keystone.Model.IdentityApi (IdentityApi)
 import Network.Wai (rawPathInfo, rawQueryString)
 import System.Log.Logger (debugM)
 import Text.Read (readMaybe)
@@ -88,7 +87,6 @@ parseMaybeString paramName =
 
 parseRequest :: ( Show a
                 , FromJSON a
-                , IdentityApi b
                 , MonadIO b)
                 => ActionM b a
 parseRequest = do
