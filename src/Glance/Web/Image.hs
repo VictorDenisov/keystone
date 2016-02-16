@@ -15,8 +15,9 @@ import Data.String (IsString(fromString))
 import Glance.Config (GlanceConfig(database))
 --import Glance.Model.Image (createImage)
 import Glance.Web.Image.Types (ImageCreateRequest(..))
-import Web.Common (ActionM, parseRequest)
+import Web.Common (ActionM, parseRequest, parseId)
 
+import qualified Data.ByteString.Lazy as LB
 import qualified Database.MongoDB as M
 import qualified Glance.Model.Image as MI
 import qualified Model.Mongo.Common as CD
@@ -35,6 +36,12 @@ createImageH config = do
   liftIO $ putStrLn $ show image
   liftIO $ CD.withDB (database config) $ MI.createImage image
   S.json $ produceImageJson image
+
+uploadImageH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
+uploadImageH config = do
+    (iid :: M.ObjectId) <- parseId "iid"
+    s <- S.body
+    liftIO $ LB.writeFile (show iid) s
 
 newRequestToImage :: ImageCreateRequest -> IO MI.Image
 newRequestToImage ImageCreateRequest{..} = do
