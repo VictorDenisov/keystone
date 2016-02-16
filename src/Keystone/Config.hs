@@ -48,6 +48,7 @@ defaultConfig =
     , database              = Database
                               { dbHost = "localhost"
                               , dbPort = 27017
+                              , dbName = "keystone"
                               }
     , logLevel              = NOTICE
     , serverType            = Plain

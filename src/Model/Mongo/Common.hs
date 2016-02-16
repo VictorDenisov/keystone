@@ -5,42 +5,53 @@ module Model.Mongo.Common
 where
 
 import Common (loggerName)
-import Config (Database(..))
+import Config (Database)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.Types (typeMismatch)
+import Data.String (IsString(fromString))
 import Data.Text (Text)
 import Language.Haskell.TH.Syntax (nameBase)
 import System.IO.Error (catchIOError, ioeGetErrorString)
 import System.Log.Logger (infoM)
 import Text.Read (readMaybe)
 
+import qualified Config as C
 import qualified Database.MongoDB as M
 import qualified Data.Text as T
 
-dbName :: Text
-dbName = "keystone"
+data Connection = Connection
+                { pipe   :: M.Pipe
+                , dbName :: T.Text
+                }
 
-connect :: Database -> IO M.Pipe
+
+connect :: Database -> IO Connection
 connect dbConf = do
   infoM loggerName "Connecting to the database"
-  catchIOError (M.connect $ M.Host host $ M.PortNumber $ fromIntegral port) $ \e -> do
+  catchIOError (do
+    pipe <- M.connect $ M.Host host $ M.PortNumber $ fromIntegral port
+    return $ Connection pipe (fromString $ C.dbName dbConf)
+   ) $ \e -> do
     fail $ "Can't connect to the database: " ++ (ioeGetErrorString e)
   where
-    host = dbHost dbConf
-    port = dbPort dbConf
+    host = C.dbHost dbConf
+    port = C.dbPort dbConf
+
+closeConnection :: Connection -> IO ()
+closeConnection (Connection pipe _) = M.close pipe
 
 withDB :: Database -> M.Action IO a -> IO a
 withDB dbConf f = runResourceT $ do
-  (releaseKey, pipe) <- allocate (connect dbConf) M.close
+  (releaseKey, pipe) <- allocate (connect dbConf) closeConnection
   v <- lift $ runDB pipe f
   release releaseKey
   return v
 
-runDB :: MonadIO m => M.Pipe -> M.Action m a -> m a
-runDB p f = M.access p M.master dbName f
+runDB :: MonadIO m => Connection -> M.Action m a -> m a
+runDB (Connection p dbName) f = M.access p M.master dbName f
 
 affectedDocs :: MonadIO m => M.Action m Int
 affectedDocs = do

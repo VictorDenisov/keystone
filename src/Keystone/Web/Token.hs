@@ -27,7 +27,6 @@ import Text.Read (readMaybe)
 import Web.Common (parseRequest, getBaseUrl, ActionM)
 
 import qualified Data.Text.Lazy as TL
-import qualified Database.MongoDB as M
 import qualified Error as E
 import qualified Model.Mongo.Common as CD
 import qualified Keystone.Model.Token as MT
@@ -46,8 +45,8 @@ issueTokenH config = do
     (au :: AT.AuthRequest) <- parseRequest
     baseUrl <- getBaseUrl config
     runResourceT $ do
-      (releaseKey, pipe) <- allocate (CD.connect $ database config) M.close
-      res <- lift $ lift $ mapM (A.authenticate pipe (AT.scope au)) (AT.methods au)
+      (releaseKey, connection) <- allocate (CD.connect $ database config) CD.closeConnection
+      res <- lift $ lift $ mapM (A.authenticate connection (AT.scope au)) (AT.methods au)
       release releaseKey
       case head res of
         Right (tokenId, t) -> lift $ do

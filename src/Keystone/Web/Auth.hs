@@ -49,16 +49,16 @@ import qualified Data.Text.Lazy as LT
 import qualified Data.HashMap.Strict as HM
 
 authenticate :: (MonadIO m, IdentityApi m, Functor m)
-             => M.Pipe
+             => CD.Connection
              -> (Maybe AuthScope)
              -> AuthMethod
              -> m (Either String (String, MT.Token))
-authenticate pipe mScope (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
+authenticate connection mScope (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
   res <- checkUserPassword mUserId mUserName password
   case res of
     Left  errorMessage -> return $ Left errorMessage
     Right user -> do
-      liftIO $ Right <$> (CD.runDB pipe $ produceToken mScope user)
+      liftIO $ Right <$> (CD.runDB connection $ produceToken mScope user)
 
 produceToken :: (Maybe AuthScope) -> MU.User -> M.Action IO (String, MT.Token)
 produceToken  mScope user = do

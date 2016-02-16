@@ -27,6 +27,7 @@ defaultConfig =
     , database              = Database
                               { dbHost = "localhost"
                               , dbPort = 27017
+                              , dbName = "glance"
                               }
     , logLevel              = NOTICE
     , serverType            = Plain

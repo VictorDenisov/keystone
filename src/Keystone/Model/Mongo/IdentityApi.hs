@@ -13,21 +13,20 @@ import Data.Pool (Pool, createPool, withResource)
 
 import qualified Config as C
 import qualified Model.Mongo.Common as CD
-import qualified Database.MongoDB as M
 import qualified Keystone.Model.Mongo.User as MMU
 
 type MongoIdentityApi = ReaderT MongoData
 
 data MongoData = MongoData
                { mddb :: C.Database
-               , pool :: Pool M.Pipe
+               , pool :: Pool CD.Connection
                }
 
 instance ( MonadBase IO m
          , MonadIO m
          , MonadBaseControl IO m
          ) => IdentityApi (MongoIdentityApi m) where
-  type IdentityApiHandle (MongoIdentityApi m) = M.Pipe
+  type IdentityApiHandle (MongoIdentityApi m) = CD.Connection
 
   createUser u = withHandle $ \p -> liftIO $ CD.runDB p $ MMU.createUser u
 
@@ -48,5 +47,5 @@ instance ( MonadBase IO m
 
 runMongoBackend :: C.Database -> MongoIdentityApi IO a -> IO a
 runMongoBackend mongoConfig action = do
-  p <- createPool (CD.connect mongoConfig) M.close 1 60 10 -- stripe count, time to live, max resource count
+  p <- createPool (CD.connect mongoConfig) CD.closeConnection 1 60 10 -- stripe count, time to live, max resource count
   runReaderT action (MongoData mongoConfig p)

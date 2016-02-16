@@ -23,6 +23,7 @@ class BaseConfig a where
 data Database = Database
               { dbHost :: String
               , dbPort :: Int
+              , dbName :: String
               }
 
 data ServerType = Tls
