@@ -99,7 +99,7 @@ application policy config = do
   S.get   "/v2/schemas/metadefs/resource_types" $ metadefsResourceTypesSchemaH config
   S.get   "/v2/schemas/metadefs/tag"            $ metadefsTagSchemaH           config
   S.get   "/v2/schemas/metadefs/tags"           $ metadefsTagsSchemaH          config
-  S.get   "/v2/images"                          $ listImagesH
+  S.get   "/v2/images"                          $ listImagesH                  config
   S.post  "/v2/images"                          $ createImageH                 config
   S.put   "/v2/images/:iid/file"                $ uploadImageH                 config
 

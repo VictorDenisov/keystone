@@ -7,7 +7,7 @@ where
 
 import Common (fromObject, underscoreOptions)
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.Aeson ( object, (.=), Object(..), FromJSON(..), Value(..))
+import Data.Aeson ( object, (.=), FromJSON(..), Value(..))
 import Data.Aeson.TH (mkParseJSON, mkToJSON)
 import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
@@ -15,7 +15,8 @@ import Data.String (IsString(fromString))
 import Glance.Config (GlanceConfig(database))
 --import Glance.Model.Image (createImage)
 import Glance.Web.Image.Types (ImageCreateRequest(..))
-import Web.Common (ActionM, parseRequest, parseId)
+import Network.HTTP.Types.Status (status200)
+import Web.Common (ActionM, parseRequest, parseId, parseMaybeString)
 
 import qualified Data.ByteString.Lazy as LB
 import qualified Database.MongoDB as M
@@ -23,9 +24,12 @@ import qualified Glance.Model.Image as MI
 import qualified Model.Mongo.Common as CD
 import qualified Web.Scotty.Trans as S
 
-listImagesH :: (Functor m, MonadIO m) => ActionM m ()
-listImagesH = do
-  S.json $ object [ "images" .= ([] :: [Object])
+listImagesH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
+listImagesH config = do
+  imageName <- parseMaybeString "name"
+  images <- liftIO $ CD.withDB (database config) $ MI.listImages imageName
+  S.status status200
+  S.json $ object [ "images" .= (map (fromObject . encodeImageReply) images)
                   , "schema" .= ("/v2/schemas/images" :: String)
                   , "first" .= ("/v2/images" :: String)]
 
@@ -35,6 +39,7 @@ createImageH config = do
   image <- liftIO $ newRequestToImage d
   liftIO $ putStrLn $ show image
   liftIO $ CD.withDB (database config) $ MI.createImage image
+  S.status status200
   S.json $ produceImageJson image
 
 uploadImageH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()

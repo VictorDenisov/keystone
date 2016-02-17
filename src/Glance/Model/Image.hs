@@ -11,6 +11,7 @@ import Model.Mongo.Common () -- Import ObjectId fromJson instance
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (typeMismatch)
+import Data.Bson ((=:))
 import Data.Bson.Mapping (Bson(..), deriveBson)
 import Data.Char (toLower)
 import Data.Data (Typeable)
@@ -93,6 +94,15 @@ instance M.Val ImageId where
 $(deriveBson id ''Image)
 
 $(deriveJSON skipUnderscoreOptions ''Image)
+
+listImages :: (Maybe String) -> M.Action IO [Image]
+listImages mName = do
+  let nameFilter = case mName of
+                      Nothing -> []
+                      Just nm -> [(pack $ nameBase 'name) =: (M.String $ pack nm)]
+  cur <- M.find $ M.select nameFilter collectionName
+  docs <- M.rest cur
+  mapM fromBson docs
 
 createImage :: Image -> M.Action IO (Either E.Error M.ObjectId)
 createImage i =
