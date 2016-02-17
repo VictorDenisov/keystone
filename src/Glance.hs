@@ -13,7 +13,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.Time.Clock (getCurrentTime)
 import Glance.Config (confFileName, GlanceConfig(..))
-import Glance.Web.Image (listImagesH, createImageH, uploadImageH)
+import Glance.Web.Image (listImagesH, createImageH, uploadImageH, imageDetailsH)
 import Glance.Web.Schema ( imagesSchemaH, imageSchemaH
                          , metadefsNamespaceSchemaH, metadefsResourceTypeSchemaH
                          , metadefsNamespacesSchemaH, metadefsObjectsSchemaH
@@ -102,6 +102,7 @@ application policy config = do
   S.get   "/v2/images"                          $ listImagesH                  config
   S.post  "/v2/images"                          $ createImageH                 config
   S.put   "/v2/images/:iid/file"                $ uploadImageH                 config
+  S.get   "/v2/images/:iid"                     $ imageDetailsH                config
 
 verifyDatabase :: GlanceConfig -> IO ()
 verifyDatabase GlanceConfig{..} = return () -- TODO

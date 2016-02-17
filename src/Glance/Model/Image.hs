@@ -6,7 +6,7 @@ where
 
 import Common (skipUnderscoreOptions, capitalize, underscoreOptions, (<.>))
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
-import Model.Mongo.Common () -- Import ObjectId fromJson instance
+import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Aeson.TH (deriveJSON)
@@ -19,6 +19,7 @@ import Data.String (IsString(fromString))
 import Data.Text (pack, unpack)
 
 import Language.Haskell.TH.Syntax (nameBase)
+import Model.Mongo.Common (idF) -- Import ObjectId fromJson instance
 import Text.Read (readMaybe)
 
 import qualified Error as E
@@ -115,3 +116,8 @@ createImage i =
           return $ Left $ E.conflict $ "Insert of project with the duplicate " ++ (nameBase 'name) ++ " is not allowed."
       _ -> throwM f
   )
+
+findImageById :: M.ObjectId -> M.Action IO (Maybe Image)
+findImageById pid = runMaybeT $ do
+  mImage <- MaybeT $ M.findOne (M.select [idF =: pid] collectionName)
+  fromBson mImage

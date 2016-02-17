@@ -15,9 +15,10 @@ import Data.String (IsString(fromString))
 import Glance.Config (GlanceConfig(database))
 --import Glance.Model.Image (createImage)
 import Glance.Web.Image.Types (ImageCreateRequest(..))
-import Network.HTTP.Types.Status (status200)
+import Network.HTTP.Types.Status (status200, status404)
 import Web.Common (ActionM, parseRequest, parseId, parseMaybeString)
 
+import qualified Error as E
 import qualified Data.ByteString.Lazy as LB
 import qualified Database.MongoDB as M
 import qualified Glance.Model.Image as MI
@@ -41,6 +42,18 @@ createImageH config = do
   liftIO $ CD.withDB (database config) $ MI.createImage image
   S.status status200
   S.json $ produceImageJson image
+
+imageDetailsH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
+imageDetailsH config = do
+  (iid :: M.ObjectId) <- parseId "iid"
+  mImage <- liftIO $ CD.withDB (database config) $ MI.findImageById iid
+  case mImage of
+    Nothing -> do
+      S.status status404
+      S.json $ E.notFound "Image not found"
+    Just image -> do
+      S.status status200
+      S.json $ produceImageJson image
 
 uploadImageH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
 uploadImageH config = do
