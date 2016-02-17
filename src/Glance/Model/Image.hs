@@ -4,7 +4,7 @@
 module Glance.Model.Image
 where
 
-import Common (skipUnderscoreOptions, capitalize)
+import Common (skipUnderscoreOptions, capitalize, underscoreOptions, (<.>))
 import Control.Monad.Catch (MonadCatch(catch), MonadThrow(throwM))
 import Model.Mongo.Common () -- Import ObjectId fromJson instance
 
@@ -93,7 +93,7 @@ instance M.Val ImageId where
 
 $(deriveBson id ''Image)
 
-$(deriveJSON skipUnderscoreOptions ''Image)
+$(deriveJSON (underscoreOptions <.> skipUnderscoreOptions) ''Image)
 
 listImages :: (Maybe String) -> M.Action IO [Image]
 listImages mName = do

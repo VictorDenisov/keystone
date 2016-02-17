@@ -7,8 +7,8 @@ where
 
 import Common (fromObject, underscoreOptions)
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.Aeson ( object, (.=), FromJSON(..), Value(..))
-import Data.Aeson.TH (mkParseJSON, mkToJSON)
+import Data.Aeson ( object, (.=), FromJSON(..), Value(..), ToJSON(..))
+import Data.Aeson.TH (mkParseJSON)
 import Data.HashMap.Strict (insert)
 import Data.Maybe (fromMaybe)
 import Data.String (IsString(fromString))
@@ -29,7 +29,7 @@ listImagesH config = do
   imageName <- parseMaybeString "name"
   images <- liftIO $ CD.withDB (database config) $ MI.listImages imageName
   S.status status200
-  S.json $ object [ "images" .= (map (fromObject . encodeImageReply) images)
+  S.json $ object [ "images" .= (map (fromObject . toJSON) images)
                   , "schema" .= ("/v2/schemas/images" :: String)
                   , "first" .= ("/v2/images" :: String)]
 
@@ -68,11 +68,9 @@ instance FromJSON ImageCreateRequest where
 
 parseIcr = $(mkParseJSON underscoreOptions ''ImageCreateRequest)
 
-encodeImageReply = $(mkToJSON underscoreOptions ''MI.Image)
-
 produceImageJson :: MI.Image -> Value
 produceImageJson (image@MI.Image{..})
   = Object
         $ insert "self" (String $ fromString $ "/v2/images/" ++ (show _id))
         $ insert "schema" (String $ "/v2/schemas/image")
-        $ fromObject $ encodeImageReply image
+        $ fromObject $ toJSON image
