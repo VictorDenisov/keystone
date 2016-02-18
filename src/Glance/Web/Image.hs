@@ -15,7 +15,7 @@ import Data.String (IsString(fromString))
 import Glance.Config (GlanceConfig(database))
 --import Glance.Model.Image (createImage)
 import Glance.Web.Image.Types (ImageCreateRequest(..))
-import Network.HTTP.Types.Status (status200, status404)
+import Network.HTTP.Types.Status (status200, status204, status404)
 import Web.Common (ActionM, parseRequest, parseId, parseMaybeString)
 
 import qualified Error as E
@@ -60,6 +60,7 @@ uploadImageH config = do
     (iid :: M.ObjectId) <- parseId "iid"
     s <- S.body
     liftIO $ LB.writeFile (show iid) s
+    S.status status204
 
 newRequestToImage :: ImageCreateRequest -> IO MI.Image
 newRequestToImage ImageCreateRequest{..} = do
