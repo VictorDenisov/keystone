@@ -45,7 +45,7 @@ main = do
   (config :: GlanceConfig) <- readConfig confFileName
   let logFormatter = simpleLogFormatter "$utcTime (pid $pid, $tid) $prio: $msg"
   stdoutHandler <- streamHandler stdout (logLevel config)
-  fileHandler <- fileHandler "keystone.log" (logLevel config)
+  fileHandler <- fileHandler "glance.log" (logLevel config)
   removeAllHandlers
   updateGlobalLogger loggerName $ setLevel (logLevel config) . setHandlers
     [ setFormatter stdoutHandler logFormatter
