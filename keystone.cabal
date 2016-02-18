@@ -21,6 +21,7 @@ executable nova
                      , Config
                      , Error
                      , Nova.Config
+                     , Nova.Web.Version
   build-depends:       base >=4.7 && <4.9
                      , aeson  == 0.7.0.4
                      , bson == 0.3.1

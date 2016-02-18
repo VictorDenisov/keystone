@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main
 where
 
@@ -15,6 +16,7 @@ import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import Nova.Config (confFileName, NovaConfig(..))
+import Nova.Web.Version (listVersionsH)
 import System.IO (stdout)
 import System.Log.Formatter (simpleLogFormatter)
 import System.Log.Handler (setFormatter)
@@ -73,6 +75,7 @@ application policy config = do
         S.json $ e {E.message = "Internal error. Server time - " ++ (show time)}
       _ -> do
         S.json e
+  S.get   "/"                                   $ listVersionsH                config
 
 verifyDatabase :: NovaConfig -> IO ()
 verifyDatabase NovaConfig{..} = return () -- TODO
