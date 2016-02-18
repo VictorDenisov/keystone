@@ -62,6 +62,13 @@ uploadImageH config = do
     liftIO $ LB.writeFile (show iid) s
     S.status status204
 
+downloadImageH :: (Functor m, MonadIO m) => GlanceConfig -> ActionM m ()
+downloadImageH config = do
+  (iid :: M.ObjectId) <- parseId "iid"
+  S.setHeader "Content-Type" "application/octet-stream"
+  S.status status200
+  S.file $ show iid
+
 newRequestToImage :: ImageCreateRequest -> IO MI.Image
 newRequestToImage ImageCreateRequest{..} = do
   imageId <- M.genObjectId
