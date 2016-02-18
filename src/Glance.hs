@@ -64,7 +64,7 @@ main = do
                       (keyFile config)
 
   let serverSettings = setPort (port config) defaultSettings
-  noticeM loggerName "Starting web server"
+  noticeM loggerName $ "Starting web server on port " ++ (show $ port config)
   case serverType config of
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
