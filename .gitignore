@@ -1,6 +1,7 @@
 dist/
 cabal.sandbox.config
 .cabal-sandbox/
+.stack-work/
 keystone.log
 keystone.conf
 tags
