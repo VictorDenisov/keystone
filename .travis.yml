@@ -1,5 +1,5 @@
 # See https://github.com/hvr/multi-ghc-travis for more information.
-sudo: false
+sudo: true
 
 language: c
 
@@ -17,7 +17,7 @@ env:
 
 matrix:
   allow_failures:
-    - ARGS="--resolver nightly"
+  - env: ARGS="--resolver nightly"
 
 
 before_install:
@@ -25,9 +25,25 @@ before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+# Install openstack client
+- travis_retry sudo apt-get install python-pip
+- sudo pip install python-openstackclient
 
-script: stack $ARGS --no-terminal --install-ghc test --haddock
+script:
+- stack $ARGS --no-terminal --install-ghc test --haddock
+- stack $ARGS --no-terminal --install-ghc sdist
+- stack $ARGS --no-terminal --install-ghc exec keystone&
+- sleep 5
+- cd tests
+- ./run_openstack_tests.sh
 
 cache:
   directories:
     - $HOME/.stack
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/92e3f35d91084ee2b8ce
+    on_success: change  # options: [always|never|change] default: always
+    on_failure: always  # options: [always|never|change] default: always
+    on_start: never     # options: [always|never|change] default: always
