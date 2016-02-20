@@ -1,69 +1,28 @@
 # See https://github.com/hvr/multi-ghc-travis for more information.
+sudo: false
+
+language: c
 
 services:
   - mongodb
 
-env:
- # We use CABALVER=1.22 everywhere because it uses the flag --enable-coverage
- # instead of --enable-library-coverage used by older versions.
- - GHCVER=7.8.4  CABALVER=1.22
-   #- GHCVER=7.10.1 CABALVER=1.22
-   #- GHCVER=head   CABALVER=head
+addons:
+  apt:
+    packages:
+    - libgmp-dev
 
-matrix:
-  allow_failures:
-   # The text here should match the last line above exactly.
-   #- env: GHCVER=7.10.1 CABALVER=1.22
-   #- env: GHCVER=head   CABALVER=head
+env:
+- ARGS="--resolver lts"
+- ARGS="--resolver nightly"
 
 before_install:
- - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
- - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install python-pip
- - sudo pip install python-openstackclient
- - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
- - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
- - cabal --version
+# Download and unpack the stack executable
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
-install:
- - travis_retry cabal update
- # Install the combined dependencies for this package and all other packages
- # needed to reduce conflicts.
- - mv cabal.config cabal.config.bak
- - cabal install hpc-coveralls
- - mv cabal.config.bak cabal.config
- - cabal sandbox init
- - cabal install --only-dependencies --enable-tests . hpc-coveralls
+script: stack $ARGS --no-terminal --install-ghc test --haddock
 
-script:
- - cabal configure --enable-tests --enable-coverage -v2
- - cabal build
- # cabal test fails due a to hpc error. Using run-cabal-test instead.
- # - cabal test --show-details=always
- - run-cabal-test --show-details=always
- # Ignoring the exit code here. Need to register with coveralls.io?
- - hpc-coveralls --exclude-dir=test test || true
- # Ignoring the exit code here. cabal check recommends against
- # 'ghc-prof-options: -auto-all'.
- - cabal check || true
- - cabal sdist
- - dist/build/keystone/keystone&
- - sleep 5
- - cd tests
- - ./run_openstack_tests.sh
-   #- export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}');
-   #cd dist/;
-   #if [ -f "$SRC_TGZ" ]; then
-   #cabal install "$SRC_TGZ";
-   #else
-   #echo "expected '$SRC_TGZ' not found";
-   #exit 1;
-   #fi
-
-notifications:
-  webhooks:
-    urls:
-      - https://webhooks.gitter.im/e/92e3f35d91084ee2b8ce
-    on_success: change  # options: [always|never|change] default: always
-    on_failure: always  # options: [always|never|change] default: always
-    on_start: never     # options: [always|never|change] default: always
+cache:
+  directories:
+    - $HOME/.stack
