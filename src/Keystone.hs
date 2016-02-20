@@ -77,10 +77,10 @@ main = do
   app <- case ldap config of
     Nothing -> do
       let runMongo = runMongoBackend $ database config
-      S.scottyAppT runMongo runMongo (application policy config)
+      S.scottyAppT runMongo (application policy config)
     Just ldapConfig -> do
       let runLdap = runLdapBackend $ ldapConfig
-      S.scottyAppT runLdap runLdap (application policy config)
+      S.scottyAppT runLdap (application policy config)
 
   let settings = tlsSettings
                       (certificateFile config)

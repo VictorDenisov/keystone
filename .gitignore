@@ -1,6 +1,7 @@
 dist/
 cabal.sandbox.config
 .cabal-sandbox/
+.stack-work/
 keystone.log
 glance.log
 nova.log

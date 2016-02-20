@@ -19,39 +19,62 @@ executable nova
   main-is:             Nova.hs
   other-modules:       Common
                      , Config
+                     , Data.Bson.Mapping
                      , Error
+                     , Keystone.Config
+                     , Keystone.Model.Assignment
                      , Nova.Config
                      , Nova.Web.Version
+                     , Keystone.Model.Assignment
+                     , Model.Common
+                     , Keystone.Config
+                     , Keystone.Model.Domain
+                     , Keystone.Model.IdentityApi
+                     , Keystone.Model.Ldap.IdentityApi
+                     , Keystone.Model.Ldap.User
+                     , Model.Mongo.Common
+                     , Keystone.Model.Mongo.IdentityApi
+                     , Keystone.Model.Mongo.User
+                     , Keystone.Model.Project
+                     , Keystone.Model.Role
+                     , Keystone.Model.Service
+                     , Keystone.Model.Service.Types
+                     , Keystone.Model.Token
+                     , Keystone.Model.User
+                     , Keystone.Web.Assignment
+                     , Keystone.Web.Auth
+                     , Keystone.Web.Auth.Types
+                     , Web.Common
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.7.0.4
-                     , bson == 0.3.1
-                     , bytestring == 0.10.4.0
-                     , data-default == 0.5.3
-                     , exceptions == 0.8.0.2
-                     , hashable == 1.2.2.0
-                     , hslogger == 1.2.8
-                     , http-types == 0.8.6
-                     , LDAP == 0.6.10
-                     , monad-control == 1.0.0.4
-                     , mongoDB == 2.0.7
-                     , mtl == 2.2.1
-                     , pwstore-fast == 2.4.4
-                     , resourcet == 1.1.4.1
-                     , resource-pool == 0.2.3.2
-                     , scotty == 0.9.1
-                     , split == 0.2.2
-                     , template-haskell == 2.9.0.0
-                     , th-lift == 0.7.2
-                     , text == 1.1.0.0
-                     , time == 1.4.2
-                     , transformers == 0.4.3.0
-                     , transformers-base == 0.4.4
-                     , unordered-containers == 0.2.4.0
-                     , vector == 0.10.9.1
-                     , yaml == 0.8.10.1
-                     , wai == 3.0.2.3
-                     , warp == 3.0.9.3
-                     , warp-tls == 3.0.3
+                     , aeson  == 0.9.*
+                     , bson == 0.3.*
+                     , bytestring == 0.10.*
+                     , data-default == 0.5.*
+                     , exceptions == 0.8.*
+                     , hashable == 1.2.*
+                     , hslogger == 1.2.*
+                     , http-types == 0.9.*
+                     , LDAP == 0.6.*
+                     , monad-control == 1.0.*
+                     , mongoDB == 2.0.*
+                     , mtl == 2.2.*
+                     , pwstore-fast == 2.4.*
+                     , resourcet == 1.1.*
+                     , resource-pool == 0.2.*
+                     , scotty == 0.10.*
+                     , split == 0.2.*
+                     , template-haskell == 2.10.*
+                     , th-lift == 0.7.*
+                     , text == 1.2.*
+                     , time == 1.5.*
+                     , transformers == 0.4.*
+                     , transformers-base == 0.4.*
+                     , unordered-containers == 0.2.*
+                     , vector == 0.11.*
+                     , yaml == 0.8.*
+                     , wai == 3.2.*
+                     , warp == 3.2.*
+                     , warp-tls == 3.2.*
   hs-source-dirs:      src
   ghc-options:
       -fwarn-unused-imports
@@ -65,40 +88,60 @@ executable glance
   main-is:             Glance.hs
   other-modules:       Common
                      , Config
+                     , Data.Bson.Mapping
                      , Error
+                     , Glance.Config
+                     , Glance.Model.Image
+                     , Glance.Web.Image.Types
                      , Glance.Web.Image
                      , Glance.Web.Schema
                      , Glance.Web.Version
+                     , Keystone.Config
+                     , Keystone.Model.Assignment
+                     , Keystone.Model.Domain
+                     , Keystone.Model.IdentityApi
+                     , Keystone.Model.Mongo.User
+                     , Keystone.Model.Project
+                     , Keystone.Model.Role
+                     , Keystone.Model.Service
+                     , Keystone.Model.Service.Types
+                     , Keystone.Model.Token
+                     , Keystone.Model.User
+                     , Keystone.Web.Auth
+                     , Keystone.Web.Auth.Types
+                     , Model.Common
+                     , Model.Mongo.Common
+                     , Web.Common
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.7.0.4
-                     , bson == 0.3.1
-                     , bytestring == 0.10.4.0
-                     , data-default == 0.5.3
-                     , exceptions == 0.8.0.2
-                     , hashable == 1.2.2.0
-                     , hslogger == 1.2.8
-                     , http-types == 0.8.6
-                     , LDAP == 0.6.10
-                     , monad-control == 1.0.0.4
-                     , mongoDB == 2.0.7
-                     , mtl == 2.2.1
-                     , pwstore-fast == 2.4.4
-                     , resourcet == 1.1.4.1
-                     , resource-pool == 0.2.3.2
-                     , scotty == 0.9.1
-                     , split == 0.2.2
-                     , template-haskell == 2.9.0.0
-                     , th-lift == 0.7.2
-                     , text == 1.1.0.0
-                     , time == 1.4.2
-                     , transformers == 0.4.3.0
-                     , transformers-base == 0.4.4
-                     , unordered-containers == 0.2.4.0
-                     , vector == 0.10.9.1
-                     , yaml == 0.8.10.1
-                     , wai == 3.0.2.3
-                     , warp == 3.0.9.3
-                     , warp-tls == 3.0.3
+                     , aeson == 0.9.*
+                     , bson == 0.3.*
+                     , bytestring == 0.10.*
+                     , data-default == 0.5.*
+                     , exceptions == 0.8.*
+                     , hashable == 1.2.*
+                     , hslogger == 1.2.*
+                     , http-types == 0.9.*
+                     , LDAP == 0.6.*
+                     , monad-control == 1.0.*
+                     , mongoDB == 2.0.*
+                     , mtl == 2.2.*
+                     , pwstore-fast == 2.4.*
+                     , resourcet == 1.1.*
+                     , resource-pool == 0.2.*
+                     , scotty == 0.10.*
+                     , split == 0.2.*
+                     , template-haskell == 2.10.*
+                     , th-lift == 0.7.*
+                     , text == 1.2.*
+                     , time == 1.5.*
+                     , transformers == 0.4.*
+                     , transformers-base == 0.4.*
+                     , unordered-containers == 0.2.*
+                     , vector == 0.11.*
+                     , yaml == 0.8.*
+                     , wai == 3.2.*
+                     , warp == 3.2.*
+                     , warp-tls == 3.2.*
   hs-source-dirs:      src
   ghc-options:
       -fwarn-unused-imports
@@ -120,8 +163,10 @@ executable keystone
                      , Keystone.Model.Domain
                      , Keystone.Model.IdentityApi
                      , Keystone.Model.Ldap.IdentityApi
+                     , Keystone.Model.Ldap.User
                      , Model.Mongo.Common
                      , Keystone.Model.Mongo.IdentityApi
+                     , Keystone.Model.Mongo.User
                      , Keystone.Model.Project
                      , Keystone.Model.Role
                      , Keystone.Model.Service
@@ -145,35 +190,35 @@ executable keystone
                      , Keystone.Web.Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.7.0.4
-                     , bson == 0.3.1
-                     , bytestring == 0.10.4.0
-                     , data-default == 0.5.3
-                     , exceptions == 0.8.0.2
-                     , hashable == 1.2.2.0
-                     , hslogger == 1.2.8
-                     , http-types == 0.8.6
-                     , LDAP == 0.6.10
-                     , monad-control == 1.0.0.4
-                     , mongoDB == 2.0.7
-                     , mtl == 2.2.1
-                     , pwstore-fast == 2.4.4
-                     , resourcet == 1.1.4.1
-                     , resource-pool == 0.2.3.2
-                     , scotty == 0.9.1
-                     , split == 0.2.2
-                     , template-haskell == 2.9.0.0
-                     , th-lift == 0.7.2
-                     , text == 1.1.0.0
-                     , time == 1.4.2
-                     , transformers == 0.4.3.0
-                     , transformers-base == 0.4.4
-                     , unordered-containers == 0.2.4.0
-                     , vector == 0.10.9.1
-                     , yaml == 0.8.10.1
-                     , wai == 3.0.2.3
-                     , warp == 3.0.9.3
-                     , warp-tls == 3.0.3
+                     , aeson  == 0.9.*
+                     , bson == 0.3.*
+                     , bytestring == 0.10.*
+                     , data-default == 0.5.*
+                     , exceptions == 0.8.*
+                     , hashable == 1.2.*
+                     , hslogger == 1.2.*
+                     , http-types == 0.9.*
+                     , LDAP == 0.6.*
+                     , monad-control == 1.0.*
+                     , mongoDB == 2.0.*
+                     , mtl == 2.2.*
+                     , pwstore-fast == 2.4.*
+                     , resourcet == 1.1.*
+                     , resource-pool == 0.2.*
+                     , scotty == 0.10.*
+                     , split == 0.2.*
+                     , template-haskell == 2.10.*
+                     , th-lift == 0.7.*
+                     , text == 1.2.*
+                     , time == 1.5.*
+                     , transformers == 0.4.*
+                     , transformers-base == 0.4.*
+                     , unordered-containers == 0.2.*
+                     , vector == 0.11.*
+                     , yaml == 0.8.*
+                     , wai == 3.2.*
+                     , warp == 3.2.*
+                     , warp-tls == 3.2.*
   hs-source-dirs:      src
   ghc-options:
       -fwarn-unused-imports
