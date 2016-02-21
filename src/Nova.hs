@@ -8,9 +8,16 @@ where
 import Common (loggerName)
 import Config (readConfig, ServerType(..))
 import Control.Exception (catch, SomeException)
+import Control.Concurrent (forkIO)
+import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
+import Control.Monad (forever)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.Time.Clock (getCurrentTime)
+import Network.Socket ( getAddrInfo, addrAddress, addrFamily, withSocketsDo
+                      , defaultProtocol, bindSocket, listen, accept
+                      , AddrInfo(..), AddrInfoFlag(AI_PASSIVE), socket
+                      , defaultHints, SocketType(Stream))
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -29,6 +36,7 @@ import qualified Error as E
 import qualified Keystone.Web.Auth as A
 import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
+import qualified Nova.Compute as NC
 
 main = do
   (config :: NovaConfig) <- readConfig confFileName
@@ -42,6 +50,8 @@ main = do
     ]
 
   -- Add verify database
+
+  forkIO $ computeServer
 
   !policy <- A.loadPolicy
   -- ^ bang pattern is because we want to know if the policy is correct now
@@ -59,6 +69,28 @@ main = do
   case serverType config of
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
+
+computeServer :: IO ()
+computeServer = withSocketsDo $ do
+    addrinfos <- getAddrInfo
+                 (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                 Nothing
+                 (Just "13000")
+    let serveraddr = head addrinfos
+
+    sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+
+    bindSocket sock (addrAddress serveraddr)
+    
+    agentList <- newMVar []
+
+    listen sock 5
+
+    forever $ do
+      (clientSocket, clientAddr) <- accept sock
+      agent <- NC.handshake clientSocket
+      modifyMVar_ agentList $ \list -> return $ agent : list
+      withMVar agentList $ putStrLn . show
 
 application :: AT.Policy
             -> NovaConfig

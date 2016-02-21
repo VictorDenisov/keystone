@@ -3,14 +3,14 @@
 
 name:                keystone
 version:             0.1.0.0
-synopsis:            Replacement of openstack keystone project
+synopsis:            Replacement of openstack project
 -- description:
 license:             GPL-2
 license-file:        LICENSE
 author:              Victor Denisov
 maintainer:          denisovenator@gmail.com
--- copyright:
--- category:
+copyright:           Victor Denisov
+category:            cloud
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
 cabal-version:       >=1.10
@@ -24,6 +24,7 @@ executable nova
                      , Keystone.Config
                      , Keystone.Model.Assignment
                      , Nova.Config
+                     , Nova.Compute
                      , Nova.Web.Version
                      , Keystone.Model.Assignment
                      , Model.Common
@@ -58,6 +59,7 @@ executable nova
                      , monad-control == 1.0.*
                      , mongoDB == 2.0.*
                      , mtl == 2.2.*
+                     , network == 2.6.*
                      , pwstore-fast == 2.4.*
                      , resourcet == 1.1.*
                      , resource-pool == 0.2.*
