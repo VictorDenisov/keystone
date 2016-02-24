@@ -47,6 +47,7 @@ executable nova
                      , Keystone.Web.Auth.Types
                      , Web.Common
   build-depends:       base >=4.7 && <4.9
+                     , binary == 0.7.*
                      , aeson  == 0.9.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*

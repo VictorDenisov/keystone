@@ -7,17 +7,23 @@ where
 
 import Common (loggerName)
 import Config (readConfig, ServerType(..))
+import Control.Applicative ((<$>))
 import Control.Exception (catch, SomeException)
 import Control.Concurrent (forkIO)
+import Control.Concurrent.Chan (Chan, writeChan, newChan)
 import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
 import Control.Monad (forever)
 import Control.Monad.IO.Class (MonadIO(liftIO))
+import Data.Aeson (decode)
+import Data.Binary.Get (runGet, getWord32be)
 import Data.ByteString.Lazy.Char8 (pack)
+import Data.IORef (newIORef, modifyIORef)
 import Data.Time.Clock (getCurrentTime)
 import Network.Socket ( getAddrInfo, addrAddress, addrFamily, withSocketsDo
                       , defaultProtocol, bindSocket, listen, accept
                       , AddrInfo(..), AddrInfoFlag(AI_PASSIVE), socket
-                      , defaultHints, SocketType(Stream))
+                      , defaultHints, SocketType(Stream), Socket)
+import Network.Socket.ByteString (recv)
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -37,6 +43,8 @@ import qualified Keystone.Web.Auth as A
 import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 import qualified Nova.Compute as NC
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy as BSN
 
 main = do
   (config :: NovaConfig) <- readConfig confFileName
@@ -72,25 +80,57 @@ main = do
 
 computeServer :: IO ()
 computeServer = withSocketsDo $ do
-    addrinfos <- getAddrInfo
-                 (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                 Nothing
-                 (Just "13000")
-    let serveraddr = head addrinfos
+  addrinfos <- getAddrInfo
+               (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+               Nothing
+               (Just "13000")
+  let serveraddr = head addrinfos
 
-    sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+  sock <- socket (addrFamily serveraddr) Stream defaultProtocol
 
-    bindSocket sock (addrAddress serveraddr)
-    
-    agentList <- newMVar []
+  bindSocket sock (addrAddress serveraddr)
 
-    listen sock 5
+  agentList <- newMVar []
 
-    forever $ do
-      (clientSocket, clientAddr) <- accept sock
-      agent <- NC.handshake clientSocket
-      modifyMVar_ agentList $ \list -> return $ agent : list
-      withMVar agentList $ putStrLn . show
+  listen sock 5
+
+  (messageChannel :: Chan NC.Message) <- newChan
+
+  forever $ do
+    (clientSocket, clientAddr) <- accept sock
+    agent <- NC.handshake clientSocket
+    modifyMVar_ agentList $ \list -> return $ agent : list
+    withMVar agentList $ putStrLn . show
+    forkIO $ threadReader (NC.socket agent) messageChannel
+
+threadReader :: Socket -> Chan NC.Message -> IO ()
+threadReader sock channel = do
+  forever $ do
+    m <- readMessage sock
+    case m of
+      Nothing -> return ()
+      Just v  -> writeChan channel v
+
+readMessage :: Socket -> IO (Maybe NC.Message)
+readMessage s = do
+  ls <- recvFixedLen s 4 ""
+  let len = runGet getWord32be ls
+  messageString <- recvFixedLen s (fromIntegral len) ""
+  case decode messageString of
+    Nothing -> do
+      errorM loggerName $ "Unknown message from compute node: " ++ (show messageString)
+      return Nothing
+    Just ms -> return $ Just ms
+
+recvFixedLen :: Socket -> Int -> BSN.ByteString -> IO BSN.ByteString
+recvFixedLen s len lastString = do
+  res <- BSN.fromStrict <$> recv s len
+  let fullString = (lastString `BSN.append` res)
+  if BSN.length fullString < (fromIntegral len)
+    then
+      recvFixedLen s (len - (fromIntegral $ BSN.length res)) fullString
+    else
+      return fullString
 
 application :: AT.Policy
             -> NovaConfig
