@@ -10,6 +10,33 @@ Tested with mongodb version 3.0.3 mmapv2
 Documentation
 =============
 
+Building
+--------
+
+This project uses stack (http://www.haskellstack.org) for building. First of all
+you need to install stack. Follow instruction on this page
+http://docs.haskellstack.org/en/stable/README/ for installing stack.
+
+Once you have stack installed run:
+
+> $ stack setup
+
+This command will download and install in an isolated environment your tool
+chain - ghc compiler and base library.
+
+When you are done installing your ghc compiler you need to build the project:
+
+> $ stack build
+
+It can take some time to build the project since it builds all the libraries the
+project depends on. When the build step is completed run:
+
+> $ stack exec keystone
+
+for running the keystone binary itself. You may need to install mongodb server,
+database will be created automatically. Default configuration files is all you
+need for development mode.
+
 API Version
 -----------
 
