@@ -15,8 +15,32 @@ build-type:          Simple
 extra-source-files:  CHANGELOG.md
 cabal-version:       >=1.10
 
+executable test-agent
+  main-is:             TestAgent.hs
+  other-modules:       Common
+                     , Nova.Compute
+  build-depends:       base >=4.7 && <4.9
+                     , aeson  == 0.9.*
+                     , binary == 0.7.*
+                     , bson == 0.3.*
+                     , bytestring == 0.10.*
+                     , network == 2.6.*
+                     , scotty == 0.10.*
+                     , split == 0.2.*
+                     , text == 1.2.*
+  hs-source-dirs:      src
+  ghc-options:
+      -fwarn-unused-imports
+ --   -O2
+ --   -threaded
+ --   -fprof-auto
+ --   "-with-rtsopts=-N -p -s -h -i0.1"
+  default-language:    Haskell2010
+
 executable compute-agent
   main-is:             ComputeAgent.hs
+  other-modules:       Common
+                     , Nova.Compute
   build-depends:       base >=4.7 && <4.9
                      , aeson  == 0.9.*
                      , binary == 0.7.*

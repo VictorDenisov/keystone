@@ -10,7 +10,7 @@ import Config (readConfig, ServerType(..))
 import Control.Applicative ((<$>))
 import Control.Exception (catch, SomeException)
 import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan (Chan, writeChan, newChan)
+import Control.Concurrent.Chan (Chan, writeChan, newChan, readChan)
 import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
 import Control.Monad (forever)
 import Control.Monad.IO.Class (MonadIO(liftIO))
@@ -96,12 +96,20 @@ computeServer = withSocketsDo $ do
 
   (messageChannel :: Chan NC.Message) <- newChan
 
+  forkIO $ messagePrinter messageChannel
+
   forever $ do
     (clientSocket, clientAddr) <- accept sock
     agent <- NC.handshake clientSocket
     modifyMVar_ agentList $ \list -> return $ agent : list
     withMVar agentList $ putStrLn . show
     forkIO $ threadReader (NC.socket agent) messageChannel
+
+messagePrinter :: Chan NC.Message -> IO ()
+messagePrinter chan = do
+  forever $ do
+    m <- readChan chan
+    putStrLn $ show m
 
 threadReader :: Socket -> Chan NC.Message -> IO ()
 threadReader sock channel = do
