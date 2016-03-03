@@ -113,7 +113,8 @@ threadReader sock channel = do
   (forever $ do
       m <- readMessage sock
       case m of
-        Nothing -> return ()
+        Nothing -> do
+          errorM loggerName $ "Failed to read message. Continuing..."
         Just v  -> writeChan channel v
    ) `catch` (
       \(e :: SomeException) -> do
