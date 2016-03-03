@@ -13,15 +13,12 @@ import Control.Concurrent.Chan (Chan, writeChan, newChan, readChan)
 import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
 import Control.Monad (forever)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Data.Aeson (decode)
-import Data.Binary.Get (runGet, getWord32be)
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.Time.Clock (getCurrentTime)
 import Network.Socket ( getAddrInfo, addrAddress, addrFamily, withSocketsDo
                       , defaultProtocol, bindSocket, listen, accept
                       , AddrInfo(..), AddrInfoFlag(AI_PASSIVE), socket
                       , defaultHints, SocketType(Stream), Socket)
-import Network.Socket.ByteString (recv)
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -41,7 +38,6 @@ import qualified Keystone.Web.Auth as A
 import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 import qualified Nova.Compute as NC
-import qualified Data.ByteString.Lazy as BSN
 
 main = do
   (config :: NovaConfig) <- readConfig confFileName
@@ -111,7 +107,7 @@ messagePrinter chan = do
 threadReader :: Socket -> Chan NC.Message -> IO ()
 threadReader sock channel = do
   (forever $ do
-      m <- readMessage sock
+      m <- NC.readMessage sock
       case m of
         Nothing -> do
           errorM loggerName $ "Failed to read message. Continuing..."
@@ -120,29 +116,6 @@ threadReader sock channel = do
       \(e :: SomeException) -> do
         errorM loggerName $ "Caught exception in thread reader: " ++ (show e)
     )
-
-readMessage :: Socket -> IO (Maybe NC.Message)
-readMessage s = do
-  ls <- recvFixedLen s 4 ""
-  let len = runGet getWord32be ls
-  debugM loggerName $ "Received len: " ++ (show len)
-  messageString <- recvFixedLen s (fromIntegral len) ""
-  debugM loggerName $ "Received message string: " ++ (show messageString)
-  case decode messageString of
-    Nothing -> do
-      errorM loggerName $ "Unknown message from compute node: " ++ (show messageString)
-      return Nothing
-    Just ms -> return $ Just ms
-
-recvFixedLen :: Socket -> Int -> BSN.ByteString -> IO BSN.ByteString
-recvFixedLen s len lastString = do
-  res <- BSN.fromStrict <$> recv s len
-  let fullString = (lastString `BSN.append` res)
-  if (BSN.length fullString < (fromIntegral len)) && (BSN.length res > 0)
-    then
-      recvFixedLen s (len - (fromIntegral $ BSN.length res)) fullString
-    else
-      return fullString
 
 application :: AT.Policy
             -> NovaConfig
