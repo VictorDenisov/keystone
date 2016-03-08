@@ -11,7 +11,7 @@ import Control.Exception (catch, SomeException)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan (Chan, writeChan, newChan, readChan)
 import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
-import Control.Monad (forever)
+import Control.Monad (forever, void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.Time.Clock (getCurrentTime)
@@ -93,10 +93,15 @@ computeServer = withSocketsDo $ do
 
   forever $ do
     (clientSocket, clientAddr) <- accept sock
-    agent <- NC.handshake clientSocket
-    modifyMVar_ agentList $ \list -> return $ agent : list
-    withMVar agentList $ putStrLn . show
-    forkIO $ threadReader (NC.socket agent) messageChannel
+    mAgent <- NC.handshake clientSocket
+    case mAgent of
+      Just agent -> do
+        modifyMVar_ agentList $ \list -> return $ agent : list
+        withMVar agentList $ putStrLn . show
+        void $ forkIO $ threadReader (NC.socket agent) messageChannel
+      Nothing -> do
+        errorM loggerName $ "Failed to handshake with remote client: " ++ (show clientAddr)
+
 
 messagePrinter :: Chan NC.Message -> IO ()
 messagePrinter chan = do

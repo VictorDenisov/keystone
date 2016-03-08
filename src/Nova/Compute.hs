@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Nova.Compute
 where
@@ -20,15 +21,18 @@ data ComputeAgent = ComputeAgent
                   , agentName :: String
                   } deriving (Show, Eq)
 
-
 data Message = HelloMessage
              { name :: String
              } deriving (Show, Read, Eq, Typeable, Ord)
 
 $(deriveJSON underscoreOptions ''Message)
 
-handshake :: Socket -> IO ComputeAgent
-handshake s = return $ ComputeAgent s "test"
+handshake :: Socket -> IO (Maybe ComputeAgent)
+handshake s = do
+  m <- readMessage s
+  case m of
+    Nothing -> return Nothing
+    Just v  -> return $ Just $ ComputeAgent s $ name v
 
 readMessage :: Socket -> IO (Maybe Message)
 readMessage s = do
