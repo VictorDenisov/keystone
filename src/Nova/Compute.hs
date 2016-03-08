@@ -22,8 +22,12 @@ data ComputeAgent = ComputeAgent
                   } deriving (Show, Eq)
 
 data Message = HelloMessage
-             { name :: String
-             } deriving (Show, Read, Eq, Typeable, Ord)
+               { name :: String
+               }
+             | StartInstance
+               { instanceName :: String
+               }
+               deriving (Show, Read, Eq, Typeable, Ord)
 
 $(deriveJSON underscoreOptions ''Message)
 
