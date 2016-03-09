@@ -100,7 +100,11 @@ computeServer = withSocketsDo $ do
         void $ forkIO $ do
           modifyMVar_ agentList $ \list -> return $ agent : list
           withMVar agentList $ putStrLn . show
-          threadReader (NC.socket agent) messageChannel
+          (threadReader (NC.socket agent) messageChannel)
+           `catch` (
+               \(e :: SomeException) ->
+                  errorM loggerName $ "Caught exception in thread reader: " ++ (show e)
+           )
           modifyMVar_ agentList $ \list -> return $ delete agent list
           withMVar agentList $ putStrLn . show
       Nothing -> do
@@ -115,17 +119,13 @@ messagePrinter chan = do
 
 threadReader :: Socket -> Chan NC.Message -> IO ()
 threadReader sock channel = do
-  (forever $ do
-      m <- NC.readMessage sock
-      case m of
-        Nothing -> do
-          errorM loggerName $ "Failed to read message."
-          fail "Failed to read message. Can't proceed."
-        Just v  -> writeChan channel v
-   ) `catch` (
-      \(e :: SomeException) -> do
-        errorM loggerName $ "Caught exception in thread reader: " ++ (show e)
-    )
+  m <- NC.readMessage sock
+  case m of
+    Nothing ->
+      errorM loggerName $ "Failed to read message."
+    Just v  -> do
+      writeChan channel v
+      threadReader sock channel
 
 application :: AT.Policy
             -> NovaConfig
