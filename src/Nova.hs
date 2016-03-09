@@ -14,6 +14,7 @@ import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.ByteString.Lazy.Char8 (pack)
+import Data.List (delete)
 import Data.Time.Clock (getCurrentTime)
 import Network.Socket ( getAddrInfo, addrAddress, addrFamily, withSocketsDo
                       , defaultProtocol, bindSocket, listen, accept
@@ -96,9 +97,12 @@ computeServer = withSocketsDo $ do
     mAgent <- NC.handshake clientSocket
     case mAgent of
       Just agent -> do
-        modifyMVar_ agentList $ \list -> return $ agent : list
-        withMVar agentList $ putStrLn . show
-        void $ forkIO $ threadReader (NC.socket agent) messageChannel
+        void $ forkIO $ do
+          modifyMVar_ agentList $ \list -> return $ agent : list
+          withMVar agentList $ putStrLn . show
+          threadReader (NC.socket agent) messageChannel
+          modifyMVar_ agentList $ \list -> return $ delete agent list
+          withMVar agentList $ putStrLn . show
       Nothing -> do
         errorM loggerName $ "Failed to handshake with remote client: " ++ (show clientAddr)
 
@@ -115,7 +119,8 @@ threadReader sock channel = do
       m <- NC.readMessage sock
       case m of
         Nothing -> do
-          errorM loggerName $ "Failed to read message. Continuing..."
+          errorM loggerName $ "Failed to read message."
+          fail "Failed to read message. Can't proceed."
         Just v  -> writeChan channel v
    ) `catch` (
       \(e :: SomeException) -> do

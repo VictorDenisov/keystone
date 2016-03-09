@@ -41,15 +41,19 @@ handshake s = do
 readMessage :: Socket -> IO (Maybe Message)
 readMessage s = do
   ls <- recvFixedLen s 4 ""
-  let len = runGet getWord32be ls
-  debugM loggerName $ "Received len: " ++ (show len)
-  messageString <- recvFixedLen s (fromIntegral len) ""
-  debugM loggerName $ "Received message string: " ++ (show messageString)
-  case decode messageString of
-    Nothing -> do
-      errorM loggerName $ "Unknown message from compute node: " ++ (show messageString)
+  if (BSN.length ls == 0)
+    then
       return Nothing
-    Just ms -> return $ Just ms
+    else do
+      let len = runGet getWord32be ls
+      debugM loggerName $ "Received len: " ++ (show len)
+      messageString <- recvFixedLen s (fromIntegral len) ""
+      debugM loggerName $ "Received message string: " ++ (show messageString)
+      case decode messageString of
+        Nothing -> do
+          errorM loggerName $ "Unknown message from compute node: " ++ (show messageString)
+          return Nothing
+        Just ms -> return $ Just ms
 
 recvFixedLen :: Socket -> Int -> BSN.ByteString -> IO BSN.ByteString
 recvFixedLen s len lastString = do
