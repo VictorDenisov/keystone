@@ -28,6 +28,7 @@ data Message = HelloMessage
              | StartInstance
                { instanceName :: String
                }
+             | AgentHeartBeat
                deriving (Show, Read, Eq, Typeable, Ord)
 
 $(deriveJSON underscoreOptions ''Message)
