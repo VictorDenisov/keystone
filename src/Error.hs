@@ -17,6 +17,10 @@ data Error = Error
   , message :: String
   } deriving (Show, Typeable)
 
+data MsgError = EndOfStream
+              | ParseFailure
+                deriving (Show, Typeable)
+
 instance S.ScottyError Error where
   stringError = internalError
   showError (Error _ m) = T.pack m

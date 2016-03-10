@@ -10,6 +10,7 @@ import Data.Aeson (decode)
 import Data.Aeson.TH (deriveJSON)
 import Data.Binary.Get (runGet, getWord32be)
 import Data.Data (Typeable)
+import Error (MsgError(..))
 import Network.Socket (Socket)
 import Network.Socket.ByteString (recv)
 import System.Log.Logger (debugM, errorM)
@@ -35,15 +36,15 @@ handshake :: Socket -> IO (Maybe ComputeAgent)
 handshake s = do
   m <- readMessage s
   case m of
-    Nothing -> return Nothing
-    Just v  -> return $ Just $ ComputeAgent s $ name v
+    Left  _ -> return Nothing
+    Right v -> return $ Just $ ComputeAgent s $ name v
 
-readMessage :: Socket -> IO (Maybe Message)
+readMessage :: Socket -> IO (Either MsgError Message)
 readMessage s = do
   ls <- recvFixedLen s 4 ""
   if (BSN.length ls == 0)
     then
-      return Nothing
+      return $ Left EndOfStream
     else do
       let len = runGet getWord32be ls
       debugM loggerName $ "Received len: " ++ (show len)
@@ -52,8 +53,8 @@ readMessage s = do
       case decode messageString of
         Nothing -> do
           errorM loggerName $ "Unknown message from compute node: " ++ (show messageString)
-          return Nothing
-        Just ms -> return $ Just ms
+          return $ Left ParseFailure
+        Just ms -> return $ Right ms
 
 recvFixedLen :: Socket -> Int -> BSN.ByteString -> IO BSN.ByteString
 recvFixedLen s len lastString = do

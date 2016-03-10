@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.List (delete)
 import Data.Time.Clock (getCurrentTime)
+import Error (MsgError(..))
 import Network.Socket ( getAddrInfo, addrAddress, addrFamily, withSocketsDo
                       , defaultProtocol, bindSocket, listen, accept
                       , AddrInfo(..), AddrInfoFlag(AI_PASSIVE), socket
@@ -121,9 +122,11 @@ threadReader :: Socket -> Chan NC.Message -> IO ()
 threadReader sock channel = do
   m <- NC.readMessage sock
   case m of
-    Nothing ->
+    Left ParseFailure ->
       errorM loggerName $ "Failed to read message."
-    Just v  -> do
+    Left EndOfStream ->
+      return ()
+    Right v  -> do
       writeChan channel v
       threadReader sock channel
 

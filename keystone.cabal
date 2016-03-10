@@ -24,7 +24,9 @@ executable test-agent
                      , binary == 0.7.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
+                     , exceptions == 0.8.*
                      , hslogger == 1.2.*
+                     , http-types == 0.9.*
                      , network == 2.6.*
                      , scotty == 0.10.*
                      , split == 0.2.*
@@ -47,7 +49,9 @@ executable compute-agent
                      , binary == 0.7.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
+                     , exceptions == 0.8.*
                      , hslogger == 1.2.*
+                     , http-types == 0.9.*
                      , network == 2.6.*
                      , scotty == 0.10.*
                      , split == 0.2.*
