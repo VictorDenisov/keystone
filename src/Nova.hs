@@ -55,7 +55,9 @@ main = do
 
   -- Add verify database
 
-  forkIO $ computeServer
+  (messageChannel :: Chan NC.Message) <- newChan
+
+  forkIO $ computeServer messageChannel
 
   !policy <- A.loadPolicy
   -- ^ bang pattern is because we want to know if the policy is correct now
@@ -74,8 +76,8 @@ main = do
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
 
-computeServer :: IO ()
-computeServer = withSocketsDo $ do
+computeServer :: Chan NC.Message -> IO ()
+computeServer messageChannel = withSocketsDo $ do
   addrinfos <- getAddrInfo
                (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                Nothing
@@ -89,8 +91,6 @@ computeServer = withSocketsDo $ do
   agentList <- newMVar []
 
   listen sock 5
-
-  (messageChannel :: Chan NC.Message) <- newChan
 
   forkIO $ messagePrinter messageChannel
 
