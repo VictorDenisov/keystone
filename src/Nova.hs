@@ -10,7 +10,7 @@ import Config (readConfig, ServerType(..))
 import Control.Exception (catch, SomeException)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan (Chan, writeChan, newChan, readChan)
-import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar)
+import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar, MVar)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.ByteString.Lazy.Char8 (pack)
@@ -55,9 +55,11 @@ main = do
 
   -- Add verify database
 
+  agentList <- newMVar []
+
   (messageChannel :: Chan NC.Message) <- newChan
 
-  forkIO $ computeServer messageChannel
+  forkIO $ computeServer messageChannel agentList
 
   !policy <- A.loadPolicy
   -- ^ bang pattern is because we want to know if the policy is correct now
@@ -76,8 +78,8 @@ main = do
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
 
-computeServer :: Chan NC.Message -> IO ()
-computeServer messageChannel = withSocketsDo $ do
+computeServer :: Chan NC.Message -> MVar [NC.ComputeAgent] -> IO ()
+computeServer messageChannel agentList = withSocketsDo $ do
   addrinfos <- getAddrInfo
                (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                Nothing
@@ -87,8 +89,6 @@ computeServer messageChannel = withSocketsDo $ do
   sock <- socket (addrFamily serveraddr) Stream defaultProtocol
 
   bindSocket sock (addrAddress serveraddr)
-
-  agentList <- newMVar []
 
   listen sock 5
 
