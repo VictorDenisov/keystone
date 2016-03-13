@@ -55,7 +55,9 @@ executable compute-agent
                      , network == 2.6.*
                      , scotty == 0.10.*
                      , split == 0.2.*
+                     , suspend == 0.2.0.0
                      , text == 1.2.*
+                     , timers == 0.2.0.3
   hs-source-dirs:      src
   ghc-options:
       -fwarn-unused-imports

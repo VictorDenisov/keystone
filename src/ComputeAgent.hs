@@ -5,6 +5,9 @@ import Prelude hiding (length)
 
 import Common (loggerName)
 import Control.Monad (forever)
+import Control.Concurrent (forkIO)
+import Control.Concurrent.Timer (TimerIO, oneShotStart, newTimer)
+import Control.Concurrent.Suspend.Lifted (sDelay)
 import Data.Aeson (encode)
 
 import Data.Binary.Put (runPut, putWord32be)
@@ -17,15 +20,22 @@ import Network.Socket ( Socket, withSocketsDo, getAddrInfo, addrFamily, SocketTy
                       , defaultProtocol, connect, socket, addrAddress)
 
 import System.Log.Logger (debugM, noticeM, errorM)
+import Control.Concurrent.Timer (TimerIO, oneShotStart, newTimer)
 import qualified Nova.Compute as NC
 
-writeMessage :: Socket -> NC.Message -> IO ()
-writeMessage sock msg = do
+heartBeatDelay = sDelay NC.heartBeatTimeout
+
+writeMessage :: TimerIO -> Socket -> NC.Message -> IO ()
+writeMessage timer sock msg = do
   let str = encode msg
   let len = length str
   let lenStr = runPut $ putWord32be $ fromIntegral len
   send sock $ toStrict lenStr
   send sock $ toStrict str
+  forkIO $ do -- We need to rewind the timer in a separate thread, because if we do it in the same thread then oneShotStart will kill the thread that it's running in.
+    putStrLn $ "Winding up timer"
+    startRes <- oneShotStart timer (writeMessage timer sock NC.AgentHeartBeat) heartBeatDelay
+    putStrLn $ "The result of starting timer is: " ++ (show startRes)
   return ()
 
 main :: IO ()
@@ -36,7 +46,8 @@ main = withSocketsDo $ do
   connect sock (addrAddress serverAddr)
   putStrLn $ "Connected waiting to send message"
   l <- getLine
-  writeMessage sock $ NC.HelloMessage "MyTestName"
+  timer <- newTimer
+  writeMessage timer sock $ NC.HelloMessage "MyTestName"
 
   forever $ do
     m <- NC.readMessage sock
@@ -44,7 +55,7 @@ main = withSocketsDo $ do
       Left ParseFailure ->
         errorM loggerName $ "Failed to read message."
       Left EndOfStream ->
-        fail "Can't read messages from the server anymore"
+        fail "Server dropped connection."
       Right v  -> do
         handleMessage v
 

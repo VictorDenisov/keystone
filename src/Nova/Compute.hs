@@ -11,11 +11,15 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Binary.Get (runGet, getWord32be)
 import Data.Data (Typeable)
 import Error (MsgError(..))
+import GHC.Int (Int64)
 import Network.Socket (Socket)
 import Network.Socket.ByteString (recv)
 import System.Log.Logger (debugM, errorM)
 
 import qualified Data.ByteString.Lazy as BSN
+
+heartBeatTimeout :: Int64
+heartBeatTimeout = 10
 
 data ComputeAgent = ComputeAgent
                   { socket :: Socket

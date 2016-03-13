@@ -20,7 +20,7 @@ import Error (MsgError(..))
 import Network.Socket ( getAddrInfo, addrAddress, addrFamily, withSocketsDo
                       , defaultProtocol, bindSocket, listen, accept
                       , AddrInfo(..), AddrInfoFlag(AI_PASSIVE), socket
-                      , defaultHints, SocketType(Stream), Socket)
+                      , defaultHints, SocketType(Stream), Socket, close)
 import Network.HTTP.Types.Status (statusCode, status500)
 import Network.Wai (Middleware, responseLBS)
 import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
@@ -33,6 +33,7 @@ import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple (fileHandler, streamHandler)
 import System.Log.Logger ( setLevel, updateGlobalLogger, setHandlers
                          , removeAllHandlers, debugM, noticeM, errorM)
+import System.Timeout (timeout)
 import Web.Common (ScottyM)
 
 import qualified Error as E
@@ -106,6 +107,7 @@ computeServer = withSocketsDo $ do
                \(e :: SomeException) ->
                   errorM loggerName $ "Caught exception in thread reader: " ++ (show e)
            )
+          close $ NC.socket agent
           modifyMVar_ agentList $ \list -> return $ delete agent list
           withMVar agentList $ putStrLn . show
       Nothing -> do
@@ -120,13 +122,15 @@ messagePrinter chan = do
 
 threadReader :: Socket -> Chan NC.Message -> IO ()
 threadReader sock channel = do
-  m <- NC.readMessage sock
+  m <- timeout (2 * (fromIntegral NC.heartBeatTimeout) * 1000000) $ NC.readMessage sock
   case m of
-    Left ParseFailure ->
+    Nothing ->
+      errorM loggerName $ "Agent didn't respond within specified time."
+    Just (Left ParseFailure) ->
       errorM loggerName $ "Failed to read message."
-    Left EndOfStream ->
+    Just (Left EndOfStream) ->
       return ()
-    Right v  -> do
+    Just (Right v)  -> do
       writeChan channel v
       threadReader sock channel
 
