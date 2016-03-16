@@ -13,6 +13,7 @@ import Control.Concurrent.Chan (Chan, writeChan, newChan, readChan)
 import Control.Concurrent.MVar (newMVar, modifyMVar_, withMVar, MVar)
 import Control.Monad (forever, void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
+import Data.Aeson.Types (Value, object, (.=))
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.List (delete)
 import Data.Time.Clock (getCurrentTime)
@@ -34,13 +35,15 @@ import System.Log.Handler.Simple (fileHandler, streamHandler)
 import System.Log.Logger ( setLevel, updateGlobalLogger, setHandlers
                          , removeAllHandlers, debugM, noticeM, errorM)
 import System.Timeout (timeout)
-import Web.Common (ScottyM)
+import Web.Common (ScottyM, ActionM)
 
 import qualified Error as E
 import qualified Keystone.Web.Auth as A
 import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 import qualified Nova.Compute as NC
+
+type AgentList = MVar [NC.ComputeAgent]
 
 main = do
   (config :: NovaConfig) <- readConfig confFileName
@@ -66,7 +69,7 @@ main = do
   -- ^ we need the evaluation to happen immediatelly
   verifyDatabase config
 
-  app <- S.scottyAppT id (application policy config)
+  app <- S.scottyAppT id (application policy config agentList)
 
   let settings = tlsSettings
                       (certificateFile config)
@@ -78,7 +81,7 @@ main = do
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
 
-computeServer :: Chan NC.Message -> MVar [NC.ComputeAgent] -> IO ()
+computeServer :: Chan NC.Message -> AgentList -> IO ()
 computeServer messageChannel agentList = withSocketsDo $ do
   addrinfos <- getAddrInfo
                (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
@@ -136,8 +139,9 @@ threadReader sock channel = do
 
 application :: AT.Policy
             -> NovaConfig
+            -> AgentList
             -> ScottyM IO ()
-application policy config = do
+application policy config agentList = do
   S.middleware exceptionCatchMiddleware
   S.middleware logRequestResponse
   S.defaultHandler $ \e -> do
@@ -150,6 +154,16 @@ application policy config = do
       _ -> do
         S.json e
   S.get   "/"                                   $ listVersionsH                config
+  S.get   "/v2.1/default/os-hypervisors"        $ listHypervisorsH             config agentList
+
+listHypervisorsH :: (Functor m, MonadIO m) => NovaConfig -> AgentList -> ActionM m ()
+listHypervisorsH config varAgentList = do
+  reply <- liftIO $ withMVar varAgentList $ \agentList ->
+    return $ object ["hypervisors" .= map agentToJson agentList ]
+  S.json reply
+
+agentToJson :: NC.ComputeAgent -> Value
+agentToJson agent = object [ "hypervisor_hostname" .= NC.agentName agent]
 
 verifyDatabase :: NovaConfig -> IO ()
 verifyDatabase NovaConfig{..} = return () -- TODO
