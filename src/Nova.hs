@@ -154,7 +154,7 @@ application policy config agentList = do
       _ -> do
         S.json e
   S.get   "/"                                   $ listVersionsH                config
-  S.get   "/v2.1/default/os-hypervisors"        $ listHypervisorsH             config agentList
+  S.get   "/v2.1/:tenant_id/os-hypervisors"     $ listHypervisorsH             config agentList
 
 listHypervisorsH :: (Functor m, MonadIO m) => NovaConfig -> AgentList -> ActionM m ()
 listHypervisorsH config varAgentList = do
