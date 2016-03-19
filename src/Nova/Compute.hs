@@ -6,6 +6,7 @@ module Nova.Compute
 where
 
 import Common (underscoreOptions, loggerName)
+import Control.Concurrent.MVar (MVar)
 import Data.Aeson (decode)
 import Data.Aeson.TH (deriveJSON)
 import Data.Binary.Get (runGet, getWord32be)
@@ -26,11 +27,15 @@ data ComputeAgent = ComputeAgent
                   , agentName :: String
                   } deriving (Show, Eq)
 
+type AgentList = MVar [ComputeAgent]
+
 data Message = HelloMessage
                { name :: String
                }
              | StartInstance
                { instanceName :: String
+               , imageName    :: String
+               , flavorName   :: String
                }
              | AgentHeartBeat
                deriving (Show, Read, Eq, Typeable, Ord)

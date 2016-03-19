@@ -79,6 +79,7 @@ executable nova
                      , Nova.Config
                      , Nova.Compute
                      , Nova.Web.Version
+                     , Nova.Web.Server
                      , Keystone.Model.Assignment
                      , Model.Common
                      , Keystone.Config

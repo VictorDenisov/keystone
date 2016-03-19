@@ -28,6 +28,7 @@ import Network.Wai.Handler.Warp (defaultSettings, setPort, runSettings)
 import Network.Wai.Handler.WarpTLS (tlsSettings, runTLS)
 import Nova.Config (confFileName, NovaConfig(..))
 import Nova.Web.Version (listVersionsH)
+import Nova.Web.Server (createServerH)
 import System.IO (stdout)
 import System.Log.Formatter (simpleLogFormatter)
 import System.Log.Handler (setFormatter)
@@ -42,8 +43,6 @@ import qualified Keystone.Web.Auth as A
 import qualified Keystone.Web.Auth.Types as AT
 import qualified Web.Scotty.Trans as S
 import qualified Nova.Compute as NC
-
-type AgentList = MVar [NC.ComputeAgent]
 
 main = do
   (config :: NovaConfig) <- readConfig confFileName
@@ -81,7 +80,7 @@ main = do
     Tls   -> runTLS settings serverSettings app
     Plain -> runSettings serverSettings app
 
-computeServer :: Chan NC.Message -> AgentList -> IO ()
+computeServer :: Chan NC.Message -> NC.AgentList -> IO ()
 computeServer messageChannel agentList = withSocketsDo $ do
   addrinfos <- getAddrInfo
                (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
@@ -139,7 +138,7 @@ threadReader sock channel = do
 
 application :: AT.Policy
             -> NovaConfig
-            -> AgentList
+            -> NC.AgentList
             -> ScottyM IO ()
 application policy config agentList = do
   S.middleware exceptionCatchMiddleware
@@ -153,10 +152,12 @@ application policy config agentList = do
         S.json $ e {E.message = "Internal error. Server time - " ++ (show time)}
       _ -> do
         S.json e
-  S.get   "/"                                   $ listVersionsH                config
-  S.get   "/v2.1/:tenant_id/os-hypervisors"     $ listHypervisorsH             config agentList
+  S.get   "/"                               $ listVersionsH    config
+  S.get   "/v2.1/:tenant_id/os-hypervisors" $ listHypervisorsH config agentList
+  S.post  "/v2.1/:tenant_id/servers"        $ createServerH    config agentList
 
-listHypervisorsH :: (Functor m, MonadIO m) => NovaConfig -> AgentList -> ActionM m ()
+listHypervisorsH :: (Functor m, MonadIO m)
+                 => NovaConfig -> NC.AgentList -> ActionM m ()
 listHypervisorsH config varAgentList = do
   reply <- liftIO $ withMVar varAgentList $ \agentList ->
     return $ object ["hypervisors" .= map agentToJson agentList ]
