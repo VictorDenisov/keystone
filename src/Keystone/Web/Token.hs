@@ -45,17 +45,17 @@ issueTokenH :: ( Functor m
 issueTokenH mongoPool config = do
     (au :: AT.AuthRequest) <- parseRequest
     baseUrl <- getBaseUrl config
-    withResource mongoPool $ \connection -> do
-      res <- lift $ mapM (A.authenticate connection (AT.scope au)) (AT.methods au)
-      case head res of
-        Right (tokenId, t) -> do
-          let resp = A.produceTokenResponse t baseUrl
-          S.json resp
-          S.addHeader "X-Subject-Token" (TL.pack tokenId)
-          S.status status200
-        Left errorMessage -> do
-          S.json $ E.unauthorized errorMessage
-          S.status status401
+    res <- withResource mongoPool $ \connection ->
+              lift $ mapM (A.authenticate connection (AT.scope au)) (AT.methods au)
+    case head res of
+      Right (tokenId, t) -> do
+        let resp = A.produceTokenResponse t baseUrl
+        S.json resp
+        S.addHeader "X-Subject-Token" (TL.pack tokenId)
+        S.status status200
+      Left errorMessage -> do
+        S.json $ E.unauthorized errorMessage
+        S.status status401
 
 receiveExistingTokenH :: (Functor m, MonadIO m, IdentityApi m)
               => AT.Policy -> KeystoneConfig -> ActionM m ()
