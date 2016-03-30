@@ -15,6 +15,7 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 import Control.Monad.Trans.Resource (runResourceT, allocate, release)
 
 import Data.Maybe (isNothing, fromJust)
+import Data.Pool (Pool, withResource)
 import Data.Time.Clock (getCurrentTime)
 
 import Keystone.Config (KeystoneConfig(database))
@@ -40,21 +41,19 @@ issueTokenH :: ( Functor m
                , MonadThrow m
                , MonadBase IO m
                , MonadBaseControl IO m)
-            => KeystoneConfig -> ActionM m ()
-issueTokenH config = do
+            => Pool CD.Connection -> KeystoneConfig -> ActionM m ()
+issueTokenH mongoPool config = do
     (au :: AT.AuthRequest) <- parseRequest
     baseUrl <- getBaseUrl config
-    runResourceT $ do
-      (releaseKey, connection) <- allocate (CD.connect $ database config) CD.closeConnection
-      res <- lift $ lift $ mapM (A.authenticate connection (AT.scope au)) (AT.methods au)
-      release releaseKey
+    withResource mongoPool $ \connection -> do
+      res <- lift $ mapM (A.authenticate connection (AT.scope au)) (AT.methods au)
       case head res of
-        Right (tokenId, t) -> lift $ do
+        Right (tokenId, t) -> do
           let resp = A.produceTokenResponse t baseUrl
           S.json resp
           S.addHeader "X-Subject-Token" (TL.pack tokenId)
           S.status status200
-        Left errorMessage -> lift $ do
+        Left errorMessage -> do
           S.json $ E.unauthorized errorMessage
           S.status status401
 

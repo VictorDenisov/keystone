@@ -9,7 +9,7 @@ import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (ReaderT(runReaderT), MonadReader(ask))
-import Data.Pool (Pool, createPool, withResource)
+import Data.Pool (Pool, withResource)
 
 import qualified Config as C
 import qualified Model.Mongo.Common as CD
@@ -45,7 +45,6 @@ instance ( MonadBase IO m
     d <- ask
     withResource (pool d) action
 
-runMongoBackend :: C.Database -> MongoIdentityApi IO a -> IO a
-runMongoBackend mongoConfig action = do
-  p <- createPool (CD.connect mongoConfig) CD.closeConnection 1 60 10 -- stripe count, time to live, max resource count
+runMongoBackend :: Pool CD.Connection -> C.Database -> MongoIdentityApi IO a -> IO a
+runMongoBackend p mongoConfig action = do
   runReaderT action (MongoData mongoConfig p)

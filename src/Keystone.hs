@@ -9,13 +9,14 @@ module Main
 where
 
 import Common (loggerName)
-import Config (readConfig, ServerType(..))
+import Config (readConfig, ServerType(..), poolSize)
 import Control.Monad (when)
 import Control.Monad.Base (MonadBase(..))
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl(..))
 import Data.Time.Clock (getCurrentTime)
+import Data.Pool (createPool, Pool)
 import Keystone.Config (KeystoneConfig(..), confFileName)
 import Keystone.Model.IdentityApi
 import Keystone.Model.Mongo.IdentityApi
@@ -74,13 +75,15 @@ main = do
   -- ^ we need the evaluation to happen immediatelly
   verifyDatabase config
 
+  mongoPool <- createPool (CD.connect $ database config) CD.closeConnection 1 60 (poolSize $ database config) -- stripe count, time to live, max resource count
+
   app <- case ldap config of
     Nothing -> do
-      let runMongo = runMongoBackend $ database config
-      S.scottyAppT runMongo (application policy config)
+      let runMongo = runMongoBackend mongoPool $ database config
+      S.scottyAppT runMongo (application policy config mongoPool)
     Just ldapConfig -> do
       let runLdap = runLdapBackend $ ldapConfig
-      S.scottyAppT runLdap (application policy config)
+      S.scottyAppT runLdap (application policy config mongoPool)
 
   let settings = tlsSettings
                       (certificateFile config)
@@ -98,8 +101,9 @@ application :: ( MonadBase IO (b IO)
                , IdentityApi (b IO))
             => AT.Policy
             -> KeystoneConfig
+            -> Pool CD.Connection
             -> ScottyM (b IO) ()
-application policy config = do
+application policy config mongoPool = do
   S.middleware logRequestResponse
   S.defaultHandler $ \e -> do
     S.status $ E.code e
@@ -114,7 +118,7 @@ application policy config = do
   S.get           "/"                     $ listVersionsH                  config
   S.get           "/v3"                   $ v3detailsH                     config
   -- Token API
-  S.post          "/v3/auth/tokens"       $ T.issueTokenH                  config
+  S.post          "/v3/auth/tokens"       $ T.issueTokenH        mongoPool config
   S.get           "/v3/auth/tokens"       $ T.receiveExistingTokenH policy config
   S.addroute HEAD "/v3/auth/tokens"       $ T.checkTokenH           policy config
   -- Service Catalog API

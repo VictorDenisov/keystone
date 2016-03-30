@@ -21,9 +21,10 @@ class BaseConfig a where
   getServerType :: a -> ServerType
 
 data Database = Database
-              { dbHost :: String
-              , dbPort :: Int
-              , dbName :: String
+              { dbHost   :: String
+              , dbPort   :: Int
+              , dbName   :: String
+              , poolSize :: Int
               }
 
 data ServerType = Tls
