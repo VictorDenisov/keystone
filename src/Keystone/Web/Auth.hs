@@ -27,7 +27,7 @@ import Data.Vector (fromList)
 import Language.Haskell.TH.Syntax (nameBase)
 import Network.HTTP.Types.Status (status401)
 import Prelude hiding (readFile)
-import System.Log.Logger (noticeM)
+import System.Log.Logger (noticeM, debugM)
 import Text.Read (readMaybe)
 import Web.Common (ActionM)
 
@@ -54,11 +54,16 @@ authenticate :: (MonadIO m, IdentityApi m, Functor m)
              -> AuthMethod
              -> m (Either String (String, MT.Token))
 authenticate connection mScope (PasswordMethod mUserId mUserName mDomainId mDomainName password) = do
+  liftIO $ debugM loggerName "Checking password"
   res <- checkUserPassword mUserId mUserName password
+  liftIO $ debugM loggerName "Password checked"
   case res of
     Left  errorMessage -> return $ Left errorMessage
     Right user -> do
-      liftIO $ Right <$> (CD.runDB connection $ produceToken mScope user)
+      liftIO $ debugM loggerName "Producing token"
+      res <- liftIO $ Right <$> (CD.runDB connection $ produceToken mScope user)
+      liftIO $ debugM loggerName "Token is produced"
+      return res
 
 produceToken :: (Maybe AuthScope) -> MU.User -> M.Action IO (String, MT.Token)
 produceToken  mScope user = do

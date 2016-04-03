@@ -51,7 +51,7 @@ withDB dbConf f = runResourceT $ do
   return v
 
 runDB :: MonadIO m => Connection -> M.Action m a -> m a
-runDB (Connection p dbName) f = M.access p M.master dbName f
+runDB (Connection p dbName) f = M.access p M.UnconfirmedWrites dbName f
 
 affectedDocs :: MonadIO m => M.Action m Int
 affectedDocs = do
