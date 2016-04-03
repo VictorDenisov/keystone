@@ -76,10 +76,11 @@ main = do
   verifyDatabase config
 
   mongoPool <- createPool (CD.connect $ database config) CD.closeConnection 1 60 (poolSize $ database config) -- stripe count, time to live, max resource count
+  backendPool <- createPool (CD.connect $ database config) CD.closeConnection 1 60 (poolSize $ database config) -- stripe count, time to live, max resource count
 
   app <- case ldap config of
     Nothing -> do
-      let runMongo = runMongoBackend mongoPool $ database config
+      let runMongo = runMongoBackend backendPool $ database config
       S.scottyAppT runMongo (application policy config mongoPool)
     Just ldapConfig -> do
       let runLdap = runLdapBackend $ ldapConfig
