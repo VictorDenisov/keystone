@@ -73,7 +73,7 @@ main = do
   -- ^ we need the evaluation to happen immediatelly
   verifyDatabase config
 
-  app <- S.scottyAppT id id (application policy config)
+  app <- S.scottyAppT id (application policy config)
   let settings = tlsSettings
                       (certificateFile config)
                       (keyFile config)

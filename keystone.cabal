@@ -44,32 +44,32 @@ executable keystone
                      , Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.7.0.4
-                     , bson == 0.3.1
-                     , bytestring == 0.10.4.0
-                     , exceptions == 0.8.0.2
-                     , hashable == 1.2.2.0
-                     , hslogger == 1.2.8
-                     , http-types == 0.8.6
-                     , monad-control == 1.0.0.4
-                     , mongoDB == 2.0.7
-                     , mtl == 2.2.1
-                     , pwstore-fast == 2.4.4
-                     , resourcet == 1.1.4.1
-                     , scotty == 0.9.1
-                     , split == 0.2.2
-                     , template-haskell == 2.9.0.0
-                     , th-lift == 0.7.2
-                     , text == 1.1.0.0
-                     , time == 1.4.2
-                     , transformers == 0.4.3.0
-                     , transformers-base == 0.4.4
-                     , unordered-containers == 0.2.4.0
-                     , vector == 0.10.9.1
-                     , yaml == 0.8.10.1
-                     , wai == 3.0.2.3
-                     , warp == 3.0.9.3
-                     , warp-tls == 3.0.3
+                     , aeson
+                     , bson
+                     , bytestring
+                     , exceptions
+                     , hashable
+                     , hslogger
+                     , http-types
+                     , monad-control
+                     , mongoDB
+                     , mtl
+                     , pwstore-fast
+                     , resourcet
+                     , scotty
+                     , split
+                     , template-haskell
+                     , th-lift
+                     , text
+                     , time
+                     , transformers
+                     , transformers-base
+                     , unordered-containers
+                     , vector
+                     , yaml
+                     , wai
+                     , warp
+                     , warp-tls
   hs-source-dirs:      src
   ghc-options:
       -fwarn-unused-imports
