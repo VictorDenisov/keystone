@@ -73,8 +73,8 @@ executable keystone
   hs-source-dirs:      src
   ghc-options:
       -fwarn-unused-imports
- --   -O2
- --   -threaded
+      -O2
+      -threaded
  --   -fprof-auto
  --   "-with-rtsopts=-N -p -s -h -i0.1"
   default-language:    Haskell2010
