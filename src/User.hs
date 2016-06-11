@@ -27,11 +27,14 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Database.MongoDB as M
 import qualified Model.User as MU
 
+passwordStrength :: Int
+passwordStrength = 10
+
 newRequestToUser :: UserCreateRequest -> IO MU.User
 newRequestToUser UserCreateRequest{..} = do
     cryptedPassword <- runMaybeT $ do
       p <- MaybeT $ return $ password
-      p1 <- liftIO $ makePassword (BS8.pack p) 17
+      p1 <- liftIO $ makePassword (BS8.pack p) passwordStrength
       return $ BS8.unpack p1
     userId <- M.genObjectId
     return $ MU.User
@@ -46,7 +49,7 @@ updateRequestToDocument :: UserUpdateRequest -> IO M.Document
 updateRequestToDocument UserUpdateRequest{..} = do
   cryptedPassword <- runMaybeT $ do
     p <- MaybeT $ return upassword
-    p1 <- liftIO $ makePassword (BS8.pack p) 17
+    p1 <- liftIO $ makePassword (BS8.pack p) passwordStrength
     return $ BS8.unpack p1
   return $ concat
     [ (pack $ nameBase 'MU.description) M.=? udescription
@@ -60,7 +63,7 @@ changePasswordRequestToDocument :: ChangePasswordRequest -> IO M.Document
 changePasswordRequestToDocument ChangePasswordRequest{..} = do
   cryptedPassword <- runMaybeT $ do
     p <- return ppassword
-    p1 <- liftIO $ makePassword (BS8.pack p) 17
+    p1 <- liftIO $ makePassword (BS8.pack p) passwordStrength
     return $ BS8.unpack p1
   return $ concat [ (pack $ nameBase 'MU.password) M.=? cryptedPassword ]
 
