@@ -34,6 +34,9 @@ import Network.HTTP.Types.Status (status401)
 import System.Log.Logger (noticeM)
 import Text.Read (readMaybe)
 
+import Database.MongoDB ((=:))
+import Data.Bson.Mapping (Bson(fromBson))
+
 import qualified Common.Database as CD
 import qualified Error as E
 import qualified Database.MongoDB as M
@@ -176,9 +179,61 @@ authenticate mScope pipe (PasswordMethod mUserId mUserName mDomainId mDomainName
     Left  errorMessage -> return $ Left errorMessage
     Right user -> do
       currentTime  <- liftIO getCurrentTime
+      (scopeProject :: Maybe MP.Project, scopeRoles :: [MR.Role], services :: [MS.Service]) <-
+        case mScope of
+          Just pScope -> do
+            let projectSelector =
+                    case pScope of
+                      (ProjectIdScope (Just pid) _ _)         -> ["$match" =: ["_id" =: pid]]
+                      (ProjectIdScope Nothing (Just pname) _) -> ["$match" =: ["name" =: pname]]
+            let assignmentJoin = [ projectSelector
+                                 , ["$lookup" =: [ "from"         =: MA.collectionName
+                                                 , "localField"   =: ("_id" :: String)
+                                                 , "foreignField" =: ("projectId" :: String)
+                                                 , "as"           =: ("project_role_id" :: String)
+                                                 ]]
+                                 , ["$unwind" =: ("$project_role_id" :: String)]
+                                 , ["$match"  =: ["project_role_id.userId" =: MU._id user]]
+                                 , ["$lookup" =: [ "from"         =: MR.collectionName
+                                                 , "localField"   =: ("project_role_id.roleId" :: String)
+                                                 , "foreignField" =: ("_id" :: String)
+                                                 , "as"           =: ("role_names" :: String)
+                                                 ]]
+                                 , ["$unwind" =: ("$role_names" :: String)]
+                                 , ["$group"  =: [ "_id" =: ("$_id" :: String)
+                                                 , "name"        =: ["$last" =: ("$name" :: String)]
+                                                 , "description" =: ["$last" =: ("$description" :: String)]
+                                                 , "enabled"     =: ["$last" =: ("$enabled" :: String)]
+                                                 , "_cons"       =: ["$last" =: ("$_cons" :: String)]
+                                                 , "role_names"  =: ["$push" =: ("$role_names" :: String)]
+                                                 ]]
+                                 , ["$lookup" =: [ "from"         =: MS.collectionName
+                                                 , "localField"   =: ("nonExistent" :: String)
+                                                 , "foreignField" =: ("nonExistent" :: String)
+                                                 , "as"           =: ("services" :: String)
+                                                 ]]
+                                 ]
+            tokenResults <- CD.runDB pipe $ M.aggregate MP.collectionName assignmentJoin
+            liftIO $ putStrLn $ show tokenResults
+
+            let tokenResult = head tokenResults
+            scopeProject <- fromBson tokenResult
+            scopeRoles   <- mapM fromBson $ "role_names" `M.at` tokenResult
+            services     <- mapM fromBson $ "services" `M.at` tokenResult
+            return (Just scopeProject, scopeRoles, services)
+          Nothing -> do
+            services <- CD.runDB pipe $ MS.listServices Nothing
+            return (Nothing, [], services)
+      {-
+      liftIO $ putStrLn $ show scopeProjectN
+      liftIO $ putStrLn $ show scopeRolesN
+      liftIO $ putStrLn $ show servicesN
+
       scopeProject <- CD.runDB pipe $ calcProject mScope
       scopeRoles   <- CD.runDB pipe $ calcRoles scopeProject user
       services     <- CD.runDB pipe $ MS.listServices Nothing
+      -}
+
       tokenId <- liftIO $ M.genObjectId
       let token = MT.Token
                         tokenId
