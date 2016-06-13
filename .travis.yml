@@ -12,7 +12,7 @@ addons:
     - libgmp-dev
 
 env:
-- ARGS="--resolver lts-5.3"
+- ARGS="--resolver lts-6.2"
 - ARGS="--resolver lts"
 - ARGS="--resolver nightly"
 

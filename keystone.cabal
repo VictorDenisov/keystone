@@ -20,7 +20,7 @@ executable test-agent
   other-modules:       Common
                      , Nova.Compute
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.9.*
+                     , aeson  == 0.11.*
                      , binary == 0.7.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
@@ -28,7 +28,7 @@ executable test-agent
                      , hslogger == 1.2.*
                      , http-types == 0.9.*
                      , network == 2.6.*
-                     , scotty == 0.10.*
+                     , scotty == 0.11.*
                      , split == 0.2.*
                      , text == 1.2.*
   hs-source-dirs:      src
@@ -45,7 +45,7 @@ executable compute-agent
   other-modules:       Common
                      , Nova.Compute
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.9.*
+                     , aeson  == 0.11.*
                      , binary == 0.7.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
@@ -53,7 +53,7 @@ executable compute-agent
                      , hslogger == 1.2.*
                      , http-types == 0.9.*
                      , network == 2.6.*
-                     , scotty == 0.10.*
+                     , scotty == 0.11.*
                      , split == 0.2.*
                      , suspend == 0.2.0.0
                      , text == 1.2.*
@@ -102,7 +102,7 @@ executable nova
                      , Web.Common
   build-depends:       base >=4.7 && <4.9
                      , binary == 0.7.*
-                     , aeson  == 0.9.*
+                     , aeson  == 0.11.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
                      , data-default == 0.5.*
@@ -118,7 +118,7 @@ executable nova
                      , pwstore-fast == 2.4.*
                      , resourcet == 1.1.*
                      , resource-pool == 0.2.*
-                     , scotty == 0.10.*
+                     , scotty == 0.11.*
                      , split == 0.2.*
                      , template-haskell == 2.10.*
                      , th-lift == 0.7.*
@@ -170,7 +170,7 @@ executable glance
                      , Model.Mongo.Common
                      , Web.Common
   build-depends:       base >=4.7 && <4.9
-                     , aeson == 0.9.*
+                     , aeson == 0.11.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
                      , data-default == 0.5.*
@@ -185,7 +185,7 @@ executable glance
                      , pwstore-fast == 2.4.*
                      , resourcet == 1.1.*
                      , resource-pool == 0.2.*
-                     , scotty == 0.10.*
+                     , scotty == 0.11.*
                      , split == 0.2.*
                      , template-haskell == 2.10.*
                      , th-lift == 0.7.*
@@ -247,7 +247,7 @@ executable keystone
                      , Keystone.Web.Version
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9
-                     , aeson  == 0.9.*
+                     , aeson  == 0.11.*
                      , bson == 0.3.*
                      , bytestring == 0.10.*
                      , data-default == 0.5.*
@@ -262,7 +262,7 @@ executable keystone
                      , pwstore-fast == 2.4.*
                      , resourcet == 1.1.*
                      , resource-pool == 0.2.*
-                     , scotty == 0.10.*
+                     , scotty == 0.11.*
                      , split == 0.2.*
                      , template-haskell == 2.10.*
                      , th-lift == 0.7.*
